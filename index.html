@@ -1,0 +1,240 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+    <title>KelimApp</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['var(--font-main)', 'sans-serif'],
+              serif: ['var(--font-serif)', 'serif'],
+              mono: ['var(--font-mono)', 'monospace'],
+            },
+            animation: {
+              'spin-slow': 'spin 3s linear infinite',
+              'bounce-subtle': 'bounce 2s infinite',
+              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'shimmer': 'shimmer 2s linear infinite',
+              'border-spin': 'border-spin 4s linear infinite',
+              'rainbow': 'rainbow 3s linear infinite',
+            },
+            keyframes: {
+              shimmer: {
+                '0%': { backgroundPosition: '-200% 0' },
+                '100%': { backgroundPosition: '200% 0' }
+              },
+              'border-spin': {
+                '100%': { transform: 'rotate(360deg)' }
+              },
+              rainbow: {
+                '0%': { filter: 'hue-rotate(0deg)' },
+                '100%': { filter: 'hue-rotate(360deg)' }
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <!-- Google Fonts Update -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Merriweather:wght@400;700&family=Courier+Prime:wght@400;700&family=Fredoka:wght@400;600&family=Orbitron:wght@400;700&family=Bangers&family=Playfair+Display:wght@400;700&family=Patrick+Hand&family=Creepster&family=Russo+One&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        --font-main: 'Inter';
+        --font-serif: 'Merriweather';
+        --font-mono: 'Courier Prime';
+        --font-fun: 'Fredoka';
+        --font-cyber: 'Orbitron';
+        --font-comic: 'Bangers';
+        --font-royal: 'Playfair Display';
+        --font-hand: 'Patrick Hand';
+        --font-horror: 'Creepster';
+        --font-bold: 'Russo One';
+      }
+
+      /* Theme Specific Fonts */
+      .theme-retro { --font-main: 'Courier Prime'; }
+      .theme-royal { --font-main: 'Playfair Display'; }
+      .theme-luxury { --font-main: 'Playfair Display'; }
+      .theme-candy { --font-main: 'Fredoka'; }
+      .theme-cyberpunk { --font-main: 'Orbitron'; }
+      .theme-matrix { --font-main: 'Courier Prime'; }
+      .theme-comic { --font-main: 'Bangers'; letter-spacing: 1px; }
+      .theme-gamer { --font-main: 'Russo One'; }
+      .theme-volcano { --font-main: 'Creepster'; letter-spacing: 1px; }
+      .theme-nature_soft { --font-main: 'Patrick Hand'; font-size: 110%; }
+
+      body {
+        font-family: var(--font-main), sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        overscroll-behavior-y: none;
+        user-select: none;
+      }
+      
+      /* --- Advanced Animations for Frames/Backgrounds --- */
+      
+      /* Rainbow Frame - Uses Mask for Transparency */
+      .frame-rainbow {
+        border-radius: 9999px;
+        padding: 4px; /* Thickness of the border */
+        background: conic-gradient(red, orange, yellow, green, blue, indigo, violet, red);
+        -webkit-mask: 
+           linear-gradient(#fff 0 0) content-box, 
+           linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: rainbow-spin 4s linear infinite;
+      }
+      @keyframes rainbow-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      /* RGB Gamer Frame - Uses Mask for Transparency */
+      .frame-rgb {
+          border-radius: 9999px;
+          padding: 4px; /* Thickness of the border */
+          background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+          background-size: 400%;
+          -webkit-mask: 
+             linear-gradient(#fff 0 0) content-box, 
+             linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          animation: glowing 10s linear infinite;
+      }
+      @keyframes glowing {
+          0% { background-position: 0 0; }
+          50% { background-position: 400% 0; }
+          100% { background-position: 0 0; }
+      }
+
+      /* Fire Frame */
+      .frame-fire {
+          box-shadow: 0 0 10px #f00, 0 0 20px #f00, 0 0 30px #f00, 0 0 40px #ff00de;
+          animation: fire-pulse 1.5s infinite alternate;
+      }
+      @keyframes fire-pulse {
+          from { box-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500; }
+          to { box-shadow: 0 0 15px #ff8c00, 0 0 25px #ff8c00; }
+      }
+      
+      /* Neon Frame */
+      .frame-neon {
+          box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #0ff, 0 0 30px #0ff, 0 0 40px #0ff;
+          animation: neon-flicker 2s infinite alternate;
+      }
+      @keyframes neon-flicker {
+          0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
+          20%, 24%, 55% { opacity: 0.9; }
+      }
+      
+      /* Ghost Frame */
+      .frame-ghost {
+        opacity: 0.7;
+        box-shadow: 0 0 15px rgba(255,255,255,0.5);
+        animation: float-ghost 3s ease-in-out infinite;
+      }
+      @keyframes float-ghost {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-3px); }
+      }
+
+      /* Lightning Frame */
+      .frame-lightning {
+          border: 3px solid #fbbf24;
+          box-shadow: 0 0 10px #fbbf24;
+          animation: lightning-flash 2s infinite;
+      }
+      @keyframes lightning-flash {
+          0%, 90%, 100% { box-shadow: 0 0 10px #fbbf24; border-color: #fbbf24; }
+          92%, 96% { box-shadow: 0 0 25px #fff, 0 0 40px #fbbf24; border-color: #fff; }
+      }
+
+      @keyframes border-spin {
+        100% { transform: rotate(360deg); }
+      }
+      
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+      .animate-float {
+        animation: float 3s ease-in-out infinite;
+      }
+
+      @keyframes glitch {
+        0% { transform: translate(0); }
+        20% { transform: translate(-2px, 2px); }
+        40% { transform: translate(-2px, -2px); }
+        60% { transform: translate(2px, 2px); }
+        80% { transform: translate(2px, -2px); }
+        100% { transform: translate(0); }
+      }
+      .animate-glitch:hover {
+        animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+      }
+
+      /* ... (Diğer stiller aynı kalacak) ... */
+      input, textarea, select { user-select: text; }
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      .dark ::-webkit-scrollbar-thumb { background: #334155; }
+      .perspective-1000 { perspective: 1000px; }
+      .transform-style-3d { transform-style: preserve-3d; }
+      .backface-hidden { backface-visibility: hidden; }
+      .rotate-y-180 { transform: rotateY(180deg); }
+      .pt-safe { padding-top: env(safe-area-inset-top); }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes slideInBottom { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .animate-in { animation-duration: 0.4s; animation-fill-mode: both; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+      .fade-in { animation-name: fadeIn; }
+      .slide-in-from-bottom-1 { animation-name: slideInBottom; }
+      .slide-in-from-bottom-2 { animation-name: slideInBottom; animation-delay: 0.1s; }
+      .slide-in-from-bottom-4 { animation-name: slideInBottom; animation-delay: 0.2s; }
+      .zoom-in { animation-name: zoomIn; }
+      .zoom-in-95 { animation-name: zoomIn; }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "@vitest/runner/": "https://aistudiocdn.com/@vitest/runner@^4.0.13/",
+    "@vercel/analytics/": "https://aistudiocdn.com/@vercel/analytics@^1.5.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 h-[100dvh] w-full overflow-hidden transition-colors duration-300">
+    <div id="root" class="h-full w-full overflow-hidden"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('SW fail', err));
+        });
+      }
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

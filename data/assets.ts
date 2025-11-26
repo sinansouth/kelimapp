@@ -1,0 +1,428 @@
+
+import { Avatar, Badge, FrameDef, UnitDef, GradeDef, BackgroundDef } from '../types';
+import { 
+  BookOpen, GraduationCap, Target, Library, Star, 
+  School, Globe, Tv, Sun, Briefcase, Music, Heart, 
+  MapPin, Film, Calendar, Zap, Smile, User, Utensils, Shirt, Home, Tent, 
+  Play, BookType, CheckCircle, Layers, Flame, Award, PenTool,
+  ListChecks, Clock as ClockIcon, Brain as BrainIcon,
+  PartyPopper, Lightbulb, MessageCircle, Sparkles,
+  History, Palette, Microscope, Stethoscope, 
+  Laptop, Gavel, Leaf, Plane, ShoppingBag as ShoppingBagIcon, Cpu, Crown,
+  Bell, Settings, CircleHelp, Home as HomeIcon, UserCircle
+} from 'lucide-react';
+import React from 'react';
+
+// UI ICONS
+export const UI_ICONS = {
+    home: React.createElement(HomeIcon, { size: 24 }),
+    profile: React.createElement(UserCircle, { size: 24 }),
+    settings: React.createElement(Settings, { size: 24 }),
+    info: React.createElement(CircleHelp, { size: 24 }),
+    notifications: React.createElement(Bell, { size: 24 }),
+};
+
+// GRADES (Existing)
+export const GRADE_DATA: Record<string, GradeDef> = {
+    'PRIMARY_SCHOOL': { id: 'PRIMARY_SCHOOL', label: 'İlkokul', subLabel: '2-4. Sınıflar', icon: React.createElement(Star, { size: 28 }) },
+    'MIDDLE_SCHOOL': { id: 'MIDDLE_SCHOOL', label: 'Ortaokul', subLabel: '5-8. Sınıflar', icon: React.createElement(School, { size: 28 }) },
+    'HIGH_SCHOOL': { id: 'HIGH_SCHOOL', label: 'Lise', subLabel: '9-12. Sınıflar', icon: React.createElement(GraduationCap, { size: 28 }) },
+    '2': { id: '2', label: '2. Sınıf', icon: React.createElement(Star, { size: 24 }) },
+    '3': { id: '3', label: '3. Sınıf', icon: React.createElement(Star, { size: 24 }) },
+    '4': { id: '4', label: '4. Sınıf', icon: React.createElement(Star, { size: 24 }) },
+    '5': { id: '5', label: '5. Sınıf', icon: React.createElement(School, { size: 24 }) },
+    '6': { id: '6', label: '6. Sınıf', icon: React.createElement(School, { size: 24 }) },
+    '7': { id: '7', label: '7. Sınıf', icon: React.createElement(School, { size: 24 }) },
+    '8': { id: '8', label: '8. Sınıf', icon: React.createElement(School, { size: 24 }) },
+    '9': { id: '9', label: '9. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+    '10': { id: '10', label: '10. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+    '11': { id: '11', label: '11. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+    '12': { id: '12', label: '12. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+};
+
+// UNITS (Keep existing unit data, abbreviated here for brevity but in real file keep all)
+export const UNIT_ASSETS: Record<string, UnitDef[]> = {
+  '12': [
+    { id: 'g12u1', unitNo: '1. ÜNİTE', title: 'MUSIC', icon: React.createElement(Music) },
+    { id: 'g12u2', unitNo: '2. ÜNİTE', title: 'FRIENDSHIP', icon: React.createElement(User) },
+    { id: 'g12u3', unitNo: '3. ÜNİTE', title: 'HUMAN RIGHTS', icon: React.createElement(Globe) },
+    { id: 'g12u4', unitNo: '4. ÜNİTE', title: 'CYBER & NATURE', icon: React.createElement(Laptop) },
+    { id: 'g12u5', unitNo: '5. ÜNİTE', title: 'PSYCHOLOGY', icon: React.createElement(BrainIcon) }, 
+    { id: 'g12u6', unitNo: '6. ÜNİTE', title: 'FAVORS', icon: React.createElement(Heart) },
+    { id: 'g12u7', unitNo: '7. ÜNİTE', title: 'NEWS STORIES', icon: React.createElement(Tv) },
+    { id: 'g12u8', unitNo: '8. ÜNİTE', title: 'ALTERNATIVE ENERGY', icon: React.createElement(Zap) },
+    { id: 'g12u9', unitNo: '9. ÜNİTE', title: 'TECHNOLOGY', icon: React.createElement(Cpu) }, 
+    { id: 'g12u10', unitNo: '10. ÜNİTE', title: 'MANNERS', icon: React.createElement(Smile) },
+    { id: 'g12all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '11': [
+    { id: 'g11u1', unitNo: '1. ÜNİTE', title: 'FUTURE JOBS', icon: React.createElement(Briefcase) },
+    { id: 'g11u2', unitNo: '2. ÜNİTE', title: 'HOBBIES AND SKILLS', icon: React.createElement(Palette) },
+    { id: 'g11u3', unitNo: '3. ÜNİTE', title: 'HARD TIMES', icon: React.createElement(Sun) },
+    { id: 'g11u4', unitNo: '4. ÜNİTE', title: 'WHAT A LIFE', icon: React.createElement(Star) },
+    { id: 'g11u5', unitNo: '5. ÜNİTE', title: 'BACK TO THE PAST', icon: React.createElement(History) },
+    { id: 'g11u6', unitNo: '6. ÜNİTE', title: 'OPEN YOUR HEART', icon: React.createElement(Heart) },
+    { id: 'g11u7', unitNo: '7. ÜNİTE', title: 'FACTS ABOUT TURKEY', icon: React.createElement(MapPin) },
+    { id: 'g11u8', unitNo: '8. ÜNİTE', title: 'SPORTS', icon: React.createElement(Zap) },
+    { id: 'g11u9', unitNo: '9. ÜNİTE', title: 'MY FRIENDS', icon: React.createElement(User) },
+    { id: 'g11u10', unitNo: '10. ÜNİTE', title: 'VALUES AND NORMS', icon: React.createElement(Gavel) },
+    { id: 'g11all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '10': [
+    { id: 'g10u1', unitNo: '1. ÜNİTE', title: 'SCHOOL LIFE', icon: React.createElement(School) },
+    { id: 'g10u2', unitNo: '2. ÜNİTE', title: 'PLANS', icon: React.createElement(Calendar) },
+    { id: 'g10u3', unitNo: '3. ÜNİTE', title: 'LEGENDARY FIGURES', icon: React.createElement(Crown) }, 
+    { id: 'g10u4', unitNo: '4. ÜNİTE', title: 'TRADITIONS', icon: React.createElement(Globe) },
+    { id: 'g10u5', unitNo: '5. ÜNİTE', title: 'TRAVEL', icon: React.createElement(Plane) },
+    { id: 'g10u6', unitNo: '6. ÜNİTE', title: 'HELPFUL TIPS', icon: React.createElement(Lightbulb) },
+    { id: 'g10u7', unitNo: '7. ÜNİTE', title: 'FOOD AND FESTIVALS', icon: React.createElement(Utensils) },
+    { id: 'g10u8', unitNo: '8. ÜNİTE', title: 'DIGITAL ERA', icon: React.createElement(Zap) },
+    { id: 'g10u9', unitNo: '9. ÜNİTE', title: 'MODERN HEROES', icon: React.createElement(Award) },
+    { id: 'g10u10', unitNo: '10. ÜNİTE', title: 'SHOPPING', icon: React.createElement(ShoppingBagIcon) },
+    { id: 'g10all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '9': [
+    { id: 'g9u1', unitNo: '1. ÜNİTE', title: 'STUDYING ABROAD', icon: React.createElement(Globe) },
+    { id: 'g9u2', unitNo: '2. ÜNİTE', title: 'MY ENVIRONMENT', icon: React.createElement(MapPin) },
+    { id: 'g9u3', unitNo: '3. ÜNİTE', title: 'MOVIES', icon: React.createElement(Film) },
+    { id: 'g9u4', unitNo: '4. ÜNİTE', title: 'HUMAN IN NATURE', icon: React.createElement(Leaf) },
+    { id: 'g9u5', unitNo: '5. ÜNİTE', title: 'INSPIRATIONAL PEOPLE', icon: React.createElement(Sparkles) },
+    { id: 'g9u6', unitNo: '6. ÜNİTE', title: 'BRIDGING CULTURES', icon: React.createElement(Globe) },
+    { id: 'g9u7', unitNo: '7. ÜNİTE', title: 'WORLD HERITAGE', icon: React.createElement(School) },
+    { id: 'g9u8', unitNo: '8. ÜNİTE', title: 'EMERGENCY & HEALTH', icon: React.createElement(Stethoscope) },
+    { id: 'g9u9', unitNo: '9. ÜNİTE', title: 'INVITATIONS', icon: React.createElement(PartyPopper) },
+    { id: 'g9u10', unitNo: '10. ÜNİTE', title: 'TV & SOCIAL MEDIA', icon: React.createElement(Tv) },
+    { id: 'g9all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '8': [
+    { id: 'u1', unitNo: '1. ÜNİTE', title: 'FRIENDSHIP', icon: React.createElement(User) },
+    { id: 'u2', unitNo: '2. ÜNİTE', title: 'TEEN LIFE', icon: React.createElement(Music) },
+    { id: 'u3', unitNo: '3. ÜNİTE', title: 'IN THE KITCHEN', icon: React.createElement(Utensils) },
+    { id: 'u4', unitNo: '4. ÜNİTE', title: 'ON THE PHONE', icon: React.createElement(MessageCircle) },
+    { id: 'u5', unitNo: '5. ÜNİTE', title: 'THE INTERNET', icon: React.createElement(Globe) },
+    { id: 'u6', unitNo: '6. ÜNİTE', title: 'ADVENTURES', icon: React.createElement(Tent) },
+    { id: 'u7', unitNo: '7. ÜNİTE', title: 'TOURISM', icon: React.createElement(MapPin) },
+    { id: 'u8', unitNo: '8. ÜNİTE', title: 'CHORES', icon: React.createElement(Home) },
+    { id: 'u9', unitNo: '9. ÜNİTE', title: 'SCIENCE', icon: React.createElement(Microscope) },
+    { id: 'u10', unitNo: '10. ÜNİTE', title: 'NATURAL FORCES', icon: React.createElement(Flame) },
+    { id: 'uAll', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '7': [
+    { id: 'g7u1', unitNo: '1. ÜNİTE', title: 'APPEARANCE', icon: React.createElement(User) },
+    { id: 'g7u2', unitNo: '2. ÜNİTE', title: 'SPORTS', icon: React.createElement(Zap) },
+    { id: 'g7u3', unitNo: '3. ÜNİTE', title: 'BIOGRAPHIES', icon: React.createElement(BookOpen) },
+    { id: 'g7u4', unitNo: '4. ÜNİTE', title: 'WILD ANIMALS', icon: React.createElement(Smile) },
+    { id: 'g7u5', unitNo: '5. ÜNİTE', title: 'TELEVISION', icon: React.createElement(Tv) },
+    { id: 'g7u6', unitNo: '6. ÜNİTE', title: 'CELEBRATIONS', icon: React.createElement(PartyPopper) },
+    { id: 'g7u7', unitNo: '7. ÜNİTE', title: 'DREAMS', icon: React.createElement(Sun) },
+    { id: 'g7u8', unitNo: '8. ÜNİTE', title: 'PUBLIC BUILDINGS', icon: React.createElement(School) },
+    { id: 'g7u9', unitNo: '9. ÜNİTE', title: 'ENVIRONMENT', icon: React.createElement(Leaf) },
+    { id: 'g7u10', unitNo: '10. ÜNİTE', title: 'PLANETS', icon: React.createElement(Zap) },
+    { id: 'g7all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '6': [
+    { id: 'g6u1', unitNo: '1. ÜNİTE', title: 'LIFE', icon: React.createElement(Sun) },
+    { id: 'g6u2', unitNo: '2. ÜNİTE', title: 'YUMMY BREAKFAST', icon: React.createElement(Utensils) },
+    { id: 'g6u3', unitNo: '3. ÜNİTE', title: 'DOWNTOWN', icon: React.createElement(School) },
+    { id: 'g6u4', unitNo: '4. ÜNİTE', title: 'WEATHER AND EMOTIONS', icon: React.createElement(Sun) },
+    { id: 'g6u5', unitNo: '5. ÜNİTE', title: 'AT THE FAIR', icon: React.createElement(Play) },
+    { id: 'g6u6', unitNo: '6. ÜNİTE', title: 'OCCUPATIONS', icon: React.createElement(Briefcase) },
+    { id: 'g6u7', unitNo: '7. ÜNİTE', title: 'HOLIDAYS', icon: React.createElement(Sun) },
+    { id: 'g6u8', unitNo: '8. ÜNİTE', title: 'BOOKWORMS', icon: React.createElement(BookType) },
+    { id: 'g6u9', unitNo: '9. ÜNİTE', title: 'SAVING THE PLANET', icon: React.createElement(Globe) },
+    { id: 'g6u10', unitNo: '10. ÜNİTE', title: 'DEMOCRACY', icon: React.createElement(CheckCircle) },
+    { id: 'g6all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '5': [
+    { id: 'g5u1', unitNo: '1. ÜNİTE', title: 'HELLO', icon: React.createElement(Smile) },
+    { id: 'g5u2', unitNo: '2. ÜNİTE', title: 'MY TOWN', icon: React.createElement(MapPin) },
+    { id: 'g5u3', unitNo: '3. ÜNİTE', title: 'GAMES AND HOBBIES', icon: React.createElement(Play) },
+    { id: 'g5u4', unitNo: '4. ÜNİTE', title: 'MY DAILY ROUTINE', icon: React.createElement(ClockIcon) },
+    { id: 'g5u5', unitNo: '5. ÜNİTE', title: 'HEALTH', icon: React.createElement(Heart) },
+    { id: 'g5u6', unitNo: '6. ÜNİTE', title: 'MOVIES', icon: React.createElement(Film) },
+    { id: 'g5u7', unitNo: '7. ÜNİTE', title: 'PARTY TIME', icon: React.createElement(PartyPopper) },
+    { id: 'g5u8', unitNo: '8. ÜNİTE', title: 'FITNESS', icon: React.createElement(Zap) },
+    { id: 'g5u9', unitNo: '9. ÜNİTE', title: 'THE ANIMAL SHELTER', icon: React.createElement(Smile) },
+    { id: 'g5u10', unitNo: '10. ÜNİTE', title: 'FESTIVALS', icon: React.createElement(MapPin) },
+    { id: 'g5all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '4': [
+    { id: 'g4u1', unitNo: '1. ÜNİTE', title: 'CLASSROOM RULES', icon: React.createElement(School) },
+    { id: 'g4u2', unitNo: '2. ÜNİTE', title: 'NATIONALITY', icon: React.createElement(MapPin) },
+    { id: 'g4u3', unitNo: '3. ÜNİTE', title: 'CARTOON CHARACTERS', icon: React.createElement(Smile) },
+    { id: 'g4u4', unitNo: '4. ÜNİTE', title: 'FREE TIME', icon: React.createElement(ClockIcon) },
+    { id: 'g4u5', unitNo: '5. ÜNİTE', title: 'MY DAY', icon: React.createElement(Sun) },
+    { id: 'g4u6', unitNo: '6. ÜNİTE', title: 'FUN WITH SCIENCE', icon: React.createElement(Zap) },
+    { id: 'g4u7', unitNo: '7. ÜNİTE', title: 'JOBS', icon: React.createElement(Briefcase) },
+    { id: 'g4u8', unitNo: '8. ÜNİTE', title: 'MY CLOTHES', icon: React.createElement(Shirt) },
+    { id: 'g4u9', unitNo: '9. ÜNİTE', title: 'MY FRIENDS', icon: React.createElement(User) },
+    { id: 'g4u10', unitNo: '10. ÜNİTE', title: 'FOOD AND DRINKS', icon: React.createElement(Utensils) },
+    { id: 'g4all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '3': [
+    { id: 'g3u1', unitNo: '1. ÜNİTE', title: 'GREETING', icon: React.createElement(Smile) },
+    { id: 'g3u2', unitNo: '2. ÜNİTE', title: 'MY FAMILY', icon: React.createElement(User) },
+    { id: 'g3u3', unitNo: '3. ÜNİTE', title: 'PEOPLE I LOVE', icon: React.createElement(Heart) },
+    { id: 'g3u4', unitNo: '4. ÜNİTE', title: 'FEELINGS', icon: React.createElement(Smile) },
+    { id: 'g3u5', unitNo: '5. ÜNİTE', title: 'TOYS AND GAMES', icon: React.createElement(Play) },
+    { id: 'g3u6', unitNo: '6. ÜNİTE', title: 'MY HOUSE', icon: React.createElement(Home) },
+    { id: 'g3u7', unitNo: '7. ÜNİTE', title: 'IN MY CITY', icon: React.createElement(School) },
+    { id: 'g3u8', unitNo: '8. ÜNİTE', title: 'TRANSPORTATION', icon: React.createElement(Play) },
+    { id: 'g3u9', unitNo: '9. ÜNİTE', title: 'WEATHER', icon: React.createElement(Sun) },
+    { id: 'g3u10', unitNo: '10. ÜNİTE', title: 'NATURE', icon: React.createElement(Leaf) },
+    { id: 'g3all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ],
+  '2': [
+    { id: 'g2u1', unitNo: '1. ÜNİTE', title: 'WORDS', icon: React.createElement(BookType) },
+    { id: 'g2u2', unitNo: '2. ÜNİTE', title: 'FRIENDS', icon: React.createElement(User) },
+    { id: 'g2u3', unitNo: '3. ÜNİTE', title: 'IN THE CLASSROOM', icon: React.createElement(School) },
+    { id: 'g2u4', unitNo: '4. ÜNİTE', title: 'NUMBERS', icon: React.createElement(ListChecks) },
+    { id: 'g2u5', unitNo: '5. ÜNİTE', title: 'COLORS', icon: React.createElement(PenTool) },
+    { id: 'g2u6', unitNo: '6. ÜNİTE', title: 'AT THE PLAYGROUND', icon: React.createElement(Smile) },
+    { id: 'g2all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
+  ]
+};
+
+// FRAMES (Massively Expanded)
+export const FRAMES: FrameDef[] = [
+    { id: 'frame_none', name: 'Yok', description: 'Çerçevesiz', cost: 0, style: '' },
+    { id: 'frame_gold', name: 'Altın', description: 'Parlak altın', cost: 2000, style: 'border-4 border-yellow-400 ring-4 ring-yellow-200 shadow-lg shadow-yellow-500/50' },
+    { id: 'frame_neon', name: 'Neon', description: 'Parlayan yeşil', cost: 3000, style: 'border-4 border-green-400 ring-2 ring-green-200 shadow-[0_0_20px_#4ade80] animate-pulse' },
+    { id: 'frame_fire', name: 'Ateş', description: 'Alevli kırmızı', cost: 4000, style: 'frame-fire border-4 border-red-500' },
+    { id: 'frame_royal', name: 'Asil', description: 'Mor ve altın', cost: 5000, style: 'border-4 border-purple-600 ring-2 ring-yellow-400 shadow-[0_0_20px_#9333ea]' },
+    { id: 'frame_diamond', name: 'Elmas', description: 'Buz mavisi', cost: 8000, style: 'border-4 border-cyan-300 ring-2 ring-blue-100 shadow-[0_0_25px_#67e8f9]' },
+    { id: 'frame_rainbow', name: 'Gökkuşağı', description: 'Renkli', cost: 10000, style: 'frame-rainbow' },
+    { id: 'frame_cyber', name: 'Siber', description: 'Fütüristik', cost: 6000, style: 'border-2 border-yellow-400 ring-2 ring-cyan-400 shadow-[0_0_15px_#22d3ee] border-dashed' },
+    { id: 'frame_nature', name: 'Doğa', description: 'Yeşil yaprak', cost: 2500, style: 'border-8 border-emerald-600 ring-2 ring-emerald-300 border-double' },
+    { id: 'frame_love', name: 'Aşk', description: 'Pembe kalp', cost: 3500, style: 'border-4 border-pink-500 ring-4 ring-rose-300 shadow-[0_0_20px_#f43f5e]' },
+    { id: 'frame_ice', name: 'Buz', description: 'Soğuk mavi', cost: 4500, style: 'border-4 border-slate-200 ring-4 ring-sky-200 shadow-[0_0_15px_#bae6fd]' },
+    { id: 'frame_dark', name: 'Karanlık', description: 'Gece siyahı', cost: 5000, style: 'border-4 border-gray-900 ring-1 ring-gray-500 shadow-2xl' },
+    { id: 'frame_star', name: 'Yıldız', description: 'Yıldızlı', cost: 1500, style: 'border-4 border-yellow-300 ring-4 ring-yellow-100 border-dotted' },
+    { id: 'frame_wood', name: 'Ahşap', description: 'Doğal ahşap', cost: 1000, style: 'border-8 border-amber-800 ring-2 ring-amber-600' },
+    { id: 'frame_metal', name: 'Metal', description: 'Gümüş metal', cost: 3000, style: 'border-4 border-slate-400 ring-2 ring-slate-200 shadow-inner' },
+    { id: 'frame_pixel', name: 'Piksel', description: 'Retro oyun', cost: 4000, style: 'border-4 border-green-500 outline-dashed outline-2 outline-black' },
+    { id: 'frame_glitch', name: 'Glitch', description: 'Bozuk efekt', cost: 7000, style: 'border-2 border-red-500 ring-2 ring-blue-500 shadow-[2px_2px_0px_#00ff00] animate-glitch' },
+    { id: 'frame_rgb', name: 'RGB Gamer', description: 'Renk değiştiren', cost: 12000, style: 'frame-rgb' },
+    { id: 'frame_ghost', name: 'Hayalet', description: 'Yarı saydam', cost: 5500, style: 'frame-ghost' },
+    { id: 'frame_lightning', name: 'Yıldırım', description: 'Elektrikli', cost: 9000, style: 'frame-lightning' },
+];
+
+// BACKGROUNDS (Massively Expanded)
+export const BACKGROUNDS: BackgroundDef[] = [
+  { id: 'bg_default', name: 'Varsayılan', description: 'Sade geçiş', cost: 0, style: 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800' },
+  { id: 'bg_blue', name: 'Gökyüzü', description: 'Mavi tonları', cost: 500, style: 'bg-gradient-to-br from-blue-400 to-indigo-500' },
+  { id: 'bg_sunset', name: 'Gün Batımı', description: 'Turuncu ve mor', cost: 1000, style: 'bg-gradient-to-br from-orange-400 to-purple-600' },
+  { id: 'bg_nature', name: 'Doğa', description: 'Yeşil ve ferah', cost: 1500, style: 'bg-gradient-to-br from-green-400 to-emerald-600' },
+  { id: 'bg_fire', name: 'Alev', description: 'Kırmızı ve sarı', cost: 2000, style: 'bg-gradient-to-br from-red-500 to-yellow-500' },
+  { id: 'bg_galaxy', name: 'Galaksi', description: 'Uzay renkleri', cost: 3000, style: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800' },
+  { id: 'bg_gold', name: 'Altın', description: 'Lüks görünüm', cost: 5000, style: 'bg-gradient-to-br from-yellow-200 via-yellow-400 to-yellow-600' },
+  { id: 'bg_neon', name: 'Neon', description: 'Parlak siyah', cost: 4000, style: 'bg-gradient-to-br from-gray-900 to-black border-2 border-green-400' },
+  { id: 'bg_love', name: 'Aşk', description: 'Pembe rüya', cost: 2500, style: 'bg-gradient-to-br from-pink-300 to-rose-500' },
+  { id: 'bg_ocean', name: 'Okyanus', description: 'Derin mavi', cost: 2000, style: 'bg-gradient-to-br from-cyan-500 to-blue-800' },
+  { id: 'bg_forest', name: 'Orman', description: 'Koyu yeşil', cost: 2000, style: 'bg-gradient-to-br from-emerald-700 to-green-900' },
+  { id: 'bg_lavender', name: 'Lavanta', description: 'Yumuşak mor', cost: 1500, style: 'bg-gradient-to-br from-purple-300 to-indigo-400' },
+  { id: 'bg_midnight', name: 'Gece Yarısı', description: 'Koyu lacivert', cost: 3500, style: 'bg-gradient-to-br from-slate-900 to-blue-900' },
+  { id: 'bg_aurora', name: 'Aurora', description: 'Kuzey ışıkları', cost: 6000, style: 'bg-gradient-to-tr from-green-400 via-blue-500 to-purple-600' },
+  { id: 'bg_matrix', name: 'Matrix', description: 'Dijital kod', cost: 7000, style: 'bg-black border-2 border-green-500 shadow-[inset_0_0_20px_#00ff00]' },
+  { id: 'bg_candy', name: 'Şekerleme', description: 'Tatlı renkler', cost: 4500, style: 'bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-400' },
+  { id: 'bg_volcano', name: 'Volkan', description: 'Kızgın lav', cost: 5500, style: 'bg-gradient-to-t from-red-900 via-red-600 to-orange-500' },
+  { id: 'bg_deep_sea', name: 'Derin Deniz', description: 'Okyanus dibi', cost: 5000, style: 'bg-gradient-to-b from-blue-600 via-blue-900 to-black' },
+  { id: 'bg_royal', name: 'Kraliyet', description: 'Asil mor', cost: 8000, style: 'bg-gradient-to-br from-indigo-900 via-purple-800 to-fuchsia-900 border-2 border-yellow-500' },
+  { id: 'bg_ice', name: 'Buzul', description: 'Buz mavisi', cost: 4000, style: 'bg-gradient-to-br from-white via-blue-100 to-cyan-200' },
+];
+
+// AVATARS (Massively Expanded)
+export const AVATARS: Avatar[] = [
+  // Level 1-10
+  { id: 'student', icon: '🧑‍🎓', name: 'Öğrenci', unlockLevel: 1, bgGradient: 'from-blue-400 to-indigo-500', border: 'border-blue-200' },
+  { id: 'cat', icon: '🐱', name: 'Kedi', unlockLevel: 2, bgGradient: 'from-orange-300 to-amber-400', border: 'border-orange-200' },
+  { id: 'dog', icon: '🐶', name: 'Köpek', unlockLevel: 3, bgGradient: 'from-stone-300 to-stone-500', border: 'border-stone-300' },
+  { id: 'fox', icon: '🦊', name: 'Tilki', unlockLevel: 4, bgGradient: 'from-orange-500 to-red-600', border: 'border-orange-300' },
+  { id: 'panda', icon: '🐼', name: 'Panda', unlockLevel: 5, bgGradient: 'from-slate-800 to-black', border: 'border-slate-400' },
+  { id: 'koala', icon: '🐨', name: 'Koala', unlockLevel: 6, bgGradient: 'from-gray-300 to-gray-500', border: 'border-gray-300' },
+  { id: 'rabbit', icon: '🐰', name: 'Tavşan', unlockLevel: 7, bgGradient: 'from-pink-200 to-pink-400', border: 'border-pink-200' },
+  { id: 'lion', icon: '🦁', name: 'Aslan', unlockLevel: 8, bgGradient: 'from-yellow-400 to-orange-500', border: 'border-yellow-300' },
+  { id: 'tiger', icon: '🐯', name: 'Kaplan', unlockLevel: 9, bgGradient: 'from-orange-400 to-red-500', border: 'border-orange-300' },
+  { id: 'wolf', icon: '🐺', name: 'Kurt', unlockLevel: 10, bgGradient: 'from-slate-400 to-slate-600', border: 'border-slate-400' },
+  
+  // Level 11-30
+  { id: 'bear', icon: '🐻', name: 'Ayı', unlockLevel: 11, bgGradient: 'from-amber-700 to-amber-900', border: 'border-amber-600' },
+  { id: 'detective', icon: '🕵️', name: 'Dedektif', unlockLevel: 12, bgGradient: 'from-neutral-600 to-neutral-800', border: 'border-neutral-400' },
+  { id: 'chicken', icon: '🐔', name: 'Tavuk', unlockLevel: 13, bgGradient: 'from-red-100 to-red-300', border: 'border-red-200' },
+  { id: 'frog', icon: '🐸', name: 'Kurbağa', unlockLevel: 14, bgGradient: 'from-green-500 to-green-700', border: 'border-green-400' },
+  { id: 'scientist', icon: '👩‍🔬', name: 'Bilim İnsanı', unlockLevel: 15, bgGradient: 'from-green-400 to-teal-500', border: 'border-green-200' },
+  { id: 'pig', icon: '🐷', name: 'Domuzcuk', unlockLevel: 16, bgGradient: 'from-pink-300 to-rose-400', border: 'border-pink-300' },
+  { id: 'cow', icon: '🐮', name: 'İnek', unlockLevel: 17, bgGradient: 'from-stone-200 to-stone-400', border: 'border-stone-300' },
+  { id: 'artist', icon: '🎨', name: 'Sanatçı', unlockLevel: 18, bgGradient: 'from-pink-400 to-rose-500', border: 'border-pink-200' },
+  { id: 'mouse', icon: '🐭', name: 'Fare', unlockLevel: 19, bgGradient: 'from-gray-400 to-gray-600', border: 'border-gray-300' },
+  { id: 'astronaut', icon: '👨‍🚀', name: 'Astronot', unlockLevel: 20, bgGradient: 'from-blue-600 to-blue-900', border: 'border-blue-300' },
+  { id: 'hamster', icon: '🐹', name: 'Hamster', unlockLevel: 21, bgGradient: 'from-orange-200 to-orange-400', border: 'border-orange-200' },
+  { id: 'pilot', icon: '👨‍✈️', name: 'Pilot', unlockLevel: 22, bgGradient: 'from-sky-400 to-sky-600', border: 'border-sky-200' },
+  { id: 'chef', icon: '👨‍🍳', name: 'Şef', unlockLevel: 23, bgGradient: 'from-white to-gray-200', border: 'border-gray-300' },
+  { id: 'firefighter', icon: '👨‍🚒', name: 'İtfaiyeci', unlockLevel: 24, bgGradient: 'from-red-500 to-orange-500', border: 'border-yellow-400' },
+  { id: 'doctor', icon: '👨‍⚕️', name: 'Doktor', unlockLevel: 25, bgGradient: 'from-emerald-400 to-emerald-600', border: 'border-emerald-200' },
+  { id: 'judge', icon: '👨‍⚖️', name: 'Hakim', unlockLevel: 26, bgGradient: 'from-slate-700 to-black', border: 'border-slate-500' },
+  { id: 'mechanic', icon: '👨‍🔧', name: 'Tamirci', unlockLevel: 27, bgGradient: 'from-blue-700 to-blue-900', border: 'border-blue-500' },
+  { id: 'cowboy', icon: '🤠', name: 'Kovboy', unlockLevel: 28, bgGradient: 'from-orange-300 to-amber-600', border: 'border-amber-700' },
+  { id: 'clown', icon: '🤡', name: 'Palyaço', unlockLevel: 29, bgGradient: 'from-red-400 to-yellow-400', border: 'border-blue-400' },
+  { id: 'party_face', icon: '🥳', name: 'Partici', unlockLevel: 30, bgGradient: 'from-purple-400 to-pink-400', border: 'border-purple-300' },
+
+  // Level 31-60
+  { id: 'superhero', icon: '🦸', name: 'Kahraman', unlockLevel: 35, bgGradient: 'from-blue-500 to-red-500', border: 'border-yellow-400' },
+  { id: 'villain', icon: '🦹', name: 'Kötü Adam', unlockLevel: 38, bgGradient: 'from-green-700 to-purple-800', border: 'border-green-500' },
+  { id: 'wizard', icon: '🧙‍♂️', name: 'Büyücü', unlockLevel: 40, bgGradient: 'from-purple-600 to-indigo-800', border: 'border-purple-400' },
+  { id: 'fairy', icon: '🧚', name: 'Peri', unlockLevel: 41, bgGradient: 'from-pink-300 to-green-300', border: 'border-white' },
+  { id: 'pirate', icon: '🏴‍☠️', name: 'Korsan', unlockLevel: 42, bgGradient: 'from-red-800 to-black', border: 'border-gray-400' },
+  { id: 'robot', icon: '🤖', name: 'Robot', unlockLevel: 45, bgGradient: 'from-gray-300 to-slate-500', border: 'border-gray-200' },
+  { id: 'alien', icon: '👽', name: 'Uzaylı', unlockLevel: 50, bgGradient: 'from-green-400 to-emerald-600', border: 'border-green-200' },
+  { id: 'ninja_master', icon: '🥷', name: 'Ninja Ustası', unlockLevel: 55, bgGradient: 'from-gray-800 to-black', border: 'border-red-600' },
+  { id: 'queen', icon: '👸', name: 'Kraliçe', unlockLevel: 60, bgGradient: 'from-pink-400 to-rose-500', border: 'border-pink-300' },
+  
+  // Level 61-100+ (Rare)
+  { id: 'king', icon: '🤴', name: 'Kral', unlockLevel: 65, bgGradient: 'from-yellow-500 to-red-600', border: 'border-yellow-500' },
+  { id: 'dragon', icon: '🐉', name: 'Ejderha', unlockLevel: 70, bgGradient: 'from-red-600 to-orange-600', border: 'border-yellow-500' },
+  { id: 'dino', icon: '🦖', name: 'T-Rex', unlockLevel: 75, bgGradient: 'from-green-700 to-stone-700', border: 'border-green-600' },
+  { id: 'unicorn', icon: '🦄', name: 'Tekboynuz', unlockLevel: 80, bgGradient: 'from-pink-200 to-indigo-200', border: 'border-white' },
+  { id: 'octopus', icon: '🐙', name: 'Ahtapot', unlockLevel: 85, bgGradient: 'from-purple-500 to-pink-500', border: 'border-purple-400' },
+  { id: 'phoenix', icon: '🦅', name: 'Anka Kuşu', unlockLevel: 90, bgGradient: 'from-orange-500 to-red-600', border: 'border-orange-400' },
+  { id: 'ghost', icon: '👻', name: 'Hayalet', unlockLevel: 95, bgGradient: 'from-gray-200 to-white', border: 'border-gray-300' },
+  { id: 'diamond', icon: '💎', name: 'Efsane', unlockLevel: 100, bgGradient: 'from-cyan-200 to-blue-400', border: 'border-white' },
+  
+  // Level 100+ (Ultra Rare)
+  { id: 'vampire', icon: '🧛', name: 'Vampir', unlockLevel: 110, bgGradient: 'from-red-900 to-slate-900', border: 'border-red-600' },
+  { id: 'cyborg', icon: '🦾', name: 'Sayborg', unlockLevel: 120, bgGradient: 'from-slate-700 to-cyan-500', border: 'border-cyan-400' },
+  { id: 'zombie', icon: '🧟', name: 'Zombi', unlockLevel: 130, bgGradient: 'from-green-800 to-stone-700', border: 'border-green-700' },
+  { id: 'genie', icon: '🧞', name: 'Cin', unlockLevel: 140, bgGradient: 'from-cyan-500 to-blue-600', border: 'border-cyan-300' },
+  { id: 'angel', icon: '👼', name: 'Melek', unlockLevel: 150, bgGradient: 'from-sky-200 to-white', border: 'border-sky-200' },
+  { id: 'elf', icon: '🧝', name: 'Elf', unlockLevel: 160, bgGradient: 'from-green-300 to-emerald-500', border: 'border-emerald-300' },
+  { id: 'mermaid', icon: '🧜‍♀️', name: 'Deniz Kızı', unlockLevel: 180, bgGradient: 'from-blue-400 to-green-400', border: 'border-cyan-300' },
+  { id: 'demon', icon: '👿', name: 'İblis', unlockLevel: 200, bgGradient: 'from-red-900 to-black', border: 'border-red-800' },
+  { id: 'zeus', icon: '⚡', name: 'Zeus', unlockLevel: 250, bgGradient: 'from-yellow-300 to-blue-500', border: 'border-yellow-400' },
+  { id: 'master', icon: '🧘', name: 'Usta', unlockLevel: 300, bgGradient: 'from-indigo-500 to-purple-600', border: 'border-white' },
+  { id: 'rockstar', icon: '🎸', name: 'Rock Yıldızı', unlockLevel: 350, bgGradient: 'from-pink-600 to-purple-800', border: 'border-pink-500' },
+  { id: 'gamer', icon: '🎮', name: 'Oyuncu', unlockLevel: 400, bgGradient: 'from-green-400 to-black', border: 'border-green-500' },
+  { id: 'brain', icon: '🧠', name: 'Dahi', unlockLevel: 500, bgGradient: 'from-pink-300 to-rose-400', border: 'border-white' },
+];
+
+// Generate Unit Mastery Badges
+const generateUnitBadges = (): Badge[] => {
+    const badges: Badge[] = [];
+    
+    // 1. Unit Completion Badges
+    Object.entries(UNIT_ASSETS).forEach(([grade, units]) => {
+        units.forEach(unit => {
+            if (unit.id.endsWith('all') || unit.id === 'uAll') return;
+            badges.push({
+                id: `mastery_${unit.id}`,
+                name: `Usta: ${unit.title}`,
+                description: `${grade}. Sınıf - ${unit.title} ünitesini %100 tamamla.`,
+                icon: '🥇',
+                condition: (s: any) => s.completedUnits.includes(unit.id),
+                unlocked: false
+            });
+        });
+
+        // 2. Grade Completion Badges
+        badges.push({
+            id: `mastery_grade_${grade}`,
+            name: `${grade}. Sınıf Üstadı`,
+            description: `${grade}. Sınıfın tüm ünitelerini %100 tamamla.`,
+            icon: '🎓',
+            condition: (s: any) => s.completedGrades.includes(grade),
+            unlocked: false
+        });
+    });
+
+    return badges;
+};
+
+const dynamicBadges = generateUnitBadges();
+
+// BADGES
+export const BADGES: Badge[] = [
+  { id: 'first_step', name: 'İlk Adım', description: 'İlk kelime kartını inceledin.', icon: '🌱', condition: (s: any) => s.flashcardsViewed >= 1, unlocked: false },
+  { id: 'streak_3', name: 'Isınma Turu', description: '3 gün üst üste çalıştın.', icon: '🔥', condition: (s: any) => s.streak >= 3, unlocked: false },
+  { id: 'streak_7', name: 'Haftalık Seri', description: '7 gün üst üste çalıştın!', icon: '📅', condition: (s: any) => s.streak >= 7, unlocked: false },
+  { id: 'streak_14', name: 'İki Hafta', description: '14 gün üst üste çalıştın.', icon: '🚀', condition: (s: any) => s.streak >= 14, unlocked: false },
+  { id: 'streak_30', name: 'Disiplin Abidesi', description: '30 gün boyunca aralıksız çalıştın.', icon: '🏆', condition: (s: any) => s.streak >= 30, unlocked: false },
+  { id: 'streak_60', name: 'Seri Katili', description: '60 gün boyunca aralıksız çalıştın.', icon: '⚔️', condition: (s: any) => s.streak >= 60, unlocked: false },
+  { id: 'streak_100', name: 'Yüzlük Seri', description: '100 gün seriye ulaştın!', icon: '💯', condition: (s: any) => s.streak >= 100, unlocked: false },
+  { id: 'level_5', name: 'Çırak', description: '5. Seviyeye ulaştın.', icon: '🥉', condition: (s: any) => s.level >= 5, unlocked: false },
+  { id: 'level_10', name: 'Kalfa', description: '10. Seviyeye ulaştın.', icon: '🥈', condition: (s: any) => s.level >= 10, unlocked: false },
+  { id: 'level_25', name: 'Usta', description: '25. Seviyeye ulaştın.', icon: '🥇', condition: (s: any) => s.level >= 25, unlocked: false },
+  { id: 'level_50', name: 'Yarım Dalya', description: '50. Seviyeye ulaştın.', icon: '💎', condition: (s: any) => s.level >= 50, unlocked: false },
+  { id: 'level_100', name: 'Efsane', description: '100. Seviyeye ulaştın.', icon: '👑', condition: (s: any) => s.level >= 100, unlocked: false },
+  { id: 'vocab_50', name: 'Meraklı', description: '50 kelime kartı inceledin.', icon: '👀', condition: (s: any) => s.flashcardsViewed >= 50, unlocked: false },
+  { id: 'vocab_100', name: 'Kelime Avcısı', description: '100 kelime kartı inceledin.', icon: '📖', condition: (s: any) => s.flashcardsViewed >= 100, unlocked: false },
+  { id: 'vocab_500', name: 'Kelime Kurdu', description: '500 kelime kartı inceledin.', icon: '🐛', condition: (s: any) => s.flashcardsViewed >= 500, unlocked: false },
+  { id: 'vocab_1000', name: 'Sözlük Gibi', description: '1000 kelime kartı inceledin.', icon: '🧠', condition: (s: any) => s.flashcardsViewed >= 1000, unlocked: false },
+  { id: 'vocab_5000', name: 'Ansiklopedi', description: '5000 kelime kartı inceledin.', icon: '📚', condition: (s: any) => s.flashcardsViewed >= 5000, unlocked: false },
+  { id: 'quiz_rookie', name: 'Test Çırağı', description: 'İlk test sorusunu doğru bildin.', icon: '🎯', condition: (s: any) => s.quizCorrect >= 1, unlocked: false },
+  { id: 'quiz_50', name: 'Test Meraklısı', description: '50 doğru cevap verdin.', icon: '📝', condition: (s: any) => s.quizCorrect >= 50, unlocked: false },
+  { id: 'quiz_100', name: 'Bilgi Küpü', description: '100 doğru cevap verdin.', icon: '💡', condition: (s: any) => s.quizCorrect >= 100, unlocked: false },
+  { id: 'quiz_500', name: 'Test Ustası', description: '500 doğru cevap verdin.', icon: '🎓', condition: (s: any) => s.quizCorrect >= 500, unlocked: false },
+  { id: 'quiz_1000', name: 'Soru Profesörü', description: '1000 doğru cevap verdin.', icon: '🔬', condition: (s: any) => s.quizCorrect >= 1000, unlocked: false },
+  
+  // --- Badge Collector Badges (New) ---
+  { id: 'badge_10', name: 'Rozet Avcısı', description: '10 rozet kazandın.', icon: '🎖️', condition: (s: any) => s.badges.length >= 10, unlocked: false },
+  { id: 'badge_20', name: 'Rozet Koleksiyoncusu', description: '20 rozet kazandın.', icon: '🎗️', condition: (s: any) => s.badges.length >= 20, unlocked: false },
+  { id: 'badge_30', name: 'Madalyalı', description: '30 rozet kazandın.', icon: '🏅', condition: (s: any) => s.badges.length >= 30, unlocked: false },
+  { id: 'badge_50', name: 'Yıldızlı General', description: '50 rozet kazandın.', icon: '🌟', condition: (s: any) => s.badges.length >= 50, unlocked: false },
+  { id: 'badge_75', name: 'Onur Madalyası', description: '75 rozet kazandın.', icon: '⚜️', condition: (s: any) => s.badges.length >= 75, unlocked: false },
+  { id: 'badge_100', name: 'KelimApp Efsanesi', description: '100 rozet kazandın.', icon: '🔱', condition: (s: any) => s.badges.length >= 100, unlocked: false },
+
+  // --- New Perfect Quiz Badges ---
+  { id: 'perfect_10', name: 'Kusursuz 10', description: '10 soruluk testi %100 başarıyla bitir.', icon: '🔟', condition: (s: any, ctx: any) => (ctx?.quizSize === 10), unlocked: false },
+  { id: 'perfect_25', name: 'Kusursuz 25', description: '25 soruluk testi %100 başarıyla bitir.', icon: '🎯', condition: (s: any, ctx: any) => (ctx?.quizSize === 25), unlocked: false },
+  { id: 'perfect_50', name: 'Kusursuz 50', description: '50 soruluk testi %100 başarıyla bitir.', icon: '🏹', condition: (s: any, ctx: any) => (ctx?.quizSize === 50), unlocked: false },
+  { id: 'perfect_all', name: 'Ünite Hakimi', description: 'Tüm ünite testini %100 başarıyla bitir.', icon: '🔱', condition: (s: any, ctx: any) => (ctx?.quizSize === -1), unlocked: false },
+
+  // --- Perfect Streak Badges ---
+  { id: 'perfect_streak_5', name: 'Dikkatli', description: '5 testi hatasız bitir.', icon: '👌', condition: (s: any) => s.perfectQuizzes >= 5, unlocked: false },
+  { id: 'perfect_streak_10', name: 'Odaklanmış', description: '10 testi hatasız bitir.', icon: '🧐', condition: (s: any) => s.perfectQuizzes >= 10, unlocked: false },
+  { id: 'perfect_streak_25', name: 'Keskin Nişancı', description: '25 testi hatasız bitir.', icon: '🏹', condition: (s: any) => s.perfectQuizzes >= 25, unlocked: false },
+  { id: 'perfect_streak_50', name: 'Hatasız', description: '50 testi hatasız bitir.', icon: '🤖', condition: (s: any) => s.perfectQuizzes >= 50, unlocked: false },
+  { id: 'perfect_streak_100', name: 'Mükemmeliyetçi', description: '100 testi hatasız bitir.', icon: '💎', condition: (s: any) => s.perfectQuizzes >= 100, unlocked: false },
+
+  // --- Quest Badges ---
+  { id: 'quest_3', name: 'Görev Adamı', description: '3 günlük görev tamamla.', icon: '📜', condition: (s: any) => s.questsCompleted >= 3, unlocked: false },
+  { id: 'quest_10', name: 'Maceracı', description: '10 günlük görev tamamla.', icon: '⚔️', condition: (s: any) => s.questsCompleted >= 10, unlocked: false },
+  { id: 'quest_25', name: 'Kahraman', description: '25 günlük görev tamamla.', icon: '🛡️', condition: (s: any) => s.questsCompleted >= 25, unlocked: false },
+  { id: 'quest_50', name: 'Efsanevi', description: '50 günlük görev tamamla.', icon: '🦄', condition: (s: any) => s.questsCompleted >= 50, unlocked: false },
+  { id: 'quest_100', name: 'Destansı', description: '100 günlük görev tamamla.', icon: '🐲', condition: (s: any) => s.questsCompleted >= 100, unlocked: false },
+
+  // --- Time Badges ---
+  { id: 'time_15m', name: 'Isınma', description: '15 dakika çalış.', icon: '⏱️', condition: (s: any) => s.totalTimeSpent >= 15, unlocked: false },
+  { id: 'time_1h', name: 'Odaklı', description: '1 saat çalış.', icon: '⌛', condition: (s: any) => s.totalTimeSpent >= 60, unlocked: false },
+  { id: 'time_2h', name: 'Çalışkan', description: '2 saat çalış.', icon: '📚', condition: (s: any) => s.totalTimeSpent >= 120, unlocked: false },
+  { id: 'time_5h', name: 'Azimli', description: '5 saat çalış.', icon: '🕯️', condition: (s: any) => s.totalTimeSpent >= 300, unlocked: false },
+  { id: 'time_10h', name: 'Bilgin', description: '10 saat çalış.', icon: '🦉', condition: (s: any) => s.totalTimeSpent >= 600, unlocked: false },
+  { id: 'time_24h', name: 'İngilizce Kurdu', description: '24 saat çalış (1 tam gün!).', icon: '☀️', condition: (s: any) => s.totalTimeSpent >= 1440, unlocked: false },
+
+  { id: 'night_owl', name: 'Gece Kuşu', description: 'Gece yarısından sonra çalıştın.', icon: '🦉', condition: () => { const h = new Date().getHours(); return h >= 0 && h < 5; }, unlocked: false },
+  { id: 'early_bird', name: 'Erkenci Kuş', description: 'Sabah erken (05-08) çalıştın.', icon: '🌅', condition: () => { const h = new Date().getHours(); return h >= 5 && h < 8; }, unlocked: false },
+  { id: 'weekend_warrior', name: 'Haftasonu Savaşçısı', description: 'Haftasonu çalıştın.', icon: '🎉', condition: () => { const d = new Date().getDay(); return d === 0 || d === 6; }, unlocked: false },
+  { id: 'persistent', name: 'Azimli', description: 'Yanlış yapsan da çalışmaya devam ettin (50 Yanlış).', icon: '💪', condition: (s: any) => s.quizWrong >= 50, unlocked: false },
+  { id: 'bookworm', name: 'Kitap Kurdu', description: 'Toplam 10.000 XP puana ulaştın.', icon: '📜', condition: (s: any) => s.xp >= 10000, unlocked: false },
+  { id: 'millionaire', name: 'XP Milyoneri', description: '1.000.000 XP puana ulaştın.', icon: '💰', condition: (s: any) => s.xp >= 1000000, unlocked: false },
+  { id: 'fast_learner', name: 'Hız Tutkunu', description: 'Bir günde 100 kelimeye baktın.', icon: '⚡', condition: (s: any) => s.viewedWordsToday.length >= 100, unlocked: false },
+  { id: 'dedicated', name: 'Adanmış', description: 'Toplam 5000 XP kazandın.', icon: '🎗️', condition: (s: any) => s.xp >= 5000, unlocked: false },
+  { id: 'shopper_1', name: 'Müşteri', description: 'Marketten ilk eşyanı aldın.', icon: '🛍️', condition: (s: any) => {
+      const stored = localStorage.getItem('lgs_user_profile');
+      if (stored) {
+          const p = JSON.parse(stored);
+          return (p.purchasedFrames?.length > 1) || (p.purchasedThemes?.length > 2) || (p.purchasedBackgrounds?.length > 1);
+      }
+      return false;
+  }, unlocked: false },
+  { id: 'shopper_5', name: 'Alışverişkolik', description: 'Marketten 5 eşya aldın.', icon: '💳', condition: (s: any) => {
+       const stored = localStorage.getItem('lgs_user_profile');
+       if (stored) {
+           const p = JSON.parse(stored);
+           return (p.purchasedFrames?.length + p.purchasedThemes?.length + (p.purchasedBackgrounds?.length || 0)) >= 7; 
+       }
+       return false;
+  }, unlocked: false },
+  // Add Dynamic Badges
+  ...dynamicBadges
+];
