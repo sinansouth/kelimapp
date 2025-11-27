@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType } from './types';
 import { VOCABULARY } from './data/vocabulary';
@@ -13,19 +12,20 @@ import InfoView from './components/InfoView';
 import AnnouncementsView from './components/AnnouncementsView';
 import EmptyStateWarning from './components/EmptyStateWarning';
 import Celebration from './components/Celebration';
-import OnboardingModal from './components/OnboardingModal';
 import SettingsModal from './components/SettingsModal';
 import QuizSetupModal from './components/QuizSetupModal';
 import SRSInfoModal from './components/SRSInfoModal';
 import GradeSelectionModal from './components/GradeSelectionModal';
 import MarketModal from './components/MarketModal';
 import AvatarModal from './components/AvatarModal';
-import AuthModal from './components/AuthModal'; // Import AuthModal
+import AuthModal from './components/AuthModal';
+import FeedbackModal from './components/FeedbackModal';
+import AdminModal from './components/AdminModal'; 
 import { ChevronLeft, Zap, Trophy, User } from 'lucide-react';
-import { getUserProfile, getTheme, saveTheme, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent } from './services/userService';
-import { getAuthInstance, isFirebaseReady } from './services/firebase'; // Import Firebase helpers
+import { getUserProfile, getTheme, saveTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, clearLocalUserData } from './services/userService';
+import { getAuthInstance, isFirebaseReady, syncLocalToCloud, subscribeToUserChanges, syncData } from './services/firebase'; 
 import { ANNOUNCEMENTS } from './data/announcements';
-import { playSound } from './services/soundService';
+import { playSound } from '../services/soundService';
 import { APP_CONFIG } from './config/appConfig';
 // Capacitor Imports
 import { App as CapacitorApp } from '@capacitor/app';
@@ -36,15 +36,17 @@ import { onAuthStateChanged } from 'firebase/auth';
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [currentTheme, setCurrentTheme] = useState<ThemeType>('dark');
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  // Modal States
   const [showSettings, setShowSettings] = useState(false);
   const [showSRSInfo, setShowSRSInfo] = useState(false);
   const [showMarket, setShowMarket] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false); // Auth Modal State
-  
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showGradeSelection, setShowGradeSelection] = useState(false);
-  const [availableGradesForReview, setAvailableGradesForReview] = useState<string[]>([]);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false); 
+  const [showAdminModal, setShowAdminModal] = useState(false); 
 
+  const [availableGradesForReview, setAvailableGradesForReview] = useState<string[]>([]);
   const [topicTitle, setTopicTitle] = useState<string>('');
   const [words, setWords] = useState<WordCard[]>([]);
   const [allUnitWords, setAllUnitWords] = useState<WordCard[]>([]);
@@ -63,6 +65,9 @@ const App: React.FC = () => {
   } | null>(null);
   
   const lastQuizConfig = useRef<{count: number, originalWords: WordCard[], allDistractors: WordCard[]} | null>(null);
+  
+  // Track last active time for auto-refresh logic
+  const lastActiveTime = useRef<number>(Date.now());
 
   const [isSRSReview, setIsSRSReview] = useState(false);
   const [emptyWarningType, setEmptyWarningType] = useState<'bookmarks' | 'memorized' | null>(null);
@@ -73,42 +78,147 @@ const App: React.FC = () => {
   const [isBoostActive, setIsBoostActive] = useState(false);
   const [boostTimeLeft, setBoostTimeLeft] = useState('');
   
-  // State for Header Profile Icon
   const [headerProfile, setHeaderProfile] = useState(getUserProfile());
 
-  // Auth Check Effect
-  useEffect(() => {
-      const auth = getAuthInstance();
-      if (auth) {
-          const unsubscribe = onAuthStateChanged(auth, (user) => {
-              if (!user) {
-                  // If no user logged in, check if local profile has name. If not, show onboarding/auth.
-                  const localProfile = getUserProfile();
-                  if (!localProfile.name) {
-                       // Optional: Force auth or let them use offline until they want to sync
-                  }
-              } else {
-                  // User logged in, refresh header profile
-                  setHeaderProfile(getUserProfile());
-              }
-          });
-          return () => unsubscribe();
-      }
+  // --- Helper to apply grade from profile ---
+  const applyUserProfileGrade = useCallback(() => {
+    const userProfile = getUserProfile();
+    const g = userProfile.grade;
+    if (!g) return;
+    if (['2', '3', '4'].includes(g)) setSelectedCategory('PRIMARY_SCHOOL');
+    else if (['5', '6', '7', '8'].includes(g)) setSelectedCategory('MIDDLE_SCHOOL');
+    else if (['9', '10', '11', '12'].includes(g)) setSelectedCategory('HIGH_SCHOOL');
+    if (g) { setSelectedGrade(g as GradeLevel); } else { setSelectedGrade(null); }
   }, []);
 
+  // --- Helper to apply Theme ---
+  const applyTheme = (theme: ThemeType) => {
+      document.documentElement.classList.remove('dark');
+      if (theme === 'light' || theme === 'retro' || theme === 'comic' || theme === 'nature_soft') {
+          document.documentElement.classList.remove('dark');
+      } else {
+          document.documentElement.classList.add('dark');
+      }
+      setCurrentTheme(theme);
+  };
+
+  // Auth Check Effect & Real-time Sync
   useEffect(() => {
-      // Initial history state for browser navigation
+      const auth = getAuthInstance();
+      let unsubscribeSnapshot: (() => void) | undefined;
+
+      if (auth) {
+          const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+              if (!user) {
+                  const localProfile = getUserProfile();
+                  if (!localProfile.name) {
+                       setShowAuthModal(true);
+                  }
+                  // Stop listening if user logs out
+                  if (unsubscribeSnapshot) {
+                      unsubscribeSnapshot();
+                      unsubscribeSnapshot = undefined;
+                  }
+              } else {
+                   // Check if user changed on this device
+                  const lastUid = localStorage.getItem('lgs_last_uid');
+                  if (lastUid && lastUid !== user.uid) {
+                      // User changed! Wipe local data to prevent mixing.
+                      clearLocalUserData();
+                  }
+                  localStorage.setItem('lgs_last_uid', user.uid);
+
+                  // 1. Initial Sync (Pull/Merge)
+                  if (navigator.onLine) {
+                      await syncData(user.uid);
+                  }
+
+                  // 2. Update UI with fresh data
+                  setHeaderProfile(getUserProfile());
+                  applyUserProfileGrade();
+                  
+                  // Apply theme from synced settings
+                  const currentSettings = getAppSettings();
+                  applyTheme(currentSettings.theme);
+                  
+                  // 3. Start Real-time Sync
+                  if (navigator.onLine) {
+                           unsubscribeSnapshot = subscribeToUserChanges(user.uid, () => {
+                               // When cloud data changes and merges into local storage, force update UI
+                               setHeaderProfile(getUserProfile());
+                               applyUserProfileGrade();
+                               
+                               // Also update theme if changed remotely
+                               const updatedSettings = getAppSettings();
+                               applyTheme(updatedSettings.theme);
+                           });
+                  }
+              }
+          });
+
+          return () => {
+              unsubscribeAuth();
+              if (unsubscribeSnapshot) unsubscribeSnapshot();
+          };
+      } else {
+          const localProfile = getUserProfile();
+          if (!localProfile.name) {
+               setShowAuthModal(true);
+          }
+      }
+  }, [applyUserProfileGrade]);
+
+  // --- VISIBILITY CHANGE & AUTO REFRESH LOGIC ---
+  useEffect(() => {
+      const handleVisibilityChange = async () => {
+          if (document.visibilityState === 'visible') {
+              const now = Date.now();
+              const hoursSinceLastActive = (now - lastActiveTime.current) / (1000 * 60 * 60);
+
+              // If app was in background for more than 3 hours, force a full reload to prevent stale state
+              if (hoursSinceLastActive > 3) {
+                  window.location.reload();
+                  return;
+              }
+
+              // Otherwise, just sync data to be fresh
+              const auth = getAuthInstance();
+              const user = auth?.currentUser;
+              if (user && navigator.onLine) {
+                  console.log("App back in foreground, syncing data...");
+                  await syncData(user.uid);
+                  
+                  // Update UI
+                  setHeaderProfile(getUserProfile());
+                  applyUserProfileGrade();
+                  const currentSettings = getAppSettings();
+                  applyTheme(currentSettings.theme);
+              }
+              
+              // Update last active time
+              lastActiveTime.current = now;
+          } else {
+              // App went to background
+              lastActiveTime.current = Date.now();
+          }
+      };
+
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      return () => {
+          document.removeEventListener("visibilitychange", handleVisibilityChange);
+      };
+  }, [applyUserProfileGrade]);
+
+
+  useEffect(() => {
       window.history.pushState({ appState: 'root' }, '', window.location.href);
   }, []);
 
-  // Configure Status Bar for Mobile
   useEffect(() => {
       if (Capacitor.isNativePlatform()) {
           const configureStatusBar = async () => {
               try {
-                  // Set style based on theme if needed, or stick to one
                   await StatusBar.setStyle({ style: currentTheme === 'light' ? Style.Light : Style.Dark });
-                  // For Android, we can set the background color to match our app header
                   if (Capacitor.getPlatform() === 'android') {
                       await StatusBar.setBackgroundColor({ color: currentTheme === 'light' ? '#f8fafc' : '#0f172a' });
                   }
@@ -120,10 +230,8 @@ const App: React.FC = () => {
       }
   }, [currentTheme]);
 
-  // Time Tracking Effect
   useEffect(() => {
       const timeInterval = setInterval(() => {
-          // Update time every minute (1 minute)
           const earnedBadges = updateTimeSpent(1);
           if (earnedBadges.length > 0) {
               earnedBadges.forEach(b => handleBadgeUnlock(b));
@@ -133,23 +241,20 @@ const App: React.FC = () => {
       return () => clearInterval(timeInterval);
   }, []);
 
-  // Theme & Font Injection
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
     
-    // Reset classes
     body.className = body.className.replace(/theme-\S+/g, '');
     body.classList.add(`theme-${currentTheme}`);
 
-    let primary = '#4f46e5'; // Indigo-600
-    let bgMain = '#0f172a'; // Slate-950
-    let bgCard = '#1e293b'; // Slate-900
-    let textMain = '#f8fafc'; // Slate-50
-    let textMuted = '#94a3b8'; // Slate-400
-    let border = '#334155'; // Slate-700
+    let primary = '#4f46e5'; 
+    let bgMain = '#0f172a'; 
+    let bgCard = '#1e293b'; 
+    let textMain = '#f8fafc'; 
+    let textMuted = '#94a3b8'; 
+    let border = '#334155'; 
 
-    // Theme Colors
     switch (currentTheme) {
         case 'light': primary = '#4f46e5'; bgMain = '#f8fafc'; bgCard = '#ffffff'; textMain = '#0f172a'; textMuted = '#64748b'; border = '#e2e8f0'; break;
         case 'neon': primary = '#33ff00'; bgMain = '#000000'; bgCard = '#111111'; textMain = '#33ff00'; textMuted = '#00cc00'; border = '#33ff00'; break;
@@ -182,16 +287,6 @@ const App: React.FC = () => {
 
   }, [currentTheme]);
 
-  const applyTheme = (theme: ThemeType) => {
-      document.documentElement.classList.remove('dark');
-      if (theme === 'light' || theme === 'retro' || theme === 'comic' || theme === 'nature_soft') {
-          document.documentElement.classList.remove('dark');
-      } else {
-          document.documentElement.classList.add('dark');
-      }
-      setCurrentTheme(theme);
-  };
-
   useEffect(() => {
       const checkBoost = () => {
           const stats = getUserStats();
@@ -221,24 +316,36 @@ const App: React.FC = () => {
     applyTheme(savedTheme);
     const userProfile = getUserProfile();
     setHeaderProfile(userProfile);
-    if (!userProfile.name) { setShowOnboarding(true); }
+    
+    if (!userProfile.name) { 
+        setShowAuthModal(true); 
+    } else {
+        applyUserProfileGrade(); 
+    }
+
     if (ANNOUNCEMENTS.length > 0) {
         const lastReadId = getLastReadAnnouncementId();
         const latestId = ANNOUNCEMENTS[0].id;
         if (latestId !== lastReadId) { setHasUnreadAnnouncements(true); }
     }
-  }, []);
+  }, [applyUserProfileGrade]);
 
-  // Logic to close modals or navigate back
   const closeModalOrGoBack = useCallback(() => {
-      if (showAuthModal) { setShowAuthModal(false); return true; }
+      if (showAuthModal) { 
+          const userProfile = getUserProfile();
+          if (!userProfile.name) {
+               return true; 
+          }
+          setShowAuthModal(false); return true; 
+      }
       if (showSettings) { setShowSettings(false); return true; }
+      if (showAdminModal) { setShowAdminModal(false); return true; }
       if (showSRSInfo) { setShowSRSInfo(false); return true; }
       if (showMarket) { setShowMarket(false); return true; }
       if (showGradeSelection) { setShowGradeSelection(false); return true; }
+      if (showFeedbackModal) { setShowFeedbackModal(false); return true; }
       if (pendingQuizConfig) { setPendingQuizConfig(null); return true; }
       
-      // If we are in a sub-mode (not HOME), go back to HOME
       if (mode !== AppMode.HOME) {
           setMode(AppMode.HOME);
           setIsSRSReview(false);
@@ -247,22 +354,19 @@ const App: React.FC = () => {
           return true;
       }
       
-      // If we are at HOME but have selections (Unit, Grade etc.), clear them step by step
       if (selectedUnit) { setSelectedUnit(null); return true; }
       if (selectedGrade) { setSelectedGrade(null); return true; }
       if (selectedCategory) { setSelectedCategory(null); return true; }
       
-      return false; // No internal navigation handled, let app minimize/exit
-  }, [mode, selectedUnit, selectedGrade, selectedCategory, showSettings, showSRSInfo, showMarket, showGradeSelection, pendingQuizConfig, showAuthModal]);
+      return false; 
+  }, [mode, selectedUnit, selectedGrade, selectedCategory, showSettings, showSRSInfo, showMarket, showGradeSelection, showFeedbackModal, showAdminModal, pendingQuizConfig, showAuthModal]);
 
-  // --- Hardware Back Button Handling (Capacitor) ---
   useEffect(() => {
     const setupBackButton = async () => {
         if (Capacitor.isNativePlatform()) {
              await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
                 const handled = closeModalOrGoBack();
                 if (!handled) {
-                    // If at the absolute root (Home with no selection), exit app
                     CapacitorApp.exitApp();
                 }
             });
@@ -277,8 +381,6 @@ const App: React.FC = () => {
     }
   }, [closeModalOrGoBack]);
 
-
-  // --- Browser History Handling (Fallback) ---
   const handlePopState = useCallback((event: PopStateEvent) => {
       closeModalOrGoBack();
   }, [closeModalOrGoBack]);
@@ -289,29 +391,12 @@ const App: React.FC = () => {
   }, [handlePopState]);
 
   const addHistoryEntry = () => {
-      // Push a state so back button works
       window.history.pushState({ appState: 'navigated' }, '', '');
   };
 
   const handleThemeChange = () => {
       const newTheme = getTheme();
       applyTheme(newTheme);
-  };
-
-  const handleOnboardingComplete = () => { 
-      setShowOnboarding(false); 
-      applyUserProfileGrade();
-      setHeaderProfile(getUserProfile()); 
-    };
-
-  const applyUserProfileGrade = () => {
-    const userProfile = getUserProfile();
-    const g = userProfile.grade;
-    if (!g) return;
-    if (['2', '3', '4'].includes(g)) setSelectedCategory('PRIMARY_SCHOOL');
-    else if (['5', '6', '7', '8'].includes(g)) setSelectedCategory('MIDDLE_SCHOOL');
-    else if (['9', '10', '11', '12'].includes(g)) setSelectedCategory('HIGH_SCHOOL');
-    if (g) { setSelectedGrade(g as GradeLevel); } else { setSelectedGrade(null); }
   };
 
   const handleProfileUpdate = () => { 
@@ -326,7 +411,6 @@ const App: React.FC = () => {
   };
   
   const handleManualBack = () => { 
-     // Use our central logic
      closeModalOrGoBack();
   };
   
@@ -523,7 +607,6 @@ const App: React.FC = () => {
         onBack={handleManualBack} 
         onProfileUpdate={handleProfileUpdate} 
         onOpenMarket={handleOpenMarket}
-        // Pass trigger to open auth modal if not logged in
         onLoginRequest={() => setShowAuthModal(true)} 
       />
     ); break;
@@ -540,7 +623,6 @@ const App: React.FC = () => {
          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[110] w-full max-w-sm px-4 pointer-events-none">
             <div className="bg-yellow-500 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500 border-2 border-yellow-300">
                 <div className="text-4xl animate-bounce">
-                    {/* Check if badge icon is image or emoji */}
                     {newBadge.image ? (
                          <img src={newBadge.image} alt={newBadge.name} className="w-10 h-10 rounded-full object-cover" />
                     ) : (
@@ -560,17 +642,27 @@ const App: React.FC = () => {
          </div>
       )}
 
-      {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
-      {showSettings && <SettingsModal onClose={handleManualBack} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { handleProfileUpdate(); setShowAuthModal(false); }} />}
+      {showSettings && (
+        <SettingsModal 
+            onClose={handleManualBack} 
+            onOpenFeedback={() => setShowFeedbackModal(true)} 
+            onOpenAdmin={() => setShowAdminModal(true)}
+        />
+      )}
+      {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
+      {showAdminModal && (
+        <AdminModal 
+            onClose={() => setShowAdminModal(false)} 
+            onUpdate={() => { handleProfileUpdate(); }} 
+        />
+      )}
       {showSRSInfo && <SRSInfoModal onClose={handleManualBack} />}
       {showMarket && <MarketModal onClose={() => { setShowMarket(false); handleProfileUpdate(); }} onThemeChange={handleThemeChange} />}
       {showGradeSelection && <GradeSelectionModal onClose={handleManualBack} onSelect={handleGradeSelectForReview} grades={availableGradesForReview} />}
       {pendingQuizConfig && <QuizSetupModal onClose={handleManualBack} onStart={startQuizWithCount} totalWords={pendingQuizConfig.words.length} title={pendingQuizConfig.title} />}
       {celebration?.show && <Celebration message={celebration.message} type={celebration.type} onClose={() => setCelebration(null)} />}
       
-      {/* Auth Modal */}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { handleProfileUpdate(); setShowAuthModal(false); }} />}
-
       <header className="backdrop-blur-xl border-b z-50 shrink-0 transition-colors h-16 header-theme"
               style={{backgroundColor: 'rgba(var(--color-bg-card-rgb), 0.8)', borderColor: 'rgba(255,255,255,0.1)'}}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">

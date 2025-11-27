@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Edit2, BarChart2, Trophy, Flame, Star, User, ShoppingBag, Target, CheckCircle, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
+import { Save, Edit2, BarChart2, Trophy, Flame, Star, User, ShoppingBag, Target, CheckCircle, ChevronDown, ChevronUp, LogOut, Trash2 } from 'lucide-react';
 import { getUserProfile, getUserStats, saveUserProfile, getDailyState, UserProfile as IUserProfile, UserStats } from '../services/userService';
 import { GradeLevel, Badge, Quest } from '../types';
 import StatsModal from './StatsModal';
 import AvatarModal from './AvatarModal';
 import LeaderboardModal from './LeaderboardModal';
 import { AVATARS, BADGES, FRAMES, BACKGROUNDS } from '../data/assets';
-import { getAuthInstance, logoutUser } from '../services/firebase';
+import { getAuthInstance, logoutUser, checkUsernameExists, updateCloudUsername, syncLocalToCloud, deleteAccount } from '../services/firebase';
 
 interface ProfileProps {
   onBack: () => void;
@@ -35,10 +35,14 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
   const [dailyQuests, setDailyQuests] = useState<Quest[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   
   // Accordion states
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
@@ -61,14 +65,77 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
     }
   }, [showStatsModal, showAvatarModal]); 
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedProfile = { ...profile }; 
-    saveUserProfile(updatedProfile);
+    setSaveError('');
+    setIsSaving(true);
+
+    const oldProfile = getUserProfile();
+    const isNameChanged = profile.name !== oldProfile.name;
+
+    // Username Change Checks
+    if (isNameChanged) {
+        // 1. Online Check
+        if (!navigator.onLine) {
+            setSaveError('İsim değiştirmek için internet bağlantısı gereklidir.');
+            setIsSaving(false);
+            return;
+        }
+
+        // 2. Time Limit Check (7 days)
+        const lastChange = oldProfile.lastUsernameChange || 0;
+        const now = Date.now();
+        const daysSinceLastChange = (now - lastChange) / (1000 * 60 * 60 * 24);
+        
+        if (daysSinceLastChange < 7) {
+            const daysLeft = Math.ceil(7 - daysSinceLastChange);
+            setSaveError(`İsmini haftada sadece 1 kez değiştirebilirsin. ${daysLeft} gün sonra tekrar dene.`);
+            setIsSaving(false);
+            return;
+        }
+
+        // 3. Unique Name Check
+        try {
+            const exists = await checkUsernameExists(profile.name);
+            if (exists) {
+                setSaveError('Bu isim zaten alınmış.');
+                setIsSaving(false);
+                return;
+            }
+
+            // Update Cloud Name first if logged in
+            const auth = getAuthInstance();
+            if (auth && auth.currentUser) {
+                await updateCloudUsername(auth.currentUser.uid, profile.name);
+            }
+        } catch (err) {
+            console.error("Username check error:", err);
+            setSaveError('İsim kontrolü sırasında bir hata oluştu.');
+            setIsSaving(false);
+            return;
+        }
+    }
+
+    // Proceed with Save
+    const updatedProfile = { 
+        ...profile,
+        lastUsernameChange: isNameChanged ? Date.now() : profile.lastUsernameChange 
+    }; 
+    
+    saveUserProfile(updatedProfile, true); // Save local, skip auto-sync for now
+    
+    // Force sync to ensure leaderboard gets updated
+    const auth = getAuthInstance();
+    if (auth && auth.currentUser) {
+         await syncLocalToCloud(auth.currentUser.uid);
+    }
+
     setProfile(updatedProfile);
     setShowSaved(true);
     setTimeout(() => setShowSaved(false), 2000);
     setIsEditing(false);
+    setIsSaving(false);
+    
     if (onProfileUpdate) {
         onProfileUpdate();
     }
@@ -77,6 +144,20 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setProfile(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDeleteAccount = async () => {
+      if (confirmDelete) {
+          setIsSaving(true);
+          try {
+              await deleteAccount();
+          } catch (e) {
+              setSaveError("Hesap silinirken bir hata oluştu.");
+              setIsSaving(false);
+          }
+      } else {
+          setConfirmDelete(true);
+      }
   };
 
   const avatarData = AVATARS.find(a => a.icon === profile.avatar);
@@ -321,27 +402,69 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
                  </div>
                </div>
              ) : (
-               <form onSubmit={handleSave} className="animate-in fade-in zoom-in-95 mt-6">
-                 <div className="space-y-4 mb-6 text-left">
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 uppercase ml-1">İsim</label>
-                      <input type="text" name="name" value={profile.name} onChange={handleChange} className="w-full p-3 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" style={{color: 'var(--color-text-main)', backgroundColor: 'var(--color-bg-main)'}} />
+               <div className="animate-in fade-in zoom-in-95 mt-6">
+                 <form onSubmit={handleSave}>
+                    <div className="space-y-4 mb-6 text-left">
+                        <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Görünen İsim</label>
+                        <input type="text" name="name" value={profile.name} onChange={handleChange} className="w-full p-3 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" style={{color: 'var(--color-text-main)', backgroundColor: 'var(--color-bg-main)'}} />
+                        <p className="text-[10px] text-slate-400 mt-1 ml-1">Lider tablosunda bu isim görünür. Haftada 1 kez değiştirebilirsin.</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Sınıf</label>
+                            <select name="grade" value={profile.grade} onChange={handleChange} className="w-full p-3 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" style={{color: 'var(--color-text-main)', backgroundColor: 'var(--color-bg-main)'}}>
+                            <option value="">Seç</option>
+                            <optgroup label="İlkokul"><option value="2">2. Sınıf</option><option value="3">3. Sınıf</option><option value="4">4. Sınıf</option></optgroup>
+                            <optgroup label="Ortaokul"><option value="5">5. Sınıf</option><option value="6">6. Sınıf</option><option value="7">7. Sınıf</option><option value="8">8. Sınıf</option></optgroup>
+                            <optgroup label="Lise"><option value="9">9. Sınıf</option><option value="10">10. Sınıf</option><option value="11">11. Sınıf</option><option value="12">12. Sınıf</option></optgroup>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Sınıf</label>
-                        <select name="grade" value={profile.grade} onChange={handleChange} className="w-full p-3 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" style={{color: 'var(--color-text-main)', backgroundColor: 'var(--color-bg-main)'}}>
-                          <option value="">Seç</option>
-                          <optgroup label="İlkokul"><option value="2">2. Sınıf</option><option value="3">3. Sınıf</option><option value="4">4. Sınıf</option></optgroup>
-                          <optgroup label="Ortaokul"><option value="5">5. Sınıf</option><option value="6">6. Sınıf</option><option value="7">7. Sınıf</option><option value="8">8. Sınıf</option></optgroup>
-                          <optgroup label="Lise"><option value="9">9. Sınıf</option><option value="10">10. Sınıf</option><option value="11">11. Sınıf</option><option value="12">12. Sınıf</option></optgroup>
-                        </select>
+                    
+                    {saveError && <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl text-sm font-bold">{saveError}</div>}
+
+                    <div className="flex gap-3 mb-4">
+                        <button type="button" onClick={() => { setIsEditing(false); setSaveError(''); setConfirmDelete(false); }} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold">İptal</button>
+                        <button type="submit" disabled={isSaving} className="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                            {isSaving ? 'Kaydediliyor...' : <><Save size={18} /> Kaydet</>}
+                        </button>
                     </div>
+                 </form>
+                 
+                 {/* Delete Account Button */}
+                 <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4">
+                     {!confirmDelete ? (
+                         <button 
+                             type="button"
+                             onClick={() => setConfirmDelete(true)}
+                             className="w-full py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                         >
+                             <Trash2 size={18} /> Hesabı Sil
+                         </button>
+                     ) : (
+                         <div className="space-y-2">
+                             <p className="text-center text-xs text-red-600 font-bold">Bu işlem geri alınamaz. Tüm verilerin silinecek.</p>
+                             <div className="flex gap-2">
+                                <button 
+                                    type="button"
+                                    onClick={() => setConfirmDelete(false)}
+                                    className="flex-1 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 rounded-lg text-xs font-bold"
+                                >
+                                    Vazgeç
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={handleDeleteAccount}
+                                    disabled={isSaving}
+                                    className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
+                                >
+                                    {isSaving ? 'Siliniyor...' : 'Evet, Sil'}
+                                </button>
+                             </div>
+                         </div>
+                     )}
                  </div>
-                 <div className="flex gap-3">
-                   <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold">İptal</button>
-                   <button type="submit" className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2"><Save size={18} /> Kaydet</button>
-                 </div>
-               </form>
+               </div>
              )}
              
              {showSaved && <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-xl text-sm font-bold animate-in zoom-in">Profil güncellendi!</div>}

@@ -9,10 +9,17 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: Announcement[] = [
   {
+    id: 'ann_003', // Her yeni duyuru için bu ID'yi değiştirin (örn: ann_002)
+    title: "Lider Tablosu, Günlük Görevler",
+    date: "27.11.2025",
+    content: "Lider Tablosu özelliği eklendi.",
+    isNew: true
+  },
+  {
     id: 'ann_002', // Her yeni duyuru için bu ID'yi değiştirin (örn: ann_002)
     title: "Yeni Özellikler",
     date: "26.11.2025",
-    content: "Avatar, Çerçeve, XP, Seviye, Market, Rozetler ve birçok özellik eklendi.",
+    content: "XP, Seviye, Market, Rozetler ve birçok özellik eklendi.",
     isNew: true
   },
   {

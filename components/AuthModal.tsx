@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, LogIn, UserPlus, Mail, Lock, User, Check } from 'lucide-react';
+import { X, LogIn, UserPlus, Lock, User, Check, GraduationCap } from 'lucide-react';
 import { loginUser, registerUser } from '../services/firebase';
 
 interface AuthModalProps {
@@ -10,9 +10,9 @@ interface AuthModalProps {
 
 const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [grade, setGrade] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,21 +20,63 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
-    try {
-      if (mode === 'login') {
-        await loginUser(email, password, rememberMe);
-      } else {
-        if (!name) throw new Error("İsim gerekli");
-        await registerUser(email, password, name);
-      }
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Bir hata oluştu. Lütfen bilgileri kontrol edin.");
-    } finally {
-      setLoading(false);
+    
+    if (!name || !password) {
+        setError("Lütfen tüm alanları doldurun.");
+        return;
+    }
+
+    // Login Logic
+    if (mode === 'login') {
+         setLoading(true);
+         try {
+            await loginUser(name, password, rememberMe);
+            onSuccess();
+            onClose();
+         } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Giriş başarısız. Bilgilerinizi kontrol edin.");
+         } finally {
+            setLoading(false);
+         }
+         return;
+    }
+
+    // Registration Logic & Validation
+    if (mode === 'register') {
+        if (!grade) {
+            setError("Lütfen sınıfınızı seçin.");
+            return;
+        }
+
+        if (name.length < 3) {
+            setError("Kullanıcı adı en az 3 karakter olmalıdır.");
+            return;
+        }
+
+        // Strict Username Validation: Lowercase, English chars, Numbers, Underscore only. No spaces.
+        const usernameRegex = /^[a-z0-9_]+$/;
+        if (!usernameRegex.test(name)) {
+            setError("Kullanıcı adı sadece küçük İngilizce harfler (a-z), rakamlar (0-9) ve alt çizgi (_) içerebilir. Boşluk veya Türkçe karakter (ç,ğ,ı,ö,ş,ü) kullanılamaz.");
+            return;
+        }
+
+        if (password.length < 6) {
+            setError("Şifre en az 6 karakter olmalıdır.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await registerUser(name, password, grade);
+            onSuccess();
+            onClose(); 
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Kayıt oluşturulamadı.");
+        } finally {
+            setLoading(false);
+        }
     }
   };
 
@@ -50,41 +92,36 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                 {mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}
             </h2>
             <p className="text-indigo-100 text-sm">
-                {mode === 'login' ? 'Hesabına erişmek için giriş yap.' : 'İlerlemeni kaydetmek için hesap oluştur.'}
+                {mode === 'login' ? 'Hesabına erişmek için kullanıcı adını gir.' : 'İlerlemeni kaydetmek için bir hesap oluştur.'}
             </p>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 max-h-[70vh] overflow-y-auto">
             <form onSubmit={handleSubmit} className="space-y-4">
-                {mode === 'register' && (
-                    <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">İsim</label>
-                        <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input 
-                                type="text" 
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                                placeholder="Adın Soyadın"
-                            />
-                        </div>
-                    </div>
-                )}
-
+                
                 <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">E-posta</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Kullanıcı Adı</label>
                     <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input 
-                            type="email" 
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            type="text" 
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
                             className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                            placeholder="ornek@email.com"
+                            placeholder={mode === 'register' ? "örn: ali_yilmaz123" : "Kullanıcı Adı"}
                             required
+                            autoCapitalize="none"
+                            autoCorrect="off"
                         />
                     </div>
+                    {mode === 'register' && (
+                        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                            <p className="text-[10px] text-blue-600 dark:text-blue-300 leading-relaxed">
+                                <strong>Dikkat:</strong> Kullanıcı adı sadece <strong>küçük harf</strong>, rakam ve alt çizgi içerebilir. Boşluk veya Türkçe karakter kullanılamaz.
+                                <br/><span className="opacity-80 mt-1 block font-medium text-slate-500 dark:text-slate-400">Bu sadece giriş yaparken kullanacağın kullanıcı adı, görünecek ismini profilinden değiştirebilirsin.</span>
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 <div>
@@ -102,6 +139,40 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                         />
                     </div>
                 </div>
+
+                {mode === 'register' && (
+                     <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Sınıf / Seviye</label>
+                        <div className="relative">
+                            <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <select
+                                value={grade}
+                                onChange={(e) => setGrade(e.target.value)}
+                                className="w-full pl-10 pr-8 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
+                                required
+                            >
+                                <option value="" disabled>Seçiniz</option>
+                                <optgroup label="İlkokul">
+                                    <option value="2">2. Sınıf</option>
+                                    <option value="3">3. Sınıf</option>
+                                    <option value="4">4. Sınıf</option>
+                                </optgroup>
+                                <optgroup label="Ortaokul">
+                                    <option value="5">5. Sınıf</option>
+                                    <option value="6">6. Sınıf</option>
+                                    <option value="7">7. Sınıf</option>
+                                    <option value="8">8. Sınıf</option>
+                                </optgroup>
+                                <optgroup label="Lise">
+                                    <option value="9">9. Sınıf</option>
+                                    <option value="10">10. Sınıf</option>
+                                    <option value="11">11. Sınıf</option>
+                                    <option value="12">12. Sınıf</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                )}
 
                 {mode === 'login' && (
                     <div className="flex items-center">
@@ -137,7 +208,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                     {mode === 'login' ? "Hesabın yok mu?" : "Zaten hesabın var mı?"}
                     <button 
-                        onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                        onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
                         className="ml-2 font-bold text-indigo-600 hover:underline"
                     >
                         {mode === 'login' ? "Kayıt Ol" : "Giriş Yap"}

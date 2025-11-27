@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { X, Volume2, VolumeX } from 'lucide-react';
+import { X, Volume2, VolumeX, MessageSquare, Lock, Key } from 'lucide-react'; // Key icon added
 import { AppSettings, getAppSettings, saveAppSettings } from '../services/userService';
+import { APP_CONFIG } from '../config/appConfig';
 
 interface SettingsModalProps {
   onClose: () => void;
+  onOpenFeedback: () => void;
+  onOpenAdmin: () => void; // New Prop
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onOpenFeedback, onOpenAdmin }) => {
   const [settings, setSettings] = useState<AppSettings>({ soundEnabled: true, theme: 'dark' });
+  const [showAdminInput, setShowAdminInput] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
 
   useEffect(() => {
       setSettings(getAppSettings());
@@ -18,6 +23,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       setSettings(newSettings);
       saveAppSettings(newSettings);
   };
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (adminPassword === 'admin123') { // Simple hardcoded password for the user
+          onClose();
+          onOpenAdmin();
+          setAdminPassword('');
+          setShowAdminInput(false);
+      } else {
+          alert("Hatalı şifre!");
+      }
+  }
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -48,10 +65,52 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 </button>
             </div>
 
+            <button 
+                onClick={() => { onClose(); onOpenFeedback(); }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-700 text-left"
+            >
+                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded-lg">
+                    <MessageSquare size={18} />
+                </div>
+                <div>
+                    <div className="font-bold text-slate-800 dark:text-white text-sm">Hata veya Öneri Bildir</div>
+                    <div className="text-xs text-slate-500">Görüşlerinizi bizimle paylaşın</div>
+                </div>
+            </button>
+
             <div className="p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-xl border border-yellow-100 dark:border-yellow-800/30 text-center">
                 <p className="text-[10px] text-yellow-700 dark:text-yellow-500 font-medium">
                     Temalar ve diğer özellikler için <strong>XP Market</strong>'i ziyaret et!
                 </p>
+            </div>
+            
+            {/* Admin Login Section */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                 {!showAdminInput ? (
+                     <div className="flex justify-between items-center">
+                         <span className="text-[10px] text-slate-400">v{APP_CONFIG.version}</span>
+                         <button 
+                            onClick={() => setShowAdminInput(true)}
+                            className="p-2 text-slate-300 hover:text-slate-500 transition-colors"
+                         >
+                             <Lock size={14} />
+                         </button>
+                     </div>
+                 ) : (
+                     <form onSubmit={handleAdminLogin} className="flex gap-2 animate-in fade-in">
+                         <input 
+                            type="password" 
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
+                            placeholder="Yönetici Şifresi"
+                            className="flex-1 text-xs p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-1 focus:ring-red-500 outline-none"
+                            autoFocus
+                         />
+                         <button type="submit" className="p-2 bg-red-500 text-white rounded-lg">
+                             <Key size={14} />
+                         </button>
+                     </form>
+                 )}
             </div>
         </div>
       </div>

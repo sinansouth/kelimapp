@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Trophy, Medal, Crown, User, Filter, WifiOff, RefreshCw } from 'lucide-react';
 import { getLeaderboard, LeaderboardEntry } from '../services/firebase';
-import { AVATARS } from '../data/assets';
+import { AVATARS, FRAMES, BACKGROUNDS } from '../data/assets';
 
 interface LeaderboardModalProps {
   onClose: () => void;
@@ -61,22 +60,48 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
     };
   }, [filter]); // Re-bind if filter changes to ensure refresh uses correct filter
 
-  const getRankStyle = (index: number) => {
-      switch(index) {
-          case 0: return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700';
-          case 1: return 'bg-slate-200 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600';
-          case 2: return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 border-orange-300 dark:border-orange-700';
-          default: return 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-800';
-      }
-  };
-
   const getRankIcon = (index: number) => {
       switch(index) {
           case 0: return <Crown size={24} className="text-yellow-500 fill-yellow-500" />;
           case 1: return <Medal size={22} className="text-slate-400 fill-slate-300" />;
           case 2: return <Medal size={22} className="text-orange-500 fill-orange-400" />;
-          default: return <span className="font-bold text-sm w-6 text-center">{index + 1}</span>;
+          default: return <span className="font-bold text-sm w-6 text-center" style={{color: 'inherit'}}>{index + 1}</span>;
       }
+  };
+
+  const getThemeStyles = (theme?: string) => {
+    // Default fallbacks
+    let bg = '#ffffff';
+    let text = '#1e293b';
+    let border = '#e2e8f0';
+    let font = "'Inter', sans-serif";
+    
+    switch (theme) {
+        case 'light': bg = '#ffffff'; text = '#0f172a'; border = '#e2e8f0'; font = "'Inter', sans-serif"; break;
+        case 'neon': bg = '#000000'; text = '#33ff00'; border = '#33ff00'; font = "'Inter', sans-serif"; break;
+        case 'ocean': bg = '#075985'; text = '#e0f2fe'; border = '#0369a1'; font = "'Inter', sans-serif"; break;
+        case 'sunset': bg = '#7c2d12'; text = '#ffedd5'; border = '#9a3412'; font = "'Inter', sans-serif"; break;
+        case 'forest': bg = '#14532d'; text = '#dcfce7'; border = '#15803d'; font = "'Inter', sans-serif"; break;
+        case 'royal': bg = '#4338ca'; text = '#fef3c7'; border = '#fbbf24'; font = "'Playfair Display', serif"; break;
+        case 'candy': bg = '#9d174d'; text = '#fce7f3'; border = '#be185d'; font = "'Fredoka', sans-serif"; break;
+        case 'cyberpunk': bg = '#27272a'; text = '#facc15'; border = '#facc15'; font = "'Orbitron', sans-serif"; break;
+        case 'coffee': bg = '#4e342e'; text = '#d7ccc8'; border = '#6d4c41'; font = "'Inter', sans-serif"; break;
+        case 'galaxy': bg = '#1e1b4b'; text = '#e9d5ff'; border = '#6b21a8'; font = "'Inter', sans-serif"; break;
+        case 'retro': bg = '#eee8d5'; text = '#657b83'; border = '#b58900'; font = "'Courier Prime', monospace"; break;
+        case 'matrix': bg = '#001100'; text = '#00ff41'; border = '#003b00'; font = "'Courier Prime', monospace"; break;
+        case 'midnight': bg = '#1e293b'; text = '#e2e8f0'; border = '#334155'; font = "'Inter', sans-serif"; break;
+        case 'volcano': bg = '#2b0b0b'; text = '#fee2e2'; border = '#7f1d1d'; font = "'Rubik Burned', display"; break;
+        case 'ice': bg = '#164e63'; text = '#cffafe'; border = '#155e75'; font = "'Inter', sans-serif"; break;
+        case 'lavender': bg = '#4c1d95'; text = '#ede9fe'; border = '#6d28d9'; font = "'Inter', sans-serif"; break;
+        case 'gamer': bg = '#111111'; text = '#ffffff'; border = '#ef4444'; font = "'Russo One', sans-serif"; break;
+        case 'luxury': bg = '#262626'; text = '#fcfcd4'; border = '#fbbf24'; font = "'Playfair Display', serif"; break;
+        case 'comic': bg = '#f3f4f6'; text = '#000000'; border = '#000000'; font = "'Bangers', display"; break;
+        case 'nature_soft': bg = '#dcfce7'; text = '#14532d'; border = '#84cc16'; font = "'Patrick Hand', cursive"; break;
+        default: // dark or undefined
+             bg = '#1e293b'; text = '#f8fafc'; border = '#334155'; font = "'Inter', sans-serif";
+    }
+
+    return { backgroundColor: bg, color: text, borderColor: border, fontFamily: font };
   };
 
   return (
@@ -127,7 +152,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
                 </div>
             ) : users.length === 0 ? (
-                 <div className="text-center py-10 opacity-60 text-sm flex flex-col items-center gap-2">
+                 <div className="text-center py-10 opacity-60 text-sm flex flex-col items-center gap-2" style={{color: 'var(--color-text-muted)'}}>
                      {isOffline ? (
                          <>
                             <WifiOff size={32} />
@@ -141,30 +166,43 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
                 <div className="space-y-3">
                     {users.map((user, index) => {
                          const avatarDef = AVATARS.find(a => a.icon === user.avatar) || AVATARS[0];
+                         const frameDef = FRAMES.find(f => f.id === user.frame) || FRAMES[0];
+                         const bgDef = BACKGROUNDS.find(b => b.id === user.background) || BACKGROUNDS[0];
+                         const themeStyle = getThemeStyles(user.theme);
+
                          return (
-                            <div key={user.uid} className={`flex items-center gap-3 p-3 rounded-2xl border-2 ${getRankStyle(index)} transition-transform active:scale-[0.99]`}>
-                                <div className="shrink-0 w-8 flex justify-center">
+                            <div key={user.uid} style={themeStyle} className={`flex items-center gap-3 p-3 rounded-2xl border-2 transition-transform active:scale-[0.99] shadow-sm relative overflow-hidden`}>
+                                <div className="shrink-0 w-8 flex justify-center relative z-10">
                                     {getRankIcon(index)}
                                 </div>
                                 
-                                <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 overflow-hidden border border-white/20 shadow-sm shrink-0 flex items-center justify-center text-xl">
-                                     {avatarDef.image ? (
-                                         <img src={avatarDef.image} alt={user.name} className="w-full h-full object-cover" />
-                                     ) : (
-                                         <span>{avatarDef.icon}</span>
-                                     )}
+                                <div className="relative w-14 h-14 flex items-center justify-center shrink-0 z-10">
+                                    {/* Frame Border */}
+                                    <div className={`absolute inset-0 w-full h-full rounded-full z-30 pointer-events-none ${frameDef.style}`}></div>
+                                    
+                                    {/* Background */}
+                                    <div className={`absolute inset-0 w-full h-full rounded-full z-10 ${bgDef.style}`}></div>
+
+                                    {/* Avatar */}
+                                    <div className="w-full h-full rounded-full overflow-hidden relative z-20 flex items-center justify-center text-2xl bg-transparent">
+                                         {avatarDef.image ? (
+                                             <img src={avatarDef.image} alt={user.name} className="w-full h-full object-cover scale-[1.01]" />
+                                         ) : (
+                                             <span>{avatarDef.icon}</span>
+                                         )}
+                                    </div>
                                 </div>
 
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm truncate">{user.name || 'İsimsiz'}</h4>
+                                <div className="flex-1 min-w-0 relative z-10">
+                                    <h4 className="font-bold text-sm truncate" style={{fontFamily: themeStyle.fontFamily}}>{user.name || 'İsimsiz'}</h4>
                                     <div className="flex items-center gap-2 text-[10px] opacity-80">
-                                        <span className="px-1.5 py-0.5 rounded bg-black/10 font-bold">{user.grade}. Sınıf</span>
+                                        <span className="px-1.5 py-0.5 rounded font-bold" style={{backgroundColor: 'rgba(0,0,0,0.1)'}}>{user.grade}. Sınıf</span>
                                         <span>Lvl {user.level}</span>
                                         {user.streak > 0 && <span>🔥 {user.streak}</span>}
                                     </div>
                                 </div>
 
-                                <div className="text-right">
+                                <div className="text-right relative z-10">
                                     <div className="font-black text-base">{user.xp.toLocaleString()}</div>
                                     <div className="text-[8px] font-bold uppercase opacity-60">XP</div>
                                 </div>
@@ -181,10 +219,10 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
                 <span style={{color: 'var(--color-text-muted)'}}>Senin Puanın:</span>
                 <span className="font-black text-lg text-indigo-500">{currentUserXP.toLocaleString()} XP</span>
             </div>
-            <div className="flex items-center justify-between text-[10px] opacity-50">
+            <div className="flex items-center justify-between text-[10px] opacity-50" style={{color: 'var(--color-text-muted)'}}>
                  <div className="flex items-center gap-1">
                     <RefreshCw size={10} className="animate-spin-slow" /> 
-                    <span>Her 60 saniyede bir güncellenir</span>
+                    <span>Anlık güncellenir</span>
                  </div>
                  <span>Son: {lastUpdated.toLocaleTimeString()}</span>
             </div>

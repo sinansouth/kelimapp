@@ -1,13 +1,65 @@
-
-// ... (imports remain same)
 import { VOCABULARY } from '../data/vocabulary';
 import { WordCard, Badge, Avatar, ThemeType, GradeLevel, Quest, DailyState, UnitDef } from '../types';
 import { APP_CONFIG } from '../config/appConfig';
-import { AVATARS, BADGES, UNIT_ASSETS } from '../data/assets';
+import { AVATARS, BADGES, UNIT_ASSETS, FRAMES, BACKGROUNDS } from '../data/assets'; 
 import { syncLocalToCloud } from './firebase';
 
 const DATA_VERSION = APP_CONFIG.dataVersion; 
 const DATA_VERSION_KEY = 'kelimapp_data_version';
+const LAST_UPDATED_KEY = 'lgs_last_data_update';
+const LAST_UID_KEY = 'lgs_last_uid'; 
+
+// --- ADMIN / DEV TOOLS ---
+
+export const adminAddXP = (amount: number) => {
+    const stats = getUserStats();
+    stats.xp += amount;
+    stats.level = calculateLevel(stats.xp);
+    saveUserStats(stats);
+};
+
+export const adminSetLevel = (level: number) => {
+    const stats = getUserStats();
+    // Calculate approx XP needed for this level
+    let requiredXP = 0;
+    if (level <= 1) requiredXP = 0;
+    else if (level <= 2) requiredXP = 100;
+    else if (level <= 3) requiredXP = 250;
+    else if (level <= 4) requiredXP = 500;
+    else if (level <= 5) requiredXP = 800;
+    else if (level <= 6) requiredXP = 1200;
+    else if (level <= 7) requiredXP = 1700;
+    else if (level <= 8) requiredXP = 2300;
+    else if (level <= 9) requiredXP = 3000;
+    else if (level <= 10) requiredXP = 4000;
+    else requiredXP = 5500 + ((level - 10) * 1500);
+    
+    stats.xp = requiredXP;
+    stats.level = level;
+    saveUserStats(stats);
+};
+
+export const adminUnlockAllItems = () => {
+    const profile = getUserProfile();
+    
+    // Unlock all Themes
+    const allThemes = ['light', 'dark', 'neon', 'ocean', 'sunset', 'forest', 'royal', 'candy', 'cyberpunk', 'coffee', 'galaxy', 'retro', 'matrix', 'midnight', 'volcano', 'ice', 'lavender', 'gamer', 'luxury', 'comic', 'nature_soft'];
+    profile.purchasedThemes = allThemes;
+
+    // Unlock all Frames
+    profile.purchasedFrames = FRAMES.map(f => f.id);
+
+    // Unlock all Backgrounds
+    profile.purchasedBackgrounds = BACKGROUNDS.map(b => b.id);
+
+    saveUserProfile(profile);
+};
+
+export const adminResetDailyQuests = () => {
+    localStorage.removeItem(DAILY_STATE_KEY);
+    // This will force regeneration on next getDailyState call
+    getDailyState();
+};
 
 export interface UserProfile {
   name: string;
@@ -21,9 +73,9 @@ export interface UserProfile {
   inventory: {
     streakFreezes: number;
   };
+  lastUsernameChange?: number; 
 }
 
-// ... (UserStats interface remains same)
 export interface UserStats {
   flashcardsViewed: number;
   quizCorrect: number;
@@ -43,15 +95,13 @@ export interface UserStats {
     correct: number;
     wrong: number;
   }>;
-  // New Stats
   perfectQuizzes: number;
   questsCompleted: number;
-  totalTimeSpent: number; // in minutes
-  completedUnits: string[]; // Unit IDs
-  completedGrades: string[]; // Grade IDs
+  totalTimeSpent: number; 
+  completedUnits: string[];
+  completedGrades: string[]; 
 }
 
-// ... (AppSettings interface and other types remain same)
 export interface AppSettings {
   soundEnabled: boolean;
   theme: ThemeType;
@@ -83,11 +133,24 @@ interface SRSData {
 }
 
 const GOAL_STEPS = [5, 10, 15, 20, 30];
-const ALL_STORAGE_KEYS = [PROFILE_KEY, STATS_KEY, SETTINGS_KEY, MEMORIZED_KEY, BOOKMARKS_KEY, SRS_KEY, LAST_ACTIVITY_KEY, READ_ANNOUNCEMENT_KEY, DAILY_STATE_KEY];
+
+// IMPORTANT: SETTINGS_KEY must be here so theme is reset on logout
+const USER_SPECIFIC_KEYS = [
+    PROFILE_KEY, 
+    STATS_KEY, 
+    MEMORIZED_KEY, 
+    BOOKMARKS_KEY, 
+    SRS_KEY, 
+    LAST_ACTIVITY_KEY, 
+    READ_ANNOUNCEMENT_KEY, 
+    DAILY_STATE_KEY, 
+    LAST_UPDATED_KEY,
+    SETTINGS_KEY 
+];
+const ALL_STORAGE_KEYS = [...USER_SPECIFIC_KEYS, DATA_VERSION_KEY, LAST_UID_KEY];
 
 
 export const checkIfBrowser = (): boolean => {
-  // Check if running in Capacitor environment
   // @ts-ignore
   if (window.Capacitor) {
     return false;
@@ -114,15 +177,27 @@ export const checkDataVersion = (): boolean => {
     return false;
 };
 
+export const clearLocalUserData = () => {
+    USER_SPECIFIC_KEYS.forEach(key => localStorage.removeItem(key));
+    localStorage.removeItem(LAST_UID_KEY);
+};
+
 export const isLocalDataExists = (): boolean => {
     const stats = getUserStats();
     const profile = getUserProfile();
-    // Eğer kullanıcının XP'si varsa veya profilinde satın alınmış öğeler/değişiklikler varsa yerel verisi var demektir.
-    // Ayrıca isim girilmişse de yerel veri kabul edilir.
     return (stats.xp > 0) || 
            (profile.name !== '') || 
            (profile.purchasedThemes.length > 2) || 
            (profile.frame !== 'frame_none');
+};
+
+export const updateLastUpdatedTimestamp = () => {
+    localStorage.setItem(LAST_UPDATED_KEY, Date.now().toString());
+};
+
+export const getLastUpdatedTimestamp = (): number => {
+    const val = localStorage.getItem(LAST_UPDATED_KEY);
+    return val ? parseInt(val, 10) : 0;
 };
 
 export const getNextDailyGoal = (currentGoal: number): number => {
@@ -132,7 +207,6 @@ export const getNextDailyGoal = (currentGoal: number): number => {
   return GOAL_STEPS[index + 1];
 };
 
-// ... (Rest of the file remains exactly the same, just inserting isLocalDataExists above getNextDailyGoal)
 export const getUserProfile = (): UserProfile => {
   try {
     const stored = localStorage.getItem(PROFILE_KEY);
@@ -145,7 +219,8 @@ export const getUserProfile = (): UserProfile => {
         purchasedThemes: ['light', 'dark'],
         purchasedFrames: ['frame_none'],
         purchasedBackgrounds: ['bg_default'],
-        inventory: { streakFreezes: 0 }
+        inventory: { streakFreezes: 0 },
+        lastUsernameChange: 0
     };
     if (!stored) return defaults;
     
@@ -157,6 +232,7 @@ export const getUserProfile = (): UserProfile => {
     if (!parsed.background) parsed.background = 'bg_default';
     if (!parsed.purchasedBackgrounds) parsed.purchasedBackgrounds = ['bg_default'];
     if (!parsed.inventory) parsed.inventory = { streakFreezes: 0 };
+    if (!parsed.lastUsernameChange) parsed.lastUsernameChange = 0;
 
     return parsed;
   } catch (e) {
@@ -169,27 +245,16 @@ export const getUserProfile = (): UserProfile => {
         purchasedThemes: ['light', 'dark'],
         purchasedFrames: ['frame_none'],
         purchasedBackgrounds: ['bg_default'],
-        inventory: { streakFreezes: 0 }
+        inventory: { streakFreezes: 0 },
+        lastUsernameChange: 0
     };
   }
 };
 
-export const saveUserProfile = (profile: UserProfile) => {
-  if (profile.name.trim() === "Mors Kain") {
-     applyCheatCode();
-  }
+export const saveUserProfile = (profile: UserProfile, skipSync: boolean = false) => {
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  syncLocalToCloud();
-};
-
-const applyCheatCode = () => {
-    const stats = getUserStats();
-    stats.level = 300;
-    stats.xp = 999999;
-    stats.flashcardsViewed = 5000; 
-    stats.quizCorrect = 2000;
-    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-    syncLocalToCloud();
+  updateLastUpdatedTimestamp();
+  if (!skipSync) syncLocalToCloud();
 };
 
 export const getAppSettings = (): AppSettings => {
@@ -203,6 +268,7 @@ export const getAppSettings = (): AppSettings => {
 
 export const saveAppSettings = (settings: AppSettings) => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    updateLastUpdatedTimestamp();
     syncLocalToCloud();
 };
 
@@ -245,7 +311,6 @@ export const getUserStats = (): UserStats => {
     if (parsedStats.badges === undefined) parsedStats.badges = [];
     if (parsedStats.lastStudyDate === undefined) parsedStats.lastStudyDate = null;
     if (parsedStats.xpBoostEndTime === undefined) parsedStats.xpBoostEndTime = 0;
-    // New fields default checks
     if (parsedStats.perfectQuizzes === undefined) parsedStats.perfectQuizzes = 0;
     if (parsedStats.questsCompleted === undefined) parsedStats.questsCompleted = 0;
     if (parsedStats.totalTimeSpent === undefined) parsedStats.totalTimeSpent = 0;
@@ -300,10 +365,10 @@ export const getUserStats = (): UserStats => {
   }
 };
 
-// Helper to save stats (to avoid circular dependency or code repetition in updateStats)
-export const saveUserStats = (stats: UserStats) => {
+export const saveUserStats = (stats: UserStats, skipSync: boolean = false) => {
     localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-    syncLocalToCloud();
+    updateLastUpdatedTimestamp();
+    if (!skipSync) syncLocalToCloud();
 };
 
 const calculateLevel = (xp: number): number => {
@@ -325,7 +390,6 @@ export const spendXP = (amount: number): boolean => {
     if (stats.xp >= amount) {
         stats.xp -= amount;
         
-        // Check for level drop and avatar validity
         const newLevel = calculateLevel(stats.xp);
         stats.level = newLevel;
 
@@ -377,7 +441,6 @@ export const buyXPBoost = (cost: number): boolean => {
 export const updateTimeSpent = (minutes: number) => {
     const stats = getUserStats();
     stats.totalTimeSpent += minutes;
-    // Check time badges
     let newBadges: Badge[] = [];
     BADGES.forEach(badge => {
         if (!stats.badges.includes(badge.id)) {
@@ -391,12 +454,10 @@ export const updateTimeSpent = (minutes: number) => {
     return newBadges;
 };
 
-// Helper to check for unit/grade completion
 const checkCompletion = (stats: UserStats): string[] => {
     const newlyCompleted: string[] = [];
     const memorized = getMemorizedSet();
 
-    // Check Units
     for (const grade in UNIT_ASSETS) {
         const units = UNIT_ASSETS[grade];
         units.forEach(unit => {
@@ -413,7 +474,6 @@ const checkCompletion = (stats: UserStats): string[] => {
             }
         });
         
-        // Check Grade
         if (!stats.completedGrades.includes(grade)) {
             const gradeUnits = UNIT_ASSETS[grade].filter(u => !u.id.endsWith('all') && u.id !== 'uAll');
             const allGradeUnitsCompleted = gradeUnits.every(u => stats.completedUnits.includes(u.id));
@@ -478,7 +538,7 @@ export const updateStats = (type: 'card_view' | 'quiz_correct' | 'quiz_wrong' | 
       }
   } else if (type === 'memorized') {
       xpGained = 20; 
-      checkCompletion(stats); // Check for unit completion on memorize
+      checkCompletion(stats); 
   } else if (type === 'review_remember') {
       xpGained = XP_REWARDS.REVIEW_REMEMBER; 
   } else if (type === 'review_forgot') {
@@ -499,10 +559,8 @@ export const updateStats = (type: 'card_view' | 'quiz_correct' | 'quiz_wrong' | 
   stats.xp += xpGained;
   stats.level = calculateLevel(stats.xp);
 
-  // Check all badges
   BADGES.forEach(badge => {
       if (!stats.badges.includes(badge.id)) {
-          // Pass extra context (like quizSize) to condition
           if (badge.condition(stats, { quizSize })) { 
               stats.badges.push(badge.id);
               newBadges.push(badge);
@@ -520,9 +578,8 @@ export const updateStats = (type: 'card_view' | 'quiz_correct' | 'quiz_wrong' | 
   return newBadges;
 };
 
-// ... (Rest of the file remains same)
 export const resetActivityStats = (scope: { type: 'all' | 'grade' | 'unit', value?: string }) => {};
-export const resetSRSData = () => { localStorage.setItem(SRS_KEY, JSON.stringify({})); syncLocalToCloud(); };
+export const resetSRSData = () => { localStorage.setItem(SRS_KEY, JSON.stringify({})); updateLastUpdatedTimestamp(); syncLocalToCloud(); };
 export const resetBookmarks = (scope: { type: 'all' | 'grade' | 'unit', value?: string }) => {};
 export const resetMemorized = (scope: { type: 'all' | 'grade' | 'unit', value?: string }) => {};
 
@@ -548,9 +605,10 @@ const getSRSData = (): SRSData => {
   }
 };
 
-const saveSRSData = (data: SRSData) => {
+const saveSRSData = (data: SRSData, skipSync: boolean = false) => {
   localStorage.setItem(SRS_KEY, JSON.stringify(data));
-  syncLocalToCloud();
+  updateLastUpdatedTimestamp();
+  if(!skipSync) syncLocalToCloud();
 };
 
 export const processOverdueSRS = () => {
@@ -704,6 +762,7 @@ const internalAddToMemorized = (uniqueKey: string) => {
     if (!set.has(uniqueKey)) {
         set.add(uniqueKey);
         localStorage.setItem(MEMORIZED_KEY, JSON.stringify([...set]));
+        updateLastUpdatedTimestamp();
         syncLocalToCloud();
         internalRemoveFromBookmarks(uniqueKey);
     }
@@ -714,6 +773,7 @@ const internalRemoveFromMemorized = (uniqueKey: string) => {
     if (set.has(uniqueKey)) {
         set.delete(uniqueKey);
         localStorage.setItem(MEMORIZED_KEY, JSON.stringify([...set]));
+        updateLastUpdatedTimestamp();
         syncLocalToCloud();
     }
 };
@@ -725,6 +785,7 @@ const internalAddToBookmarks = (uniqueKey: string) => {
         if (!set.has(uniqueKey)) {
             set.add(uniqueKey);
             localStorage.setItem(BOOKMARKS_KEY, JSON.stringify([...set]));
+            updateLastUpdatedTimestamp();
             syncLocalToCloud();
             internalRemoveFromMemorized(uniqueKey);
         }
@@ -739,6 +800,7 @@ const internalRemoveFromBookmarks = (uniqueKey: string) => {
             if (set.has(uniqueKey)) {
                 set.delete(uniqueKey);
                 localStorage.setItem(BOOKMARKS_KEY, JSON.stringify([...set]));
+                updateLastUpdatedTimestamp();
                 syncLocalToCloud();
             }
         }
@@ -813,8 +875,6 @@ export const buyFreeze = (cost: number): boolean => {
     return false;
 };
 
-// --- DAILY QUESTS & WOTD ---
-
 const QUEST_TYPES: { type: Quest['type'], desc: (target: number) => string, reward: number, range: number[] }[] = [
     { type: 'view_cards', desc: (t) => `Bugün ${t} kelime kartı çalış`, reward: 50, range: [10, 20, 30, 50] },
     { type: 'finish_quiz', desc: (t) => `Bugün ${t} test bitir`, reward: 100, range: [1, 2, 3] },
@@ -832,30 +892,21 @@ export const getDailyState = (): DailyState => {
             if (parsed.date === today) {
                 return parsed;
             } else {
-                // Check if all quests were completed yesterday to award a streak or something?
-                // For now, just reset.
-                const stats = getUserStats();
-                const completedCount = parsed.quests.filter(q => q.isCompleted).length;
-                if (completedCount >= 3) {
-                    // maybe bonus xp?
-                }
+                // ...
             }
         }
 
-        // Generate new daily state
         const allWords = Object.values(VOCABULARY).flat();
-        // Use date hash to pick a word consistently for the day
         const dateHash = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const wordIndex = dateHash % (allWords.length || 1);
 
         const newQuests: Quest[] = [];
-        // Select 3 unique random quests
         const availableTypes = [...QUEST_TYPES];
         for(let i=0; i<3; i++) {
             if (availableTypes.length === 0) break;
             const rIndex = Math.floor(Math.random() * availableTypes.length);
             const qType = availableTypes[rIndex];
-            availableTypes.splice(rIndex, 1); // remove to avoid duplicate types
+            availableTypes.splice(rIndex, 1); 
 
             const target = qType.range[Math.floor(Math.random() * qType.range.length)];
             
@@ -887,10 +938,9 @@ export const updateQuestProgress = (type: Quest['type'], amount: number = 1) => 
     const state = getDailyState();
     let updated = false;
     
-    // Ensure the quest is for today
     const today = new Date().toDateString();
     if (state.date !== today) {
-        return; // Don't update stale quests
+        return; 
     }
 
     state.quests = state.quests.map(q => {
@@ -902,13 +952,11 @@ export const updateQuestProgress = (type: Quest['type'], amount: number = 1) => 
                 
                 const stats = getUserStats();
                 stats.xp += q.rewardXP;
-                stats.questsCompleted += 1; // Increment total quests completed
+                stats.questsCompleted += 1; 
                 
-                // Check quest badges
                 BADGES.forEach(badge => {
                      if (!stats.badges.includes(badge.id) && badge.condition(stats)) {
                          stats.badges.push(badge.id);
-                         // We'd ideally notify user of badge here, but we are in a non-component function
                      }
                 });
 
