@@ -21,11 +21,12 @@ import AvatarModal from './components/AvatarModal';
 import AuthModal from './components/AuthModal';
 import FeedbackModal from './components/FeedbackModal';
 import AdminModal from './components/AdminModal'; 
+import InstallPromptModal from './components/InstallPromptModal';
 import { ChevronLeft, Zap, Trophy, User } from 'lucide-react';
 import { getUserProfile, getTheme, saveTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, clearLocalUserData } from './services/userService';
 import { getAuthInstance, isFirebaseReady, syncLocalToCloud, subscribeToUserChanges, syncData } from './services/firebase'; 
 import { ANNOUNCEMENTS } from './data/announcements';
-import { playSound } from '../services/soundService';
+import { playSound } from './services/soundService';
 import { APP_CONFIG } from './config/appConfig';
 // Capacitor Imports
 import { App as CapacitorApp } from '@capacitor/app';
@@ -657,6 +658,9 @@ const App: React.FC = () => {
             onUpdate={() => { handleProfileUpdate(); }} 
         />
       )}
+      {/* Install Prompt Modal */}
+      <InstallPromptModal />
+      
       {showSRSInfo && <SRSInfoModal onClose={handleManualBack} />}
       {showMarket && <MarketModal onClose={() => { setShowMarket(false); handleProfileUpdate(); }} onThemeChange={handleThemeChange} />}
       {showGradeSelection && <GradeSelectionModal onClose={handleManualBack} onSelect={handleGradeSelectForReview} grades={availableGradesForReview} />}
