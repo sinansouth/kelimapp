@@ -240,11 +240,13 @@ const mergeWithLocalData = (cloudData: any, uid: string): boolean => {
         const localSettings = getAppSettings();
         const localMemorized = new Set(JSON.parse(localStorage.getItem('lgs_memorized') || '[]'));
         const localBookmarks = new Set(JSON.parse(localStorage.getItem('lgs_bookmarks') || '[]'));
+        const localSRS = JSON.parse(localStorage.getItem('lgs_srs_data') || '{}');
         const localTimestamp = getLastUpdatedTimestamp();
 
         const cloudProfile: UserProfile = typeof cloudData.profile === 'string' ? JSON.parse(cloudData.profile) : cloudData.profile || {};
         const cloudStats: UserStats = typeof cloudData.stats === 'string' ? JSON.parse(cloudData.stats) : cloudData.stats || {};
         const cloudSettings = typeof cloudData.settings === 'string' ? JSON.parse(cloudData.settings) : cloudData.settings || {};
+        const cloudSRS = typeof cloudData.srs === 'string' ? JSON.parse(cloudData.srs) : cloudData.srs || {};
         const cloudTimestamp = cloudData.lastDataUpdate || 0;
         
         const isLocalNewer = localTimestamp >= cloudTimestamp;
@@ -270,6 +272,21 @@ const mergeWithLocalData = (cloudData: any, uid: string): boolean => {
         const mergedCompletedUnits = Array.from(new Set([...(localStats.completedUnits || []), ...(cloudStats.completedUnits || [])]));
         const mergedCompletedGrades = Array.from(new Set([...(localStats.completedGrades || []), ...(cloudStats.completedGrades || [])]));
         const mergedViewedWordsToday = Array.from(new Set([...(localStats.viewedWordsToday || []), ...(cloudStats.viewedWordsToday || [])]));
+
+        // --- STRATEGY 1.5: MERGE SRS DATA ---
+        // If both exist, prefer highest box (progress)
+        const mergedSRS = { ...cloudSRS }; 
+        Object.keys(localSRS).forEach(key => {
+            if (mergedSRS[key]) {
+                // If present in both, take the one with higher box count
+                if (localSRS[key].box > mergedSRS[key].box) {
+                    mergedSRS[key] = localSRS[key];
+                }
+            } else {
+                // If only local has it, add it
+                mergedSRS[key] = localSRS[key];
+            }
+        });
 
         // --- STRATEGY 2: MAX VALUE FOR CUMULATIVE STATS ---
         const flashcardsViewed = Math.max(localStats.flashcardsViewed, cloudStats.flashcardsViewed || 0);
@@ -338,6 +355,7 @@ const mergeWithLocalData = (cloudData: any, uid: string): boolean => {
         localStorage.setItem('lgs_memorized', JSON.stringify(mergedMemorized));
         localStorage.setItem('lgs_bookmarks', JSON.stringify(mergedBookmarks));
         localStorage.setItem('lgs_app_settings', JSON.stringify(mergedSettings));
+        localStorage.setItem('lgs_srs_data', JSON.stringify(mergedSRS));
         
         if (!isLocalNewer) {
              const newTimestamp = Date.now();
@@ -410,6 +428,7 @@ export const syncLocalToCloud = async (userId?: string) => {
     const settings = getAppSettings();
     const memorized = localStorage.getItem('lgs_memorized') || '[]';
     const bookmarks = localStorage.getItem('lgs_bookmarks') || '[]';
+    const srs = localStorage.getItem('lgs_srs_data') || '{}';
     const lastUpdate = getLastUpdatedTimestamp();
     const currentTheme = getTheme();
 
@@ -421,6 +440,7 @@ export const syncLocalToCloud = async (userId?: string) => {
             settings: settings,
             memorized: memorized, 
             bookmarks: bookmarks, 
+            srs: srs,
             lastUpdated: new Date().toISOString(),
             lastDataUpdate: lastUpdate,
             
