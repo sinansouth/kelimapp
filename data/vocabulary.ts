@@ -1,3 +1,4 @@
+
 import { WordCard } from '../types';
 import { VOCABULARY_G2 } from './vocabulary_g2';
 import { VOCABULARY_G3 } from './vocabulary_g3';
@@ -10,7 +11,11 @@ import { VOCABULARY_G9 } from './vocabulary_g9';
 import { VOCABULARY_G10 } from './vocabulary_g10';
 import { VOCABULARY_G11 } from './vocabulary_g11';
 import { VOCABULARY_G12 } from './vocabulary_g12';
-import { VOCABULARY_GEN } from './vocabulary_gen';
+import { VOCABULARY_GEN_A1 } from './vocabulary_gen_a1';
+import { VOCABULARY_GEN_A2 } from './vocabulary_gen_a2';
+import { VOCABULARY_GEN_B1 } from './vocabulary_gen_b1';
+import { VOCABULARY_GEN_B2 } from './vocabulary_gen_b2';
+import { VOCABULARY_GEN_C1 } from './vocabulary_gen_c1';
 
 export const VOCABULARY: Record<string, WordCard[]> = {
   ...VOCABULARY_G2,
@@ -24,7 +29,11 @@ export const VOCABULARY: Record<string, WordCard[]> = {
   ...VOCABULARY_G10,
   ...VOCABULARY_G11,
   ...VOCABULARY_G12,
-  ...VOCABULARY_GEN,
+  ...VOCABULARY_GEN_A1,
+  ...VOCABULARY_GEN_A2,
+  ...VOCABULARY_GEN_B1,
+  ...VOCABULARY_GEN_B2,
+  ...VOCABULARY_GEN_C1,
 };
 
 // Helper to get random words for quiz

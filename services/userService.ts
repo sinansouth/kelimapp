@@ -329,7 +329,11 @@ export const getUserStats = (): UserStats => {
     const currentDateStr = today.toDateString();
 
     if (storedDateStr !== currentDateStr) {
+        // NEW DAY detected: Reset counters
         parsedStats.viewedWordsToday = [];
+        parsedStats.flashcardsViewed = 0;
+        parsedStats.quizCorrect = 0;
+        parsedStats.quizWrong = 0;
         parsedStats.date = currentDateStr;
         needsUpdate = true;
     }
@@ -346,37 +350,7 @@ export const getUserStats = (): UserStats => {
         // unless they have a freeze item (handled in updateStats but we need to reflect display here)
         if (diffDays > 1 && parsedStats.streak > 0) {
              const profile = getUserProfile();
-             if (profile.inventory.streakFreezes > 0) {
-                  // We don't consume freeze just by reading, 
-                  // but we can visually check if it WOULD break.
-                  // However, to be safe, if > 1 day and NO freeze consumed logic triggered in updateStats yet,
-                  // we should technically show 0 or show "Streak Frozen" state.
-                  // Simplification: If it's been > 1 day, streak is at risk.
-                  // But real reset happens below if we decide to write.
-                  
-                  // NOTE: Consuming freeze usually happens when the user "misses" a day but opens app later.
-                  // Here we just check if it's broken.
-                  
-                  // Let's allow updateStats to handle the freeze logic consumption to avoid accidental consumption on just reading.
-                  // But for display purposes, if diffDays > 1, it IS 0 unless frozen.
-                  
-                  // Let's actually reset here if they don't have freeze, so UI shows 0 immediately.
-                  // If they DO have freeze, we wait for updateStats to apply it? 
-                  // No, users want to see if their streak is saved.
-                  
-                  // Let's Auto-Consume Freeze here if needed to save the streak for display?
-                  // Or just reset if no freeze.
-                  
-                  if (profile.inventory.streakFreezes > 0) {
-                       // Don't reset yet, let them "repair" it or let updateStats consume it.
-                       // Or actually, to "save" the streak visually:
-                       // We can say streak is protected.
-                  } else {
-                      parsedStats.streak = 0;
-                      needsUpdate = true;
-                  }
-
-             } else {
+             if (profile.inventory.streakFreezes <= 0) {
                  // No freeze, reset streak
                  parsedStats.streak = 0;
                  needsUpdate = true;
@@ -681,23 +655,16 @@ export const resetAppProgress = (scope: { type: 'all' | 'grade' | 'unit', value?
         stats.completedUnits = stats.completedUnits.filter(u => !u.startsWith(`g${grade}u`)); // Heuristic for unit ID
         
         // Filter SRS, Bookmarks, Memorized
-        // NOTE: This relies on unitId being part of the key or solvable from the word.
-        // Our keys are "unitId|word" or just "word". If just "word", we can't safely filter without checking all vocab.
-        // Assuming keys are "unitId|word" for proper functioning.
-        
         const filterSet = (set: Set<string>) => {
             const newSet = new Set<string>();
             set.forEach(key => {
                 if (key.includes('|')) {
                     const [uId] = key.split('|');
-                    // Check if unit ID belongs to grade. 
-                    // Grade 2 units usually start with 'g2', Grade 3 with 'g3' etc based on assets.
                     const prefix = `g${grade}`;
                     if (!uId.startsWith(prefix) && uId !== `u${grade}` && !uId.startsWith(grade)) {
                         newSet.add(key);
                     }
                 } else {
-                   // Legacy keys or general words might be kept if we can't determine origin easily
                    newSet.add(key);
                 }
             });

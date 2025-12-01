@@ -1,4 +1,5 @@
 
+
 import { Avatar, Badge, FrameDef, UnitDef, GradeDef, BackgroundDef } from '../types';
 import { 
   BookOpen, GraduationCap, Target, Library, Star, 
@@ -9,7 +10,7 @@ import {
   PartyPopper, Lightbulb, MessageCircle, Sparkles,
   History, Palette, Microscope, Stethoscope, 
   Laptop, Gavel, Leaf, Plane, ShoppingBag as ShoppingBagIcon, Cpu, Crown,
-  Bell, Settings, CircleHelp, Home as HomeIcon, UserCircle
+  Bell, Settings, CircleHelp, Home as HomeIcon, UserCircle, Signal
 } from 'lucide-react';
 import React from 'react';
 
@@ -22,7 +23,7 @@ export const UI_ICONS = {
     notifications: React.createElement(Bell, { size: 24 }),
 };
 
-// GRADES (Existing)
+// GRADES
 export const GRADE_DATA: Record<string, GradeDef> = {
     'PRIMARY_SCHOOL': { id: 'PRIMARY_SCHOOL', label: 'İlkokul', subLabel: '2-4. Sınıflar', icon: React.createElement(Star, { size: 28 }) },
     'MIDDLE_SCHOOL': { id: 'MIDDLE_SCHOOL', label: 'Ortaokul', subLabel: '5-8. Sınıflar', icon: React.createElement(School, { size: 28 }) },
@@ -38,10 +39,31 @@ export const GRADE_DATA: Record<string, GradeDef> = {
     '10': { id: '10', label: '10. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
     '11': { id: '11', label: '11. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
     '12': { id: '12', label: '12. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+    // General English Levels
+    'A1': { id: 'A1', label: 'A1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-green-500" }) },
+    'A2': { id: 'A2', label: 'A2 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-blue-500" }) },
+    'B1': { id: 'B1', label: 'B1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-yellow-500" }) },
+    'B2': { id: 'B2', label: 'B2 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-orange-500" }) },
+    'C1': { id: 'C1', label: 'C1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-red-500" }) },
 };
 
-// UNITS (Keep existing unit data, abbreviated here for brevity but in real file keep all)
+// UNITS
 export const UNIT_ASSETS: Record<string, UnitDef[]> = {
+  'A1': [
+    { id: 'gen_a1', unitNo: 'Level A1', title: 'Beginner General English', icon: React.createElement(BookOpen) }
+  ],
+  'A2': [
+    { id: 'gen_a2', unitNo: 'Level A2', title: 'Elementary General English', icon: React.createElement(BookOpen) }
+  ],
+  'B1': [
+    { id: 'gen_b1', unitNo: 'Level B1', title: 'Intermediate General English', icon: React.createElement(BookOpen) }
+  ],
+  'B2': [
+    { id: 'gen_b2', unitNo: 'Level B2', title: 'Upper Intermediate General English', icon: React.createElement(BookOpen) }
+  ],
+  'C1': [
+    { id: 'gen_c1', unitNo: 'Level C1', title: 'Advanced General English', icon: React.createElement(BookOpen) }
+  ],
   '12': [
     { id: 'g12u1', unitNo: '1. ÜNİTE', title: 'MUSIC', icon: React.createElement(Music) },
     { id: 'g12u2', unitNo: '2. ÜNİTE', title: 'FRIENDSHIP', icon: React.createElement(User) },
@@ -426,3 +448,4 @@ export const BADGES: Badge[] = [
   // Add Dynamic Badges
   ...dynamicBadges
 ];
+

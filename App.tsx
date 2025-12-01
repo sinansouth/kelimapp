@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType } from './types';
 import { VOCABULARY } from './data/vocabulary';
 import TopicSelector from './components/TopicSelector';
-import { UNIT_ASSETS, UI_ICONS, AVATARS, FRAMES, BACKGROUNDS } from './data/assets';
+import { UNIT_ASSETS, UI_ICONS, AVATARS, FRAMES, BACKGROUNDS, BADGES } from './data/assets';
 import FlashcardDeck from './components/FlashcardDeck';
 import Quiz from './components/Quiz';
 import Profile from './components/Profile';
@@ -81,6 +81,60 @@ const App: React.FC = () => {
   const [boostTimeLeft, setBoostTimeLeft] = useState('');
   
   const [headerProfile, setHeaderProfile] = useState(getUserProfile());
+
+  // --- PRELOADER ---
+  // Preload critical images to cache them on app start
+  useEffect(() => {
+    const preloadImages = () => {
+      const imagesToPreload: string[] = [
+        // Mascot GIFs (from components/Mascot.tsx)
+        'https://8upload.com/image/1641107f2693dc1d/WAIT.gif',
+        'https://8upload.com/image/596771d7c98774d8/HAPPY.gif',
+        'https://8upload.com/image/53ce9b7a4f38eefa/SAD.gif',
+        'https://8upload.com/image/1641107f2693dc1d/WAIT.gif',
+        // Logo
+        'https://8upload.com/image/24fff6d1ca0ec801/Gemini_Generated_Image_1ri1941ri1941ri1.png'
+      ];
+
+      // Add Avatar images
+      AVATARS.forEach(a => {
+          if (a.image) imagesToPreload.push(a.image);
+          else if (a.icon && a.icon.startsWith('http')) imagesToPreload.push(a.icon);
+      });
+
+      // Add Badge images
+      BADGES.forEach(b => {
+          if (b.image) imagesToPreload.push(b.image);
+          else if (b.icon && b.icon.startsWith('http')) imagesToPreload.push(b.icon);
+      });
+
+      // Add Frame images
+      FRAMES.forEach(f => {
+          if (f.image) imagesToPreload.push(f.image);
+      });
+
+      // Add Background images
+      BACKGROUNDS.forEach(b => {
+          if (b.image) imagesToPreload.push(b.image);
+      });
+      
+      // Add Unit images
+      Object.values(UNIT_ASSETS).flat().forEach(u => {
+          if (u.image) imagesToPreload.push(u.image);
+      });
+
+      const uniqueImages = [...new Set(imagesToPreload)];
+
+      uniqueImages.forEach(src => {
+          const img = new Image();
+          img.src = src;
+      });
+    };
+
+    // Defer preloading slightly to prioritize initial render
+    setTimeout(preloadImages, 2000);
+  }, []);
+
 
   // --- Helper to apply grade from profile ---
   const applyUserProfileGrade = useCallback(() => {
