@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
-import { CheckCircle, XCircle, Bookmark, Info, Volume2 } from 'lucide-react';
+import { CheckCircle, XCircle, Bookmark, Info } from 'lucide-react';
 import { updateStats, handleQuizResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress } from '../services/userService';
-import { playSound, speakText } from '../services/soundService';
+import { playSound } from '../services/soundService';
 import Mascot from './Mascot';
 
 interface QuizProps {
@@ -116,7 +115,6 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
   useEffect(() => {
     return () => { 
         if (timerRef.current) clearTimeout(timerRef.current);
-        window.speechSynthesis.cancel();
     };
   }, []);
 
@@ -139,9 +137,6 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
         setMascotMood('happy');
         setMascotMessage('Harika! Doğru bildin.');
         
-        // Speak the word on correct answer to reinforce using new robust service
-        speakText(questions[currentQuestionIndex].word);
-
         const newBadges = updateStats('quiz_correct', grade);
         if (newBadges.length > 0 && onBadgeUnlock) {
             newBadges.forEach(b => onBadgeUnlock(b));
@@ -197,7 +192,6 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
 
   const handleNext = (currentScoreValue?: number) => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    window.speechSynthesis.cancel();
     
     const actualScore = currentScoreValue !== undefined ? currentScoreValue : score;
 
@@ -275,14 +269,6 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
 
       <div className="flex-grow flex flex-col justify-center mb-8 mt-4">
          <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 mb-6 relative">
-             <div className="absolute top-4 right-4">
-                 <button 
-                    onClick={() => speakText(currentQuestion.word)} 
-                    className="p-2 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 transition-colors"
-                 >
-                    <Volume2 size={24} />
-                 </button>
-             </div>
              <h2 className="text-3xl sm:text-5xl font-black text-center text-slate-800 dark:text-white leading-tight break-words px-4">
                 {currentQuestion.word}
              </h2>

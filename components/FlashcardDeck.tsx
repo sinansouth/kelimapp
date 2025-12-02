@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Bookmark, CheckCircle, XCircle, ThumbsUp, Volume2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Bookmark, CheckCircle, XCircle, ThumbsUp } from 'lucide-react';
 import { updateStats, getMemorizedSet, addToMemorized, removeFromMemorized, addToBookmarks, removeFromBookmarks, handleReviewResult, registerSRSInteraction, updateQuestProgress } from '../services/userService';
-import { playSound, speakText } from '../services/soundService';
+import { playSound } from '../services/soundService';
 
 interface FlashcardDeckProps {
   words: WordCard[];
@@ -88,7 +87,6 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
       return () => {
           if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
           if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-          window.speechSynthesis.cancel();
       }
   }, []);
 
@@ -466,14 +464,6 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
         <div className={`relative w-full h-full transition-all duration-500 transform-style-3d shadow-lg rounded-3xl ${isFlipped ? 'rotate-y-180' : ''}`}>
           
           <div className="absolute w-full h-full backface-hidden bg-white dark:bg-slate-900 rounded-3xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-800 p-8 transition-colors">
-             <div className="absolute top-6 right-6 z-20">
-                 <button 
-                    onClick={(e) => { e.stopPropagation(); speakText(currentWord.english); }} 
-                    className="p-4 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-                 >
-                    <Volume2 size={28} />
-                 </button>
-             </div>
              <div className="flex-grow flex flex-col items-center justify-center text-center px-4">
                  <h2 className="text-4xl sm:text-5xl font-black text-slate-800 dark:text-white break-words leading-tight">{currentWord.english}</h2>
                  

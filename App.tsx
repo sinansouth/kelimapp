@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType } from './types';
 import { VOCABULARY } from './data/vocabulary';
@@ -428,8 +427,9 @@ const App: React.FC = () => {
       if (mode !== AppMode.HOME) {
           setMode(AppMode.HOME);
           setIsSRSReview(false);
-          setWords([]);
-          setAllUnitWords([]);
+          // FIX: Do not clear words immediately to prevent black screen / flash during transition
+          // setWords([]); 
+          // setAllUnitWords([]);
           // Refresh stats when coming back home
           refreshGlobalState();
           return true;
