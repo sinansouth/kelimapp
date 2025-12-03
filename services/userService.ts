@@ -296,13 +296,16 @@ export const saveSRSData = (data: Record<string, SRSData>) => {
 export const registerSRSInteraction = (wordId: string) => {
     const data = getSRSData();
     if (!data[wordId]) {
-        data[wordId] = { box: 1, nextReview: Date.now() };
+        // Initial interaction places it in box 1, but scheduled for TOMORROW
+        // This prevents "review" list being populated immediately after studying
+        data[wordId] = { box: 1, nextReview: Date.now() + (24 * 60 * 60 * 1000) };
         saveSRSData(data);
     }
 };
 
 export const handleReviewResult = (wordId: string, success: boolean) => {
     const data = getSRSData();
+    // Default to box 1 if not found (shouldn't happen in review mode but safety check)
     let entry = data[wordId] || { box: 1, nextReview: Date.now() };
 
     if (success) {
@@ -320,7 +323,6 @@ export const handleReviewResult = (wordId: string, success: boolean) => {
     saveSRSData(data);
 };
 
-// EXPORT ADDED HERE
 export const handleQuizResult = (wordId: string, success: boolean) => {
     handleReviewResult(wordId, success);
 };
@@ -334,10 +336,19 @@ export const getDueWords = (filterUnitIds?: string[]) => {
         if (entry.nextReview <= now) {
             if (filterUnitIds) {
                 // Check if word belongs to allowed units
-                // ID format: unitId|englishWord or just englishWord
+                // ID format: unitId|englishWord or just englishWord (legacy)
                 const parts = id.split('|');
                 const unitId = parts.length > 1 ? parts[0] : null;
-                if (unitId && filterUnitIds.includes(unitId)) {
+                
+                // If legacy ID (no unit), include it if no specific unit filter or general match
+                // If modern ID, check unitId against filter
+                if (unitId) {
+                     if (filterUnitIds.includes(unitId)) {
+                        dueIds.push(id);
+                     }
+                } else {
+                    // Legacy/unknown unit words included for safety, or could filter out
+                    // Let's include them
                     dueIds.push(id);
                 }
             } else {
@@ -347,8 +358,22 @@ export const getDueWords = (filterUnitIds?: string[]) => {
     });
 
     // Map ids back to word objects
-    const words = Object.values(VOCABULARY).flat();
-    return words.filter(w => {
+    // Performance optimization: iterate vocabulary once or use a lookup map
+    // Since VOCABULARY is structured by unit, we can iterate relevant units if filtered
+    let candidateWords: any[] = [];
+    if (filterUnitIds) {
+        filterUnitIds.forEach(uid => {
+             if (VOCABULARY[uid]) {
+                 // Add unitId to words for proper identification
+                 candidateWords = [...candidateWords, ...VOCABULARY[uid].map(w => ({...w, unitId: uid}))];
+             }
+        });
+    } else {
+        candidateWords = Object.entries(VOCABULARY).flatMap(([uid, words]) => words.map(w => ({...w, unitId: uid})));
+    }
+
+    // Filter candidates that are in dueIds list
+    return candidateWords.filter(w => {
         const id = w.unitId ? `${w.unitId}|${w.english}` : w.english;
         return dueIds.includes(id);
     });
@@ -390,6 +415,7 @@ export const getDueCountForGrade = (grade: string) => {
     Object.entries(data).forEach(([id, entry]) => {
         if (entry.nextReview <= now) {
             const parts = id.split('|');
+            // Check if unit ID is in the grade's unit list
             if (parts.length > 1 && units.includes(parts[0])) {
                 count++;
             }

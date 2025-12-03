@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, Bookmark, Target, RefreshCw, ChevronRight, Clock as ClockIcon,
@@ -284,7 +282,6 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
      );
   }
   
-  // ... (Rest of the component logic remains same)
   if (!selectedCategory) {
     return (
       <div className="flex flex-col items-center min-h-full p-4 pt-2 animate-in fade-in duration-500 relative">
@@ -334,19 +331,19 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
         )}
         
         <div className="w-full max-w-md mb-6 shrink-0">
-            <button onClick={() => onStartModule('review', { id: 'global_review', unitNo: 'Review', title: 'Günlük Tekrar', icon: <RefreshCw /> })} className="w-full rounded-2xl p-4 shadow-md relative overflow-hidden active:scale-[0.99] transition-transform group flex items-center justify-between" style={{background: 'linear-gradient(to right, var(--color-primary), #8b5cf6)'}}>
+            <button onClick={() => onStartModule('review', { id: 'global_review', unitNo: 'Review', title: 'Günlük Tekrar', icon: <RefreshCw /> })} className={`w-full rounded-2xl p-4 shadow-md relative overflow-hidden active:scale-[0.99] transition-transform group flex items-center justify-between ${dailyDueCount > 0 ? 'bg-gradient-to-r from-indigo-600 to-violet-600' : 'bg-gradient-to-r from-green-500 to-emerald-600'}`}>
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:bg-white/20 transition-colors"></div>
                 <div className="text-left z-10">
                     <div className="flex items-center gap-2 text-white/90 font-bold text-[10px] uppercase tracking-wide mb-0.5">
-                        <RefreshCw size={12} className={dailyDueCount > 0 ? "animate-spin-slow" : ""} /> Akıllı Tekrar
+                        {dailyDueCount > 0 ? <RefreshCw size={12} className="animate-spin-slow" /> : <CheckCircle size={12} />} {dailyDueCount > 0 ? 'Akıllı Tekrar' : 'Tamamlandı'}
                     </div>
-                    <div className="text-xl font-black text-white">Günlük Tekrar</div>
+                    <div className="text-xl font-black text-white">{dailyDueCount > 0 ? 'Günlük Tekrar' : 'Tüm Tekrarlar Bitti'}</div>
                     <div className="text-white/80 text-[10px] font-medium">
-                        {dailyDueCount > 0 ? `${dailyDueCount} kelime tekrar bekliyor` : 'Tüm tekrarlar tamamlandı!'}
+                        {dailyDueCount > 0 ? `${dailyDueCount} kelime tekrar bekliyor` : 'Harika! Bugünlük bu kadar.'}
                     </div>
                 </div>
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md shadow-inner group-hover:scale-110 transition-transform z-10 shrink-0">
-                    <Play size={16} className="fill-white ml-0.5 text-white" />
+                    {dailyDueCount > 0 ? <Play size={16} className="fill-white ml-0.5 text-white" /> : <CheckCircle size={20} className="text-white" />}
                 </div>
             </button>
         </div>
@@ -465,19 +462,19 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
       </div>
 
       <div className="mb-6 px-1 flex justify-center sm:justify-start shrink-0">
-           <button onClick={() => onStartModule('review', { id: 'review', unitNo: 'Review', title: 'Günlük Tekrar', icon: <RefreshCw /> })} className="w-full max-w-sm rounded-2xl p-3 shadow-md relative overflow-hidden active:scale-[0.99] transition-transform group flex items-center justify-between" style={{background: 'linear-gradient(to right, var(--color-primary), #8b5cf6)'}}>
+           <button onClick={() => onStartModule('review', { id: 'review', unitNo: 'Review', title: 'Günlük Tekrar', icon: <RefreshCw /> })} className={`w-full max-w-sm rounded-2xl p-3 shadow-md relative overflow-hidden active:scale-[0.99] transition-transform group flex items-center justify-between ${dailyDueCountForGrade > 0 ? 'bg-gradient-to-r from-indigo-600 to-violet-600' : 'bg-gradient-to-r from-green-500 to-emerald-600'}`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:bg-white/20 transition-colors"></div>
               <div className="text-left z-10">
                   <div className="flex items-center gap-1.5 text-white/90 font-bold text-[10px] uppercase tracking-wide mb-0.5">
-                      <RefreshCw size={12} className={dailyDueCountForGrade > 0 ? "animate-spin-slow" : ""} /> Akıllı Tekrar
+                      {dailyDueCountForGrade > 0 ? <RefreshCw size={12} className="animate-spin-slow" /> : <CheckCircle size={12} />} {dailyDueCountForGrade > 0 ? 'Akıllı Tekrar' : 'Tamamlandı'}
                   </div>
-                  <div className="text-lg font-black text-white">Günlük Tekrar</div>
+                  <div className="text-lg font-black text-white">{dailyDueCountForGrade > 0 ? 'Günlük Tekrar' : 'Tüm Tekrarlar Bitti'}</div>
                   <div className="text-white/80 text-[10px] font-medium">
-                      {dailyDueCountForGrade > 0 ? `${dailyDueCountForGrade} kelime tekrar bekliyor` : 'Tekrarlar tamamlandı!'}
+                      {dailyDueCountForGrade > 0 ? `${dailyDueCountForGrade} kelime tekrar bekliyor` : 'Harika! Bu seviyede her şey yolunda.'}
                   </div>
               </div>
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md shadow-inner group-hover:scale-110 transition-transform z-10">
-                  <Play size={16} className="fill-white ml-0.5 text-white" />
+                  {dailyDueCountForGrade > 0 ? <Play size={16} className="fill-white ml-0.5 text-white" /> : <CheckCircle size={20} className="text-white" />}
               </div>
           </button>
       </div>

@@ -538,7 +538,10 @@ const App: React.FC = () => {
               const gradeUnits = UNIT_ASSETS[selectedGrade]; 
               if (gradeUnits) { allowedUnitIds = gradeUnits.map(u => u.id); } 
               unitWords = getDueWords(allowedUnitIds); 
-              if (unitWords.length === 0) { addHistoryEntry(); setShowSRSInfo(true); return; } 
+              if (unitWords.length === 0) { 
+                  handleTriggerCelebration("Tebrikler! Şu an tekrar edilecek kelime yok.", 'goal');
+                  return;
+              } 
               allDistractors = Object.entries(VOCABULARY).flatMap(([uid, words]) => words.map(w => ({...w, unitId: uid}))); 
           } else { 
               const dueGrades = getDueGrades(); 
@@ -554,8 +557,7 @@ const App: React.FC = () => {
                   unitWords = getDueWords(allowedUnitIds); 
                   allDistractors = Object.entries(VOCABULARY).flatMap(([uid, words]) => words.map(w => ({...w, unitId: uid}))); 
               } else { 
-                  addHistoryEntry(); 
-                  setShowSRSInfo(true); 
+                  handleTriggerCelebration("Tebrikler! Şu an tekrar edilecek kelime yok.", 'goal');
                   return; 
               } 
           } 
@@ -577,7 +579,7 @@ const App: React.FC = () => {
       let newTitle = (action === 'review' || action === 'review-flashcards') ? 'Günlük Tekrar' : (isAllInOne ? unit.title : `${unit.unitNo} - ${unit.title}`); 
       
       if (action !== 'grammar' && unitWords.length === 0 && action !== 'quiz-bookmarks' && action !== 'quiz-memorized') { 
-          alert("Bu ünite için içerik henüz hazırlanmaktadır veya tekrar edilecek kelime yok."); 
+          alert("Bu ünite için içerik henüz hazırlanmamış veya boş."); 
           return; 
       } 
       
