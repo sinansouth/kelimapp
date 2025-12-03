@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
 import { CheckCircle, XCircle, Bookmark, Info, Clock } from 'lucide-react';
@@ -101,18 +102,35 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
 
   const getUniqueId = (word: WordCard) => word.unitId ? `${word.unitId}|${word.english}` : word.english;
 
-  // Helper to highlight the target word in the example sentence
+  // Helper to highlight the target word (and its forms) in the example sentence
   const getHighlightedSentence = (sentence: string, targetWord: string) => {
-      const parts = sentence.split(new RegExp(`(${targetWord})`, 'gi'));
+      if (!sentence || !targetWord) return <span>{sentence}</span>;
+
+      // Clean punctuation from target word just in case
+      const cleanTarget = targetWord.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
+      // Break target phrase into words (e.g., "back up" -> ["back", "up"])
+      const stems = cleanTarget.trim().split(/\s+/);
+      
+      // Create a regex that matches any of these words, followed by optional alphabetical characters (suffixes like -ing, -s, -ed)
+      // The pattern looks like: \b(back|up)[a-z]*\b
+      const patternString = `(\\b(?:${stems.join('|')})[a-z]*\\b)`;
+      const pattern = new RegExp(patternString, 'gi');
+
+      const parts = sentence.split(pattern);
+
       return (
           <span>
-              "{parts.map((part, i) => 
-                  part.toLowerCase() === targetWord.toLowerCase() ? (
-                      <span key={i} className="text-indigo-600 dark:text-indigo-400 font-black border-b-2 border-indigo-400">{part}</span>
-                  ) : (
-                      part
-                  )
-              )}"
+              "{parts.map((part, i) => {
+                  // Check if this part matches our target pattern
+                  if (pattern.test(part)) {
+                      return (
+                          <span key={i} className="text-indigo-600 dark:text-indigo-400 font-black border-b-2 border-indigo-400">
+                              {part}
+                          </span>
+                      );
+                  }
+                  return <span key={i}>{part}</span>;
+              })}"
           </span>
       );
   };

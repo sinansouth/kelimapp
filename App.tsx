@@ -98,7 +98,6 @@ const App: React.FC = () => {
         'https://8upload.com/image/1641107f2693dc1d/WAIT.gif',
         'https://8upload.com/image/596771d7c98774d8/HAPPY.gif',
         'https://8upload.com/image/53ce9b7a4f38eefa/SAD.gif',
-        'https://8upload.com/image/1641107f2693dc1d/WAIT.gif',
         'https://8upload.com/image/24fff6d1ca0ec801/Gemini_Generated_Image_1ri1941ri1941ri1.png'
       ];
 
@@ -144,10 +143,6 @@ const App: React.FC = () => {
     else if (['5', '6', '7', '8'].includes(g)) setSelectedCategory('MIDDLE_SCHOOL');
     else if (['9', '10', '11', '12'].includes(g)) setSelectedCategory('HIGH_SCHOOL');
     else if (['A1', 'A2', 'B1', 'B2', 'C1'].includes(g)) setSelectedCategory('GENERAL_ENGLISH');
-    
-    // NOTE: We do NOT force selectedGrade here to avoid trapping the user.
-    // User must manually select grade from the category menu if they are not already there.
-    // Only set if explicitly desired or on very first load? No, safer to just set Category.
   }, []);
 
   const applyTheme = (theme: ThemeType) => {
@@ -188,17 +183,12 @@ const App: React.FC = () => {
 
                   refreshGlobalState();
                   
-                  // Only apply grade on initial login/load, not every sync
-                  // applyUserProfileGrade(); 
-                  
                   const currentSettings = getAppSettings();
                   applyTheme(currentSettings.theme);
                   
                   if (navigator.onLine) {
                            unsubscribeSnapshot = subscribeToUserChanges(user.uid, () => {
                                refreshGlobalState();
-                               // Removed applyUserProfileGrade() from here to prevent auto-redirect
-                               
                                const updatedSettings = getAppSettings();
                                applyTheme(updatedSettings.theme);
                            });
@@ -232,11 +222,8 @@ const App: React.FC = () => {
               const auth = getAuthInstance();
               const user = auth?.currentUser;
               if (user && navigator.onLine) {
-                  console.log("App back in foreground, syncing data...");
                   await syncData(user.uid);
-                  
                   refreshGlobalState();
-                  // applyUserProfileGrade(); // Avoid auto-redirect here too
                   const currentSettings = getAppSettings();
                   applyTheme(currentSettings.theme);
               }
@@ -402,10 +389,6 @@ const App: React.FC = () => {
       if (mode !== AppMode.HOME) {
           setMode(AppMode.HOME);
           setIsSRSReview(false);
-          // Fix for black screen: Do NOT clear data immediately. 
-          // Let the mode switch hide the component, then React handles unmount.
-          // setWords([]);  <-- REMOVED
-          // setAllUnitWords([]); <-- REMOVED
           refreshGlobalState();
           return true;
       }
@@ -469,7 +452,8 @@ const App: React.FC = () => {
   const handleBadgeUnlock = (badge: Badge) => { 
       playSound('success'); 
       setNewBadge(badge); 
-      setTimeout(() => setNewBadge(null), 4000); 
+      // Increase display time for badge to make it more noticeable
+      setTimeout(() => setNewBadge(null), 5000); 
       refreshGlobalState();
   };
   
@@ -763,14 +747,10 @@ const App: React.FC = () => {
          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[110] w-full max-w-sm px-4 pointer-events-none">
             <div className="bg-yellow-500 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500 border-2 border-yellow-300">
                 <div className="text-4xl animate-bounce">
-                    {newBadge.image ? (
+                     {newBadge.image ? (
                          <img src={newBadge.image} alt={newBadge.name} className="w-10 h-10 rounded-full object-cover" />
                     ) : (
-                         newBadge.icon.length > 2 || newBadge.icon.includes('/') ? (
-                             <img src={newBadge.icon} alt={newBadge.name} className="w-10 h-10 rounded-full object-cover" />
-                         ) : (
-                            newBadge.icon
-                         )
+                         <span className="flex items-center justify-center w-10 h-10 text-3xl">{newBadge.icon}</span>
                     )}
                 </div>
                 <div>

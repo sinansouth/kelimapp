@@ -1,5 +1,6 @@
 
-import { initializeApp } from 'firebase/app';
+// @ts-ignore
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   initializeFirestore,
   persistentLocalCache,
@@ -57,8 +58,9 @@ let auth: any;
 export let isFirebaseReady = false;
 
 try {
-    if (firebaseConfig.apiKey !== "AIzaSyB...") {
-        const app = initializeApp(firebaseConfig);
+    if (firebaseConfig.apiKey !== "AIzaSyDDEtzB8IomjCr1tHZlJ_hOEzmUtyX0bj8" && firebaseConfig.apiKey !== "AIzaSyB...") {
+        // @ts-ignore
+        const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
         
         db = initializeFirestore(app, {
             localCache: persistentLocalCache({
@@ -400,7 +402,7 @@ export const syncLocalToCloud = async (userId?: string) => {
                 
                 weekId: stats.weekly.weekId,
                 quizCorrect: stats.weekly.quizCorrect,
-                quizWrong: stats.weekly.quizWrong || 0, // New field added
+                quizWrong: stats.weekly.quizWrong || 0, // Sync quizWrong
                 cardsViewed: stats.weekly.cardsViewed,
                 matchingBestTime: stats.weekly.matchingBestTime,
                 typingHighScore: stats.weekly.typingHighScore,
@@ -445,7 +447,7 @@ export const getLeaderboard = async (filterGrade: string | 'ALL', mode: 'xp' | '
             case 'chain': sortField = "leaderboardData.chainHighScore"; break;
             case 'matching': 
                 sortField = "leaderboardData.matchingBestTime"; 
-                direction = 'desc'; 
+                direction = 'asc'; // Lower time is better for matching
                 break;
             default: sortField = "leaderboardData.xp";
         }
@@ -475,7 +477,8 @@ export const getLeaderboard = async (filterGrade: string | 'ALL', mode: 'xp' | '
                 else if (mode === 'chain') val = d.chainHighScore;
                 else if (mode === 'matching') val = d.matchingBestTime;
 
-                if (mode === 'matching' && val === 0) return;
+                // Exclude 0 scores for matching (0 means no play)
+                if (mode === 'matching' && (val === 0 || !val)) return;
 
                 results.push({
                     uid: doc.id,
@@ -494,8 +497,10 @@ export const getLeaderboard = async (filterGrade: string | 'ALL', mode: 'xp' | '
             }
         });
 
-        results.sort((a, b) => b.value - a.value);
-
+        // For matching, we sort ascending (lowest time is best). 
+        // But Firebase query already did that. 
+        // Just ensuring valid entries.
+        
         return results;
     } catch (e) {
         console.error("Leaderboard fetch error:", e);

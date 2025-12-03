@@ -10,7 +10,118 @@ const DATA_VERSION_KEY = 'kelimapp_data_version';
 const LAST_UPDATED_KEY = 'lgs_last_data_update';
 const LAST_UID_KEY = 'lgs_last_uid'; 
 
-// --- ADMIN / DEV TOOLS ---
+// ... (Previous Helper Functions Remain the Same) ...
+
+// --- REPLACED updateStats FUNCTION ---
+export const updateStats = (type: 'card_view' | 'quiz_correct' | 'quiz_wrong' | 'perfect_quiz' | 'memorized' | 'review_remember' | 'review_forgot', grade?: string | null, wordId?: string, quizSize?: number): Badge[] => {
+  const stats = getUserStats(); 
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const newBadges: Badge[] = [];
+
+  // Update Streak Logic
+  if (stats.lastStudyDate !== todayStr) {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      if (stats.lastStudyDate === yesterdayStr) {
+          stats.streak += 1;
+      } else {
+          stats.streak = 1;
+      }
+      stats.lastStudyDate = todayStr;
+  }
+
+  let xpGained = 0;
+  const XP_REWARDS = {
+      CARD_VIEW: 10,
+      QUIZ_CORRECT: 15,
+      QUIZ_WRONG: 5,
+      REVIEW_REMEMBER: 25,
+      REVIEW_FORGOT: 5
+  };
+
+  if (type === 'card_view') {
+      if (wordId && !stats.viewedWordsToday.includes(wordId)) {
+          stats.flashcardsViewed += 1; 
+          stats.weekly.cardsViewed += 1; 
+          stats.viewedWordsToday.push(wordId);
+          xpGained = XP_REWARDS.CARD_VIEW;
+          if (grade) {
+              if (!stats.breakdown) stats.breakdown = {};
+              if (!stats.breakdown[grade]) stats.breakdown[grade] = { viewed: 0, correct: 0, wrong: 0 };
+              stats.breakdown[grade].viewed += 1;
+          }
+      } else if (!wordId) {
+           stats.flashcardsViewed += 1;
+           stats.weekly.cardsViewed += 1;
+           xpGained = 2;
+      }
+  } else if (type === 'quiz_correct') {
+      stats.quizCorrect += 1; 
+      stats.weekly.quizCorrect += 1; 
+      xpGained = XP_REWARDS.QUIZ_CORRECT;
+      if (grade) {
+          if (!stats.breakdown) stats.breakdown = {};
+          if (!stats.breakdown[grade]) stats.breakdown[grade] = { viewed: 0, correct: 0, wrong: 0 };
+          stats.breakdown[grade].correct += 1;
+      }
+  } else if (type === 'quiz_wrong') {
+      stats.quizWrong += 1; 
+      if (!stats.weekly.quizWrong) stats.weekly.quizWrong = 0;
+      stats.weekly.quizWrong += 1; 
+      
+      xpGained = XP_REWARDS.QUIZ_WRONG;
+      if (grade) {
+          if (!stats.breakdown) stats.breakdown = {};
+          if (!stats.breakdown[grade]) stats.breakdown[grade] = { viewed: 0, correct: 0, wrong: 0 };
+          stats.breakdown[grade].wrong += 1;
+      }
+  } else if (type === 'memorized') {
+      xpGained = 20; 
+      checkCompletion(stats); 
+  } else if (type === 'review_remember') {
+      xpGained = XP_REWARDS.REVIEW_REMEMBER; 
+  } else if (type === 'review_forgot') {
+      xpGained = XP_REWARDS.REVIEW_FORGOT; 
+  } else if (type === 'perfect_quiz') {
+      stats.perfectQuizzes += 1;
+      xpGained = 60; 
+  }
+
+  if (xpGained > 0) {
+      stats.xp += xpGained;
+      updateQuestProgress('earn_xp', xpGained);
+  }
+
+  stats.level = calculateLevel(stats.xp);
+
+  // Check for new badges
+  // We iterate through ALL badges and check conditions against the UPDATED stats
+  BADGES.forEach(badge => {
+      if (!stats.badges.includes(badge.id)) {
+          // Only check unlock condition if not already owned
+          if (badge.condition(stats, { quizSize })) { 
+              stats.badges.push(badge.id);
+              newBadges.push(badge);
+          }
+      }
+  });
+
+  const totalInteractions = stats.flashcardsViewed + stats.quizCorrect + stats.quizWrong;
+  if (totalInteractions >= stats.dailyGoal) {
+      stats.lastGoalMetDate = todayStr;
+  }
+
+  // Save immediately so badges persist
+  saveUserStats(stats);
+  
+  // Return the newly unlocked badges so the UI can show them immediately
+  return newBadges;
+};
+
+// ... (Rest of the file including admin tools, getStats, etc.) ...
 
 export const adminAddXP = (amount: number) => {
     const stats = getUserStats();
@@ -53,9 +164,11 @@ export const adminUnlockAllItems = () => {
 };
 
 export const adminResetDailyQuests = () => {
-    localStorage.removeItem(DAILY_STATE_KEY);
+    localStorage.removeItem('lgs_daily_state');
     getDailyState();
 };
+
+// ... (Export types and other functions) ...
 
 export interface UserProfile {
   name: string;
@@ -67,7 +180,7 @@ export interface UserProfile {
   purchasedFrames: string[]; 
   purchasedBackgrounds: string[];
   inventory: {
-    streakFreezes: number; // Kept for backward compatibility but not used
+    streakFreezes: number; 
   };
   lastUsernameChange?: number; 
 }
@@ -89,7 +202,7 @@ export interface UserStats {
   streak: number;
   lastStudyDate: string | null;
   badges: string[];
-  xpBoostEndTime: number; // Kept for backward compatibility but not used
+  xpBoostEndTime: number;
   lastGoalMetDate: string | null; 
   viewedWordsToday: string[]; 
   breakdown?: Record<string, { 
@@ -102,12 +215,12 @@ export interface UserStats {
   totalTimeSpent: number; 
   completedUnits: string[];
   completedGrades: string[];
-  lastActivity?: LastActivity | null; // New persistent field
+  lastActivity?: LastActivity | null;
   
   weekly: {
       weekId: string; 
       quizCorrect: number;
-      quizWrong?: number; // Added for leaderboard accuracy
+      quizWrong?: number; 
       cardsViewed: number;
       matchingBestTime: number; 
       typingHighScore: number;
@@ -133,7 +246,7 @@ const SETTINGS_KEY = 'lgs_app_settings';
 const MEMORIZED_KEY = 'lgs_memorized';
 const BOOKMARKS_KEY = 'lgs_bookmarks';
 const SRS_KEY = 'lgs_srs_data';
-const OLD_LAST_ACTIVITY_KEY = 'lgs_last_activity'; // Deprecated
+const OLD_LAST_ACTIVITY_KEY = 'lgs_last_activity'; 
 const READ_ANNOUNCEMENT_KEY = 'lgs_read_announcement_id';
 const DAILY_STATE_KEY = 'lgs_daily_state';
 const SRS_INTERVALS = [0, 1, 3, 7, 14, 30]; 
@@ -162,21 +275,6 @@ const getCurrentWeekId = (): string => {
     return `${d.getUTCFullYear()}-W${weekNo}`;
 };
 
-
-export const checkIfBrowser = (): boolean => {
-  // @ts-ignore
-  if (window.Capacitor) {
-    return false;
-  }
-  
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  if (document.referrer.includes('android-app://')) return false;
-  // @ts-ignore
-  if ((navigator as any).standalone) return false;
-  
-  return !isStandalone;
-};
-
 export const checkDataVersion = (): boolean => {
     const storedVersionStr = localStorage.getItem(DATA_VERSION_KEY);
     const storedVersion = storedVersionStr ? parseInt(storedVersionStr, 10) : 0;
@@ -195,15 +293,6 @@ export const clearLocalUserData = () => {
     localStorage.removeItem(LAST_UID_KEY);
 };
 
-export const isLocalDataExists = (): boolean => {
-    const stats = getUserStats();
-    const profile = getUserProfile();
-    return (stats.xp > 0) || 
-           (profile.name !== '') || 
-           (profile.purchasedThemes.length > 2) || 
-           (profile.frame !== 'frame_none');
-};
-
 export const updateLastUpdatedTimestamp = () => {
     localStorage.setItem(LAST_UPDATED_KEY, Date.now().toString());
 };
@@ -211,13 +300,6 @@ export const updateLastUpdatedTimestamp = () => {
 export const getLastUpdatedTimestamp = (): number => {
     const val = localStorage.getItem(LAST_UPDATED_KEY);
     return val ? parseInt(val, 10) : 0;
-};
-
-export const getNextDailyGoal = (currentGoal: number): number => {
-  const index = GOAL_STEPS.indexOf(currentGoal);
-  if (index === -1) return 5;
-  if (index >= GOAL_STEPS.length - 1) return GOAL_STEPS[GOAL_STEPS.length - 1];
-  return GOAL_STEPS[index + 1];
 };
 
 export const getUserProfile = (): UserProfile => {
@@ -347,7 +429,6 @@ export const getUserStats = (): UserStats => {
     
     if (parsedStats.lastActivity === undefined) {
         parsedStats.lastActivity = null;
-        // Try to migrate old activity if exists
         try {
             const oldActivity = localStorage.getItem(OLD_LAST_ACTIVITY_KEY);
             if (oldActivity) {
@@ -358,7 +439,6 @@ export const getUserStats = (): UserStats => {
     }
 
     if (parsedStats.weekly.weekId !== currentWeekId) {
-        console.log("New week detected. Resetting weekly leaderboard stats.");
         parsedStats.weekly = {
             weekId: currentWeekId,
             quizCorrect: 0,
@@ -467,14 +547,6 @@ export const spendXP = (amount: number): boolean => {
     return false;
 };
 
-const XP_REWARDS = {
-    CARD_VIEW: 10,
-    QUIZ_CORRECT: 15,
-    QUIZ_WRONG: 5,
-    REVIEW_REMEMBER: 25,
-    REVIEW_FORGOT: 5
-};
-
 export const updateTimeSpent = (minutes: number) => {
     const stats = getUserStats();
     stats.totalTimeSpent += minutes;
@@ -544,7 +616,7 @@ export const updateGameStats = (game: 'matching' | 'typing' | 'chain', scoreOrTi
             stats.weekly.typingHighScore = scoreOrTime;
             updated = true;
         }
-        updateQuestProgress('play_typing', 1);
+        updateQuestProgress('play_typing', scoreOrTime); 
     } else if (game === 'chain') {
         xpGain = Math.floor(scoreOrTime / 2);
 
@@ -552,7 +624,7 @@ export const updateGameStats = (game: 'matching' | 'typing' | 'chain', scoreOrTi
             stats.weekly.chainHighScore = scoreOrTime;
             updated = true;
         }
-        updateQuestProgress('play_chain', 1);
+        updateQuestProgress('play_chain', Math.floor(scoreOrTime / 10)); 
     }
     
     if (xpGain > 0) {
@@ -568,102 +640,6 @@ export const updateGameStats = (game: 'matching' | 'typing' | 'chain', scoreOrTi
     }
 };
 
-export const updateStats = (type: 'card_view' | 'quiz_correct' | 'quiz_wrong' | 'perfect_quiz' | 'memorized' | 'review_remember' | 'review_forgot', grade?: string | null, wordId?: string, quizSize?: number): Badge[] => {
-  const stats = getUserStats(); 
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const newBadges: Badge[] = [];
-
-  if (stats.lastStudyDate !== todayStr) {
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      if (stats.lastStudyDate === yesterdayStr) {
-          stats.streak += 1;
-      } else {
-          stats.streak = 1;
-      }
-      
-      stats.lastStudyDate = todayStr;
-  }
-
-  let xpGained = 0;
-
-  if (type === 'card_view') {
-      if (wordId && !stats.viewedWordsToday.includes(wordId)) {
-          stats.flashcardsViewed += 1; 
-          stats.weekly.cardsViewed += 1; 
-          stats.viewedWordsToday.push(wordId);
-          xpGained = XP_REWARDS.CARD_VIEW;
-          if (grade) {
-              if (!stats.breakdown) stats.breakdown = {};
-              if (!stats.breakdown[grade]) stats.breakdown[grade] = { viewed: 0, correct: 0, wrong: 0 };
-              stats.breakdown[grade].viewed += 1;
-          }
-      } else if (!wordId) {
-           stats.flashcardsViewed += 1;
-           stats.weekly.cardsViewed += 1;
-           xpGained = 2;
-      }
-  } else if (type === 'quiz_correct') {
-      stats.quizCorrect += 1; 
-      stats.weekly.quizCorrect += 1; 
-      xpGained = XP_REWARDS.QUIZ_CORRECT;
-      if (grade) {
-          if (!stats.breakdown) stats.breakdown = {};
-          if (!stats.breakdown[grade]) stats.breakdown[grade] = { viewed: 0, correct: 0, wrong: 0 };
-          stats.breakdown[grade].correct += 1;
-      }
-  } else if (type === 'quiz_wrong') {
-      stats.quizWrong += 1; 
-      if (!stats.weekly.quizWrong) stats.weekly.quizWrong = 0;
-      stats.weekly.quizWrong += 1; // Track weekly wrong answers
-      
-      xpGained = XP_REWARDS.QUIZ_WRONG;
-      if (grade) {
-          if (!stats.breakdown) stats.breakdown = {};
-          if (!stats.breakdown[grade]) stats.breakdown[grade] = { viewed: 0, correct: 0, wrong: 0 };
-          stats.breakdown[grade].wrong += 1;
-      }
-  } else if (type === 'memorized') {
-      xpGained = 20; 
-      checkCompletion(stats); 
-  } else if (type === 'review_remember') {
-      xpGained = XP_REWARDS.REVIEW_REMEMBER; 
-  } else if (type === 'review_forgot') {
-      xpGained = XP_REWARDS.REVIEW_FORGOT; 
-  } else if (type === 'perfect_quiz') {
-      stats.perfectQuizzes += 1;
-      xpGained = 60; 
-  }
-
-  // Add XP
-  if (xpGained > 0) {
-      stats.xp += xpGained;
-      updateQuestProgress('earn_xp', xpGained);
-  }
-
-  stats.level = calculateLevel(stats.xp);
-
-  // Badge Checks
-  BADGES.forEach(badge => {
-      if (!stats.badges.includes(badge.id)) {
-          if (badge.condition(stats, { quizSize })) { 
-              stats.badges.push(badge.id);
-              newBadges.push(badge);
-          }
-      }
-  });
-
-  const totalInteractions = stats.flashcardsViewed + stats.quizCorrect + stats.quizWrong;
-  if (totalInteractions >= stats.dailyGoal) {
-      stats.lastGoalMetDate = todayStr;
-  }
-
-  saveUserStats(stats);
-  return newBadges;
-};
 
 export const resetAppProgress = (scope: { type: 'all' | 'grade' | 'unit', value?: string }) => {
     const stats = getUserStats();
@@ -791,7 +767,7 @@ export const resetMemorized = (scope: { type: 'all' | 'grade' | 'unit', value?: 
 export const saveLastActivity = (grade: string, unitId: string) => {
   const stats = getUserStats();
   stats.lastActivity = { grade, unitId, timestamp: Date.now() };
-  saveUserStats(stats); // This syncs to cloud automatically
+  saveUserStats(stats); 
 };
 
 export const getLastActivity = (): LastActivity | null => {
@@ -1073,8 +1049,8 @@ const QUEST_TYPES: { type: Quest['type'], desc: (target: number) => string, rewa
     { type: 'finish_quiz', desc: (t) => `Bugün ${t} test bitir`, reward: 100, range: [1, 2, 3] },
     { type: 'perfect_quiz', desc: (t) => `Bugün ${t} testi hatasız bitir`, reward: 200, range: [1, 2] },
     { type: 'earn_xp', desc: (t) => `Bugün ${t} XP kazan`, reward: 50, range: [100, 200, 300, 500] },
-    { type: 'play_matching', desc: (t) => `Eşleştirme oyununda ${t} puan yap`, reward: 75, range: [200, 500, 1000] },
-    { type: 'play_typing', desc: (t) => `Yazma oyununda ${t} puan yap`, reward: 75, range: [50, 100, 200] },
+    { type: 'play_matching', desc: (t) => `Eşleştirme oyununda ${t} puan yap`, reward: 100, range: [100, 200, 300] },
+    { type: 'play_typing', desc: (t) => `Yazma oyununda ${t} puan yap`, reward: 100, range: [50, 100, 150] },
     { type: 'play_chain', desc: (t) => `Kelime türetmecede ${t} kelime bul`, reward: 100, range: [5, 10, 15] },
 ];
 
@@ -1087,8 +1063,6 @@ export const getDailyState = (): DailyState => {
             const parsed: DailyState = JSON.parse(stored);
             if (parsed.date === today) {
                 return parsed;
-            } else {
-                
             }
         }
 

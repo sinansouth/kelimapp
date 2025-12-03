@@ -155,8 +155,9 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
                                 <div className="text-right flex flex-col items-end">
                                     {mode === 'quiz' ? (
                                         <div className="flex flex-col items-end">
-                                            <div className="font-black text-xs" style={{color: themeStyle.color, opacity: 0.9}}>
-                                                Toplam: {user.value + (user.quizWrong || 0)}
+                                            <div className="font-black text-xs flex flex-col items-end" style={{color: themeStyle.color, opacity: 0.9}}>
+                                                <span className="text-[9px] opacity-70">TOPLAM</span>
+                                                <span>{user.value + (user.quizWrong || 0)}</span>
                                             </div>
                                             <div className="flex gap-1 text-[8px] font-bold mt-0.5">
                                                 <span className="text-green-600 bg-green-100 px-1 rounded">{user.value} D</span>

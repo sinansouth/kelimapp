@@ -1,3 +1,4 @@
+
 import { Avatar, Badge, FrameDef, UnitDef, GradeDef, BackgroundDef } from '../types';
 import { 
   BookOpen, GraduationCap, Target, Library, Star, 
@@ -38,7 +39,6 @@ export const GRADE_DATA: Record<string, GradeDef> = {
     '10': { id: '10', label: '10. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
     '11': { id: '11', label: '11. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
     '12': { id: '12', label: '12. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
-    // General English Levels
     'A1': { id: 'A1', label: 'A1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-green-500" }) },
     'A2': { id: 'A2', label: 'A2 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-blue-500" }) },
     'B1': { id: 'B1', label: 'B1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-yellow-500" }) },
@@ -204,7 +204,7 @@ export const UNIT_ASSETS: Record<string, UnitDef[]> = {
   ]
 };
 
-// FRAMES (Massively Expanded - LEVELS BALANCED)
+// FRAMES
 export const FRAMES: FrameDef[] = [
     { id: 'frame_none', name: 'Yok', description: 'Çerçevesiz', cost: 0, style: '' },
     { id: 'frame_wood', name: 'Ahşap', description: 'Doğal ahşap', cost: 1000, style: 'border-8 border-amber-800 ring-2 ring-amber-600', unlockLevel: 2 },
@@ -228,7 +228,7 @@ export const FRAMES: FrameDef[] = [
     { id: 'frame_rgb', name: 'RGB Gamer', description: 'Renk değiştiren', cost: 12000, style: 'frame-rgb', unlockLevel: 30 },
 ];
 
-// BACKGROUNDS (Massively Expanded - LEVELS BALANCED)
+// BACKGROUNDS
 export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg_default', name: 'Varsayılan', description: 'Sade geçiş', cost: 0, style: 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800' },
   { id: 'bg_blue', name: 'Gökyüzü', description: 'Mavi tonları', cost: 500, style: 'bg-gradient-to-br from-blue-400 to-indigo-500', unlockLevel: 2 },
@@ -252,47 +252,45 @@ export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg_royal', name: 'Kraliyet', description: 'Asil mor', cost: 8000, style: 'bg-gradient-to-br from-indigo-900 via-purple-800 to-fuchsia-900 border-2 border-yellow-500', unlockLevel: 30 },
 ];
 
-// ... (AVATARS array remains the same, it already had unlockLevel logic) ...
 export const AVATARS: Avatar[] = [
   // Level 1-10
-  { id: 'student', icon: '🧑‍🎓', image: 'https://8upload.com/image/497d2b438666fbbd/STUDENT.png', name: 'Öğrenci', unlockLevel: 1, bgGradient: 'from-blue-400 to-indigo-500', border: 'border-blue-200' },
-  // ... (Rest of the avatars) ...
-  { id: 'cat', icon: '🐱', name: 'Kedi', unlockLevel: 2, bgGradient: 'from-orange-300 to-amber-400', border: 'border-orange-200' },
-  { id: 'dog', icon: '🐶', name: 'Köpek', unlockLevel: 3, bgGradient: 'from-stone-300 to-stone-500', border: 'border-stone-300' },
-  { id: 'fox', icon: '🦊', name: 'Tilki', unlockLevel: 4, bgGradient: 'from-orange-500 to-red-600', border: 'border-orange-300' },
-  { id: 'panda', icon: '🐼', name: 'Panda', unlockLevel: 5, bgGradient: 'from-slate-800 to-black', border: 'border-slate-400' },
-  { id: 'koala', icon: '🐨', name: 'Koala', unlockLevel: 6, bgGradient: 'from-gray-300 to-gray-500', border: 'border-gray-300' },
-  { id: 'rabbit', icon: '🐰', name: 'Tavşan', unlockLevel: 7, bgGradient: 'from-pink-200 to-pink-400', border: 'border-pink-200' },
-  { id: 'lion', icon: '🦁', name: 'Aslan', unlockLevel: 8, bgGradient: 'from-yellow-400 to-orange-500', border: 'border-yellow-300' },
-  { id: 'tiger', icon: '🐯', name: 'Kaplan', unlockLevel: 9, bgGradient: 'from-orange-400 to-red-500', border: 'border-orange-300' },
-  { id: 'wolf', icon: '🐺', name: 'Kurt', unlockLevel: 10, bgGradient: 'from-slate-400 to-slate-600', border: 'border-slate-400' },
+  { id: 'student', icon: '🧑‍🎓', image: 'https://8upload.com/image/302720d3d5ab5c31/student.png', name: 'Öğrenci', unlockLevel: 1, bgGradient: 'from-blue-400 to-indigo-500', border: 'border-blue-200' },
+  { id: 'cat', icon: '🐱', image: 'https://8upload.com/image/322dda0da52f30af/cat.png', name: 'Kedi', unlockLevel: 2, bgGradient: 'from-orange-300 to-amber-400', border: 'border-orange-200' },
+  { id: 'dog', icon: '🐶', image: 'https://8upload.com/image/0c0a93919cf94942/dog.png', name: 'Köpek', unlockLevel: 3, bgGradient: 'from-stone-300 to-stone-500', border: 'border-stone-300' },
+  { id: 'fox', icon: '🦊', image: 'https://8upload.com/image/9f5fcd0b227c5917/fox.png', name: 'Tilki', unlockLevel: 4, bgGradient: 'from-orange-500 to-red-600', border: 'border-orange-300' },
+  { id: 'panda', icon: '🐼', image: 'https://8upload.com/image/05cc116de4267c55/panda.png', name: 'Panda', unlockLevel: 5, bgGradient: 'from-slate-800 to-black', border: 'border-slate-400' },
+  { id: 'koala', icon: '🐨', image: 'https://8upload.com/image/c688a9ac2dfe761b/koala.png', name: 'Koala', unlockLevel: 6, bgGradient: 'from-gray-300 to-gray-500', border: 'border-gray-300' },
+  { id: 'rabbit', icon: '🐰', image: 'https://8upload.com/image/f092e13a8ab8508c/rabbit.png', name: 'Tavşan', unlockLevel: 7, bgGradient: 'from-pink-200 to-pink-400', border: 'border-pink-200' },
+  { id: 'lion', icon: '🦁', image: 'https://8upload.com/image/2b3f1bbe6d1c2969/lion.png', name: 'Aslan', unlockLevel: 8, bgGradient: 'from-yellow-400 to-orange-500', border: 'border-yellow-300' },
+  { id: 'tiger', icon: '🐯', image: 'https://8upload.com/image/b1d8404e5ab1066f/tiger.png', name: 'Kaplan', unlockLevel: 9, bgGradient: 'from-orange-400 to-red-500', border: 'border-orange-300' },
+  { id: 'wolf', icon: '🐺', image: 'https://8upload.com/image/0a00af0ffc3b2d90/wolf.png', name: 'Kurt', unlockLevel: 10, bgGradient: 'from-slate-400 to-slate-600', border: 'border-slate-400' },
   
   // Level 11-30
-  { id: 'bear', icon: '🐻', name: 'Ayı', unlockLevel: 11, bgGradient: 'from-amber-700 to-amber-900', border: 'border-amber-600' },
-  { id: 'detective', icon: '🕵️', name: 'Dedektif', unlockLevel: 12, bgGradient: 'from-neutral-600 to-neutral-800', border: 'border-neutral-400' },
-  { id: 'chicken', icon: '🐔', name: 'Tavuk', unlockLevel: 13, bgGradient: 'from-red-100 to-red-300', border: 'border-red-200' },
-  { id: 'frog', icon: '🐸', name: 'Kurbağa', unlockLevel: 14, bgGradient: 'from-green-500 to-green-700', border: 'border-green-400' },
-  { id: 'scientist', icon: '👩‍🔬', name: 'Bilim İnsanı', unlockLevel: 15, bgGradient: 'from-green-400 to-teal-500', border: 'border-green-200' },
-  { id: 'pig', icon: '🐷', name: 'Domuzcuk', unlockLevel: 16, bgGradient: 'from-pink-300 to-rose-400', border: 'border-pink-300' },
-  { id: 'cow', icon: '🐮', name: 'İnek', unlockLevel: 17, bgGradient: 'from-stone-200 to-stone-400', border: 'border-stone-300' },
-  { id: 'artist', icon: '🎨', name: 'Sanatçı', unlockLevel: 18, bgGradient: 'from-pink-400 to-rose-500', border: 'border-pink-200' },
-  { id: 'mouse', icon: '🐭', name: 'Fare', unlockLevel: 19, bgGradient: 'from-gray-400 to-gray-600', border: 'border-gray-300' },
-  { id: 'astronaut', icon: '👨‍🚀', name: 'Astronot', unlockLevel: 20, bgGradient: 'from-blue-600 to-blue-900', border: 'border-blue-300' },
-  { id: 'hamster', icon: '🐹', name: 'Hamster', unlockLevel: 21, bgGradient: 'from-orange-200 to-orange-400', border: 'border-orange-200' },
-  { id: 'pilot', icon: '👨‍✈️', name: 'Pilot', unlockLevel: 22, bgGradient: 'from-sky-400 to-sky-600', border: 'border-sky-200' },
-  { id: 'chef', icon: '👨‍🍳', name: 'Şef', unlockLevel: 23, bgGradient: 'from-white to-gray-200', border: 'border-gray-300' },
-  { id: 'firefighter', icon: '👨‍🚒', name: 'İtfaiyeci', unlockLevel: 24, bgGradient: 'from-red-500 to-orange-500', border: 'border-yellow-400' },
-  { id: 'doctor', icon: '👨‍⚕️', name: 'Doktor', unlockLevel: 25, bgGradient: 'from-emerald-400 to-emerald-600', border: 'border-emerald-200' },
-  { id: 'judge', icon: '👨‍⚖️', name: 'Hakim', unlockLevel: 26, bgGradient: 'from-slate-700 to-black', border: 'border-slate-500' },
-  { id: 'mechanic', icon: '👨‍🔧', name: 'Tamirci', unlockLevel: 27, bgGradient: 'from-blue-700 to-blue-900', border: 'border-blue-500' },
-  { id: 'cowboy', icon: '🤠', name: 'Kovboy', unlockLevel: 28, bgGradient: 'from-orange-300 to-amber-600', border: 'border-amber-700' },
+  { id: 'bear', icon: '🐻', image: 'https://8upload.com/image/e18a3a2df098e3a1/bear.png', name: 'Ayı', unlockLevel: 11, bgGradient: 'from-amber-700 to-amber-900', border: 'border-amber-600' },
+  { id: 'detective', icon: '🕵️', image: 'https://8upload.com/image/75da781a118c9f12/detective.png', name: 'Dedektif', unlockLevel: 12, bgGradient: 'from-neutral-600 to-neutral-800', border: 'border-neutral-400' },
+  { id: 'chicken', icon: '🐔', image: 'https://8upload.com/image/5a28e29d0ba881cf/chicken.png', name: 'Tavuk', unlockLevel: 13, bgGradient: 'from-red-100 to-red-300', border: 'border-red-200' },
+  { id: 'frog', icon: '🐸', image: 'https://8upload.com/image/09a004e9aba108e7/frog.png', name: 'Kurbağa', unlockLevel: 14, bgGradient: 'from-green-500 to-green-700', border: 'border-green-400' },
+  { id: 'scientist', icon: '👩‍🔬', image: 'https://8upload.com/image/5558efd2a4ecddd8/scientist.png', name: 'Bilim İnsanı', unlockLevel: 15, bgGradient: 'from-green-400 to-teal-500', border: 'border-green-200' },
+  { id: 'pig', icon: '🐷', image: 'https://8upload.com/image/6cbee484ed8ff99c/pig.png', name: 'Domuzcuk', unlockLevel: 16, bgGradient: 'from-pink-300 to-rose-400', border: 'border-pink-300' },
+  { id: 'cow', icon: '🐮', image: 'https://8upload.com/image/44b46019424664ea/cow.png', name: 'İnek', unlockLevel: 17, bgGradient: 'from-stone-200 to-stone-400', border: 'border-stone-300' },
+  { id: 'artist', icon: '🎨', image: 'https://8upload.com/image/952edf27cde8c38e/artist.png', name: 'Sanatçı', unlockLevel: 18, bgGradient: 'from-pink-400 to-rose-500', border: 'border-pink-200' },
+  { id: 'mouse', icon: '🐭', image: 'https://8upload.com/image/c8e1cda952a18ec5/mouse.png', name: 'Fare', unlockLevel: 19, bgGradient: 'from-gray-400 to-gray-600', border: 'border-gray-300' },
+  { id: 'astronaut', icon: '👨‍🚀', image: 'https://8upload.com/image/f00595de30e32300/astronaut.png', name: 'Astronot', unlockLevel: 20, bgGradient: 'from-blue-600 to-blue-900', border: 'border-blue-300' },
+  { id: 'hamster', icon: '🐹', image: 'https://8upload.com/image/37cd70ce17659561/hamster.png', name: 'Hamster', unlockLevel: 21, bgGradient: 'from-orange-200 to-orange-400', border: 'border-orange-200' },
+  { id: 'pilot', icon: '👨‍✈️', image: 'https://8upload.com/image/af3d26187006c7ef/pilot.png', name: 'Pilot', unlockLevel: 22, bgGradient: 'from-sky-400 to-sky-600', border: 'border-sky-200' },
+  { id: 'chef', icon: '👨‍🍳', image: 'https://8upload.com/image/6892b352cca39efc/chef.png', name: 'Şef', unlockLevel: 23, bgGradient: 'from-white to-gray-200', border: 'border-gray-300' },
+  { id: 'firefighter', icon: '👨‍🚒', image: 'https://8upload.com/image/adb1297b46d3b00e/fireman.png', name: 'İtfaiyeci', unlockLevel: 24, bgGradient: 'from-red-500 to-orange-500', border: 'border-yellow-400' },
+  { id: 'doctor', icon: '👨‍⚕️', image: 'https://8upload.com/image/4749482413688d94/doctor.png', name: 'Doktor', unlockLevel: 25, bgGradient: 'from-emerald-400 to-emerald-600', border: 'border-emerald-200' },
+  { id: 'judge', icon: '👨‍⚖️', image: 'https://8upload.com/image/c7d7ff25ff9a3df1/judge.png', name: 'Hakim', unlockLevel: 26, bgGradient: 'from-slate-700 to-black', border: 'border-slate-500' },
+  { id: 'mechanic', icon: '👨‍🔧', image: 'https://8upload.com/image/ccc0c3f9f78a3937/mechanic.png', name: 'Tamirci', unlockLevel: 27, bgGradient: 'from-blue-700 to-blue-900', border: 'border-blue-500' },
+  { id: 'cowboy', icon: '🤠', image: 'https://8upload.com/image/9e069b8bdd2254b3/cowboy.png', name: 'Kovboy', unlockLevel: 28, bgGradient: 'from-orange-300 to-amber-600', border: 'border-amber-700' },
   { id: 'clown', icon: '🤡', name: 'Palyaço', unlockLevel: 29, bgGradient: 'from-red-400 to-yellow-400', border: 'border-blue-400' },
   { id: 'party_face', icon: '🥳', name: 'Partici', unlockLevel: 30, bgGradient: 'from-purple-400 to-pink-400', border: 'border-purple-300' },
 
   // Level 31-60
   { id: 'superhero', icon: '🦸', name: 'Kahraman', unlockLevel: 35, bgGradient: 'from-blue-500 to-red-500', border: 'border-yellow-400' },
   { id: 'villain', icon: '🦹', name: 'Kötü Adam', unlockLevel: 38, bgGradient: 'from-green-700 to-purple-800', border: 'border-green-500' },
-  { id: 'wizard', icon: '🧙‍♂️', name: 'Büyücü', unlockLevel: 40, bgGradient: 'from-purple-600 to-indigo-800', border: 'border-purple-400' },
+  { id: 'wizard', icon: '🧙‍♂️', image: 'https://8upload.com/image/1b805006c4134236/wizard.png', name: 'Büyücü', unlockLevel: 40, bgGradient: 'from-purple-600 to-indigo-800', border: 'border-purple-400' },
   { id: 'fairy', icon: '🧚', name: 'Peri', unlockLevel: 41, bgGradient: 'from-pink-300 to-green-300', border: 'border-white' },
   { id: 'pirate', icon: '🏴‍☠️', name: 'Korsan', unlockLevel: 42, bgGradient: 'from-red-800 to-black', border: 'border-gray-400' },
   { id: 'robot', icon: '🤖', name: 'Robot', unlockLevel: 45, bgGradient: 'from-gray-300 to-slate-500', border: 'border-gray-200' },
@@ -360,7 +358,7 @@ const generateUnitBadges = (): Badge[] => {
 
 const dynamicBadges = generateUnitBadges();
 
-// BADGES
+// BADGES - USING EMOJIS FOR RELIABILITY
 export const BADGES: Badge[] = [
   { id: 'first_step', name: 'İlk Adım', description: 'İlk kelime kartını inceledin.', icon: '🌱', condition: (s: any) => s.flashcardsViewed >= 1, unlocked: false },
   { id: 'streak_3', name: 'Isınma Turu', description: '3 gün üst üste çalıştın.', icon: '🔥', condition: (s: any) => s.streak >= 3, unlocked: false },
@@ -433,7 +431,9 @@ export const BADGES: Badge[] = [
       const stored = localStorage.getItem('lgs_user_profile');
       if (stored) {
           const p = JSON.parse(stored);
-          return (p.purchasedFrames?.length > 1) || (p.purchasedThemes?.length > 2) || (p.purchasedBackgrounds?.length > 1);
+          const purchasedCount = (p.purchasedFrames?.length || 1) + (p.purchasedThemes?.length || 2) + (p.purchasedBackgrounds?.length || 1);
+          // Default items count as "purchased" in initialization, so we check if count > default count
+          return purchasedCount > 4; 
       }
       return false;
   }, unlocked: false },
@@ -441,7 +441,8 @@ export const BADGES: Badge[] = [
        const stored = localStorage.getItem('lgs_user_profile');
        if (stored) {
            const p = JSON.parse(stored);
-           return (p.purchasedFrames?.length + p.purchasedThemes?.length + (p.purchasedBackgrounds?.length || 0)) >= 7; 
+           const purchasedCount = (p.purchasedFrames?.length || 1) + (p.purchasedThemes?.length || 2) + (p.purchasedBackgrounds?.length || 1);
+           return purchasedCount >= 9; // 4 default + 5 new
        }
        return false;
   }, unlocked: false },

@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Save, Edit2, BarChart2, Trophy, Flame, Star, User, ShoppingBag, Target, CheckCircle, ChevronDown, ChevronUp, LogOut, Trash2 } from 'lucide-react';
 import { getUserProfile, getUserStats, saveUserProfile, getDailyState, UserProfile as IUserProfile, UserStats } from '../services/userService';
@@ -496,7 +493,27 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
         </div>
       </div>
       
-      {showAvatarModal && <AvatarModal onClose={() => setShowAvatarModal(false)} userStats={stats || {flashcardsViewed: 0, quizCorrect: 0, quizWrong: 0, date: '', dailyGoal: 5, xp: 0, level: 1, streak: 0, lastStudyDate: null, badges: [], xpBoostEndTime: 0, lastGoalMetDate: null, viewedWordsToday: [], perfectQuizzes: 0, questsCompleted: 0, totalTimeSpent: 0, completedUnits: [], completedGrades: []}} onUpdate={() => { setProfile(getUserProfile()); if(onProfileUpdate) onProfileUpdate(); }} />}
+      {showAvatarModal && <AvatarModal onClose={() => setShowAvatarModal(false)} userStats={stats || {
+        flashcardsViewed: 0, 
+        quizCorrect: 0, 
+        quizWrong: 0, 
+        date: '', 
+        dailyGoal: 5, 
+        xp: 0, 
+        level: 1, 
+        streak: 0, 
+        lastStudyDate: null, 
+        badges: [], 
+        xpBoostEndTime: 0, 
+        lastGoalMetDate: null, 
+        viewedWordsToday: [], 
+        perfectQuizzes: 0, 
+        questsCompleted: 0, 
+        totalTimeSpent: 0, 
+        completedUnits: [], 
+        completedGrades: [],
+        weekly: { weekId: '', quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, typingHighScore: 0, chainHighScore: 0 }
+    }} onUpdate={() => { setProfile(getUserProfile()); if(onProfileUpdate) onProfileUpdate(); }} />}
       
       {showLeaderboard && (
         <LeaderboardModal 

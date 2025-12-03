@@ -43,11 +43,22 @@ const TypingGame: React.FC<TypingGameProps> = ({ words, onFinish, onBack, onCele
 
   const currentWord = shuffledWords[currentIndex];
 
-  // Helper to create masked sentence
-  const getMaskedSentence = (sentence: string, target: string) => {
-      if (!sentence || !target) return "";
-      const regex = new RegExp(target, 'gi');
-      return sentence.replace(regex, '_____');
+  // Helper to create masked sentence handling suffixes and separated phrases
+  const getMaskedSentence = (sentence: string, targetWord: string) => {
+      if (!sentence || !targetWord) return "";
+      
+      // Clean target word from punctuation for safer matching
+      const cleanTarget = targetWord.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
+      // Break target phrase into stems (e.g., "back up" -> ["back", "up"])
+      const stems = cleanTarget.trim().split(/\s+/);
+      
+      // Create regex: matches stems followed by optional alpha chars (suffixes like -s, -ing, -ed)
+      // We join stems with | to match any part of the phrasal verb if they are separated
+      const patternString = `\\b(?:${stems.join('|')})[a-z]*\\b`;
+      const pattern = new RegExp(patternString, 'gi');
+      
+      // Replace matches with underscore
+      return sentence.replace(pattern, '_____');
   };
 
   const handleCheck = (e?: React.FormEvent) => {
@@ -82,23 +93,25 @@ const TypingGame: React.FC<TypingGameProps> = ({ words, onFinish, onBack, onCele
       setLives(prev => {
           const newLives = prev - 1;
           if (newLives <= 0) {
+              // Game Over
               setTimeout(finishGame, 1000);
           } else {
+              // Continue but show feedback
               setTimeout(() => {
+                  // Only clear input if it was a wrong attempt, keep it if it was a skip (give up) so user sees correct answer
+                  if (input.toLowerCase() !== currentWord.english.toLowerCase()) {
+                       setInput(''); 
+                  }
                   setFeedback(null);
-                  if (feedback === 'wrong') setInput(''); // Clear only if it was a wrong attempt, not skip
-                  if (lives > 1) {
-                       // If skipped (give up), move next. If just wrong, stay (optional, usually typing games let you retry or move. Let's move to next word on skip, retry on wrong but lose life)
-                       // Actually request says: "3 yanlışta veya pasta oyun biter".
-                       // So for skip, we move next. For wrong type, we clear and let retry? Or move next?
-                       // Let's make it strict: Skip -> Next word (-1 life). Wrong type -> Retry (-1 life).
+                  
+                  // If it was a skip (give up), we move to next word automatically
+                  if (input.toLowerCase() === currentWord.english.toLowerCase()) {
+                      nextWord();
+                  } else {
+                      // If just a wrong guess, let user try again or skip manually
+                      inputRef.current?.focus();
                   }
               }, 1000);
-              
-              // If it was a skip (give up), we need to move to next word after delay
-              if (input === currentWord.english) { // Logic hack: handleGiveUp sets input to correct word
-                  setTimeout(nextWord, 1000);
-              }
           }
           return newLives;
       });
@@ -122,10 +135,12 @@ const TypingGame: React.FC<TypingGameProps> = ({ words, onFinish, onBack, onCele
       
       // Only update stats if score > 0
       if (score > 0) {
-          updateStats('quiz_correct', grade, undefined, Math.ceil(score/20)); 
+          // Add to typing leaderboard
           updateGameStats('typing', score);
-          updateQuestProgress('earn_xp', score);
-          updateQuestProgress('play_typing', 1); // New quest type support
+          // Add generic XP
+          updateQuestProgress('earn_xp', Math.floor(score / 2));
+          // Quest progress
+          updateQuestProgress('play_typing', score); 
       }
   };
 
@@ -134,8 +149,8 @@ const TypingGame: React.FC<TypingGameProps> = ({ words, onFinish, onBack, onCele
       setHintUsed(true);
       setScore(s => Math.max(0, s - 2)); 
       const len = currentWord.english.length;
-      if (len <= 2) return;
-      setInput(currentWord.english.charAt(0));
+      if (len <= 1) return;
+      setInput(currentWord.english.substring(0, 2)); // Give first 2 chars
       inputRef.current?.focus();
   };
 
@@ -174,7 +189,7 @@ const TypingGame: React.FC<TypingGameProps> = ({ words, onFinish, onBack, onCele
              
              <button 
                 onClick={finishGame}
-                className="px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-red-200 transition-colors"
+                className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-red-200 transition-colors shadow-sm"
              >
                  <Flag size={14} /> Bitir
              </button>
@@ -190,7 +205,7 @@ const TypingGame: React.FC<TypingGameProps> = ({ words, onFinish, onBack, onCele
                 mood={feedback === 'correct' ? 'happy' : feedback === 'wrong' ? 'sad' : 'neutral'} 
                 size={100} 
                 message={
-                    <span className="italic text-slate-600 dark:text-slate-300">
+                    <span className="italic text-slate-600 dark:text-slate-300 font-medium text-base">
                         "{getMaskedSentence(currentWord.exampleEng, currentWord.english)}"
                     </span>
                 }
