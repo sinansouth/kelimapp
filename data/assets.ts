@@ -1,5 +1,5 @@
 
-import { Avatar, Badge, FrameDef, UnitDef, GradeDef, BackgroundDef } from '../types';
+import { Avatar, Badge, FrameDef, UnitDef, GradeDef, BackgroundDef, ThemeType } from '../types';
 import { 
   BookOpen, GraduationCap, Target, Library, Star, 
   School, Globe, Tv, Sun, Briefcase, Music, Heart, 
@@ -10,9 +10,34 @@ import {
   History, Palette, Microscope, Stethoscope, 
   Laptop, Gavel, Leaf, Plane, ShoppingBag as ShoppingBagIcon, Cpu, Crown,
   Bell, Settings, CircleHelp, Home as HomeIcon, UserCircle, Signal,
-  Gamepad2, Search, Grid3X3, WholeWord
+  Gamepad2, Search, Grid3X3, WholeWord, Moon, Droplets, Sunset, TreePine, Candy, Image, Coffee, Rocket, CloudSnow
 } from 'lucide-react';
 import React from 'react';
+
+// THEME CONFIGURATION
+export const THEME_COLORS: Record<ThemeType, { primary: string, bgMain: string, bgCard: string, textMain: string, textMuted: string, border: string, fontFamily: string }> = {
+    'light': { primary: '#4f46e5', bgMain: '#f8fafc', bgCard: '#ffffff', textMain: '#0f172a', textMuted: '#64748b', border: '#e2e8f0', fontFamily: "'Inter', sans-serif" },
+    'dark': { primary: '#818cf8', bgMain: '#0f172a', bgCard: '#1e293b', textMain: '#f8fafc', textMuted: '#94a3b8', border: '#334155', fontFamily: "'Inter', sans-serif" },
+    'neon': { primary: '#39ff14', bgMain: '#000000', bgCard: '#111111', textMain: '#39ff14', textMuted: '#228b22', border: '#33ff00', fontFamily: "'Inter', sans-serif" },
+    'ocean': { primary: '#0ea5e9', bgMain: '#0c4a6e', bgCard: '#075985', textMain: '#e0f2fe', textMuted: '#7dd3fc', border: '#0369a1', fontFamily: "'Inter', sans-serif" },
+    'sunset': { primary: '#f97316', bgMain: '#431407', bgCard: '#7c2d12', textMain: '#ffedd5', textMuted: '#fdba74', border: '#9a3412', fontFamily: "'Inter', sans-serif" },
+    'forest': { primary: '#22c55e', bgMain: '#052e16', bgCard: '#14532d', textMain: '#dcfce7', textMuted: '#86efac', border: '#15803d', fontFamily: "'Inter', sans-serif" },
+    'royal': { primary: '#fbbf24', bgMain: '#312e81', bgCard: '#4338ca', textMain: '#fef3c7', textMuted: '#ddd6fe', border: '#fbbf24', fontFamily: "'Playfair Display', serif" },
+    'candy': { primary: '#ec4899', bgMain: '#831843', bgCard: '#9d174d', textMain: '#fce7f3', textMuted: '#fbcfe8', border: '#be185d', fontFamily: "'Fredoka', sans-serif" },
+    'cyberpunk': { primary: '#facc15', bgMain: '#18181b', bgCard: '#27272a', textMain: '#facc15', textMuted: '#a1a1aa', border: '#facc15', fontFamily: "'Orbitron', sans-serif" },
+    'coffee': { primary: '#d7ccc8', bgMain: '#3e2723', bgCard: '#4e342e', textMain: '#d7ccc8', textMuted: '#a1887f', border: '#6d4c41', fontFamily: "'Inter', sans-serif" },
+    'galaxy': { primary: '#d8b4fe', bgMain: '#0f172a', bgCard: '#2e1065', textMain: '#e9d5ff', textMuted: '#a855f7', border: '#6b21a8', fontFamily: "'Inter', sans-serif" },
+    'retro': { primary: '#b58900', bgMain: '#fdf6e3', bgCard: '#eee8d5', textMain: '#657b83', textMuted: '#93a1a1', border: '#b58900', fontFamily: "'Courier Prime', monospace" },
+    'matrix': { primary: '#00ff41', bgMain: '#000000', bgCard: '#001100', textMain: '#00ff41', textMuted: '#008F11', border: '#003b00', fontFamily: "'Courier Prime', monospace" },
+    'midnight': { primary: '#94a3b8', bgMain: '#020617', bgCard: '#0f172a', textMain: '#e2e8f0', textMuted: '#64748b', border: '#334155', fontFamily: "'Inter', sans-serif" },
+    'volcano': { primary: '#ef4444', bgMain: '#1a0505', bgCard: '#450a0a', textMain: '#fee2e2', textMuted: '#f87171', border: '#7f1d1d', fontFamily: "'Rubik Burned', system-ui" },
+    'ice': { primary: '#22d3ee', bgMain: '#083344', bgCard: '#164e63', textMain: '#cffafe', textMuted: '#67e8f9', border: '#155e75', fontFamily: "'Inter', sans-serif" },
+    'lavender': { primary: '#c084fc', bgMain: '#2e1065', bgCard: '#4c1d95', textMain: '#ede9fe', textMuted: '#a78bfa', border: '#6d28d9', fontFamily: "'Inter', sans-serif" },
+    'gamer': { primary: '#ef4444', bgMain: '#000000', bgCard: '#111111', textMain: '#ffffff', textMuted: '#9ca3af', border: '#ef4444', fontFamily: "'Russo One', sans-serif" },
+    'luxury': { primary: '#fbbf24', bgMain: '#1a1a1a', bgCard: '#262626', textMain: '#fcfcd4', textMuted: '#a8a29e', border: '#fbbf24', fontFamily: "'Playfair Display', serif" },
+    'comic': { primary: '#000000', bgMain: '#ffffff', bgCard: '#f3f4f6', textMain: '#000000', textMuted: '#4b5563', border: '#000000', fontFamily: "'Bangers', system-ui" },
+    'nature_soft': { primary: '#65a30d', bgMain: '#f0fdf4', bgCard: '#ffffff', textMain: '#14532d', textMuted: '#84cc16', border: '#84cc16', fontFamily: "'Patrick Hand', cursive" },
+};
 
 // UI ICONS
 export const UI_ICONS = {
@@ -435,11 +460,6 @@ export const BADGES: Badge[] = [
   { id: 'fast_learner', name: 'Hız Tutkunu', description: 'Bir günde 100 kelimeye baktın.', icon: '⚡', condition: (s: any) => s.viewedWordsToday.length >= 100, unlocked: false },
   { id: 'dedicated', name: 'Adanmış', description: 'Toplam 5000 XP kazandın.', icon: '🎗️', condition: (s: any) => s.xp >= 5000, unlocked: false },
 
-  // --- Word Chain (Kelime Türetmece) Tiers ---
-  { id: 'chain_rookie', name: 'Kelime Çırağı', description: 'Kelime Türetmece oyununda 50 puan yap.', icon: '🥉', condition: (s: any) => s.weekly.chainHighScore >= 50, unlocked: false },
-  { id: 'chain_master', name: 'Kelime Ustası', description: 'Kelime Türetmece oyununda 200 puan yap.', icon: '🥈', condition: (s: any) => s.weekly.chainHighScore >= 200, unlocked: false },
-  { id: 'chain_legend', name: 'Kelime Efsanesi', description: 'Kelime Türetmece oyununda 500 puan yap.', icon: '👑', condition: (s: any) => s.weekly.chainHighScore >= 500, unlocked: false },
-
   // --- Maze (Labirent) Tiers ---
   { id: 'maze_runner', name: 'Labirent Gezgini', description: 'Labirent oyununda 100 puan topla.', icon: '🏃', condition: (s: any) => s.weekly.mazeHighScore >= 100, unlocked: false },
   { id: 'maze_solver', name: 'Kaşif', description: 'Labirent oyununda 500 puan topla.', icon: '🧭', condition: (s: any) => s.weekly.mazeHighScore >= 500, unlocked: false },
@@ -450,10 +470,6 @@ export const BADGES: Badge[] = [
   { id: 'search_pro', name: 'Dedektif', description: 'Kelime Bulmaca oyununda 300 puan yap.', icon: '🕵️', condition: (s: any) => s.weekly.wordSearchHighScore >= 300, unlocked: false },
   { id: 'search_expert', name: 'Şahin Göz', description: 'Kelime Bulmaca oyununda 600 puan yap.', icon: '🦅', condition: (s: any) => s.weekly.wordSearchHighScore >= 600, unlocked: false },
 
-  // --- Typing Game Badges ---
-  { id: 'typing_knight', name: 'Klavye Şövalyesi', description: 'Yazma oyununda 100 puan al.', icon: '⌨️', condition: (s: any) => s.weekly.typingHighScore >= 100, unlocked: false },
-  { id: 'typing_ninja', name: 'Hızlı Parmaklar', description: 'Yazma oyununda 300 puan al.', icon: '🥷', condition: (s: any) => s.weekly.typingHighScore >= 300, unlocked: false },
-  
   // --- Matching Game Badges ---
   { id: 'matching_pro', name: 'Hafıza Ustası', description: 'Eşleştirme oyununda 200+ puan al.', icon: '🧠', condition: (s: any) => s.weekly.matchingBestTime >= 200, unlocked: false },
   { id: 'matching_eagle', name: 'Keskin Göz', description: 'Eşleştirme oyununda 500+ puan al.', icon: '🦅', condition: (s: any) => s.weekly.matchingBestTime >= 500, unlocked: false },

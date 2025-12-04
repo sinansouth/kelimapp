@@ -1,6 +1,7 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { X, Layers, CheckCircle, Bookmark, Filter, PieChart, BarChart3, Trophy, Lock, Target, Eye, XCircle } from 'lucide-react';
+import { X, Layers, CheckCircle, Bookmark, Filter, PieChart, BarChart3, Trophy, Lock, Target, Eye, Flame, Gamepad2, WholeWord, Search, Grid3X3, Keyboard, Brain, Swords } from 'lucide-react';
 import { getUserStats, getSRSStatus, getMemorizedSet, UserStats } from '../services/userService';
 import { BADGES, UNIT_ASSETS } from '../data/assets';
 import { VOCABULARY } from '../data/vocabulary';
@@ -13,7 +14,7 @@ interface StatsModalProps {
 }
 
 const StatsModal: React.FC<StatsModalProps> = ({ onClose, currentGrade: initialGrade }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'badges'>('stats');
+  const [activeTab, setActiveTab] = useState<'general' | 'learning' | 'games' | 'badges'>('general');
   const [stats, setStats] = useState<UserStats | null>(null);
   const [srsStats, setSrsStats] = useState<{[key:number]: number}>({});
   
@@ -127,6 +128,8 @@ const StatsModal: React.FC<StatsModalProps> = ({ onClose, currentGrade: initialG
       });
   }, [stats]);
 
+  const formatVal = (n: number) => n.toLocaleString();
+
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-2xl sm:rounded-3xl rounded-t-3xl shadow-2xl border overflow-hidden flex flex-col h-[90vh] sm:max-h-[85vh] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300"
@@ -141,39 +144,53 @@ const StatsModal: React.FC<StatsModalProps> = ({ onClose, currentGrade: initialG
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b px-6 gap-6 shrink-0" style={{borderColor: 'var(--color-border)'}}>
-            <button 
-                onClick={() => setActiveTab('stats')}
-                className={`py-4 font-bold text-sm relative transition-colors`}
-                style={{color: activeTab === 'stats' ? 'var(--color-primary)' : 'var(--color-text-muted)'}}
-            >
-                <div className="flex items-center gap-2">
-                    <BarChart3 size={18} /> İstatistikler
-                </div>
-                {activeTab === 'stats' && <div className="absolute bottom-0 left-0 w-full h-1 rounded-t-full" style={{backgroundColor: 'var(--color-primary)'}}></div>}
+        <div className="flex border-b px-2 gap-2 shrink-0 overflow-x-auto no-scrollbar" style={{borderColor: 'var(--color-border)'}}>
+            <button onClick={() => setActiveTab('general')} className={`py-4 px-3 font-bold text-sm relative transition-colors whitespace-nowrap ${activeTab === 'general' ? 'text-indigo-500' : 'text-slate-400'}`}>
+                Genel
+                {activeTab === 'general' && <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo-500 rounded-t-full"></div>}
             </button>
-            <button 
-                onClick={() => setActiveTab('badges')}
-                className={`py-4 font-bold text-sm relative transition-colors`}
-                style={{color: activeTab === 'badges' ? 'orange' : 'var(--color-text-muted)'}}
-            >
-                <div className="flex items-center gap-2">
-                    <Trophy size={18} /> Rozetler
-                </div>
+            <button onClick={() => setActiveTab('learning')} className={`py-4 px-3 font-bold text-sm relative transition-colors whitespace-nowrap ${activeTab === 'learning' ? 'text-green-500' : 'text-slate-400'}`}>
+                Çalışma
+                {activeTab === 'learning' && <div className="absolute bottom-0 left-0 w-full h-1 bg-green-500 rounded-t-full"></div>}
+            </button>
+             <button onClick={() => setActiveTab('games')} className={`py-4 px-3 font-bold text-sm relative transition-colors whitespace-nowrap ${activeTab === 'games' ? 'text-purple-500' : 'text-slate-400'}`}>
+                Oyunlar
+                {activeTab === 'games' && <div className="absolute bottom-0 left-0 w-full h-1 bg-purple-500 rounded-t-full"></div>}
+            </button>
+            <button onClick={() => setActiveTab('badges')} className={`py-4 px-3 font-bold text-sm relative transition-colors whitespace-nowrap ${activeTab === 'badges' ? 'text-orange-500' : 'text-slate-400'}`}>
+                Rozetler
                 {activeTab === 'badges' && <div className="absolute bottom-0 left-0 w-full h-1 bg-orange-500 rounded-t-full"></div>}
             </button>
         </div>
 
         <div className="overflow-y-auto p-4 sm:p-6 custom-scrollbar flex-1" style={{backgroundColor: 'var(--color-bg-main)'}}>
-            {activeTab === 'stats' ? (
-                <div className="space-y-6 sm:space-y-8">
-                     {/* SRS Boxes Stats */}
-                    <div className="p-4 sm:p-5 rounded-3xl border" style={{backgroundColor: 'rgba(var(--color-bg-card-rgb), 0.5)', borderColor: 'var(--color-border)'}}>
+            
+            {/* GENERAL TAB */}
+            {activeTab === 'general' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="p-4 rounded-2xl border text-center flex flex-col items-center gap-2 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                             <Trophy size={24} className="text-yellow-500" />
+                             <span className="text-xs text-slate-500 font-bold uppercase">Toplam XP</span>
+                             <span className="text-xl font-black text-slate-800 dark:text-white">{formatVal(stats?.xp || 0)}</span>
+                        </div>
+                         <div className="p-4 rounded-2xl border text-center flex flex-col items-center gap-2 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                             <Target size={24} className="text-indigo-500" />
+                             <span className="text-xs text-slate-500 font-bold uppercase">Seviye</span>
+                             <span className="text-xl font-black text-slate-800 dark:text-white">{stats?.level || 1}</span>
+                        </div>
+                         <div className="p-4 rounded-2xl border text-center flex flex-col items-center gap-2 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                             <Flame size={24} className="text-orange-500" />
+                             <span className="text-xs text-slate-500 font-bold uppercase">Gün Seri</span>
+                             <span className="text-xl font-black text-slate-800 dark:text-white">{stats?.streak || 0}</span>
+                        </div>
+                    </div>
+
+                    <div className="p-5 rounded-3xl border" style={{backgroundColor: 'rgba(var(--color-bg-card-rgb), 0.5)', borderColor: 'var(--color-border)'}}>
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2 text-sm font-bold" style={{color: 'var(--color-text-main)'}}>
-                                <Layers size={18} className="text-indigo-500" /> Hafıza Kutuları
+                                <Layers size={18} className="text-indigo-500" /> Hafıza Kutuları (SRS)
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-1 rounded-lg border" style={{color: 'var(--color-text-muted)', borderColor: 'var(--color-border)'}}>SRS Sistemi</span>
                         </div>
                         <div className="grid grid-cols-5 gap-2">
                             {[1,2,3,4,5].map(box => (
@@ -188,73 +205,24 @@ const StatsModal: React.FC<StatsModalProps> = ({ onClose, currentGrade: initialG
                             ))}
                         </div>
                     </div>
+                </div>
+            )}
 
-                    {/* Filters */}
-                    <div className="space-y-3">
-                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{color: 'var(--color-text-muted)'}}>
-                            <Filter size={14} /> Filtrele
-                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <select 
-                                value={filterGrade}
-                                onChange={(e) => { 
-                                    setFilterGrade(e.target.value as GradeLevel | 'ALL' | 'GENERAL'); 
-                                    setFilterUnit('ALL'); 
-                                }}
-                                className="w-full p-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                style={{backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)'}}
-                            >
-                                <option value="ALL">Tüm Sınıflar</option>
-                                <optgroup label="İlkokul">
-                                    <option value="2">2. Sınıf</option>
-                                    <option value="3">3. Sınıf</option>
-                                    <option value="4">4. Sınıf</option>
-                                </optgroup>
-                                <optgroup label="Ortaokul">
-                                    <option value="5">5. Sınıf</option>
-                                    <option value="6">6. Sınıf</option>
-                                    <option value="7">7. Sınıf</option>
-                                    <option value="8">8. Sınıf</option>
-                                </optgroup>
-                                <optgroup label="Lise">
-                                    <option value="9">9. Sınıf</option>
-                                    <option value="10">10. Sınıf</option>
-                                    <option value="11">11. Sınıf</option>
-                                    <option value="12">12. Sınıf</option>
-                                </optgroup>
-                                <option value="GENERAL">Genel İngilizce</option>
-                            </select>
-
-                            <select 
-                                value={filterUnit}
-                                onChange={(e) => setFilterUnit(e.target.value)}
-                                disabled={filterGrade === 'ALL'}
-                                className="w-full p-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                style={{backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)'}}
-                            >
-                                <option value="ALL">Tüm Üniteler</option>
-                                {filterGrade !== 'ALL' && filterGrade !== 'GENERAL' && UNIT_ASSETS[filterGrade]?.map(u => (
-                                    !u.id.endsWith('all') && u.id !== 'uAll' && (
-                                        <option key={u.id} value={u.id}>{u.unitNo} - {u.title}</option>
-                                    )
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Activity Stats (Grid) */}
+            {/* LEARNING TAB */}
+            {activeTab === 'learning' && (
+                <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                        {/* Views */}
+                         {/* Views */}
                         <div className="p-4 sm:p-5 rounded-3xl border flex flex-col justify-between h-28 sm:h-32" style={{backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)'}}>
                              <div className="flex justify-between items-start">
                                 <span className="text-[10px] sm:text-xs font-bold uppercase text-blue-500">Bakılan Kart</span>
                                 <Eye size={18} className="text-blue-500" />
                             </div>
                             <div>
-                                <span className="text-2xl sm:text-3xl font-black" style={{color: 'var(--color-text-main)'}}>{stats?.flashcardsViewed || 0}</span>
+                                <span className="text-2xl sm:text-3xl font-black" style={{color: 'var(--color-text-main)'}}>{formatVal(stats?.flashcardsViewed || 0)}</span>
                             </div>
                         </div>
-                        
+
                         {/* Quiz Score */}
                         <div className="p-4 sm:p-5 rounded-3xl border flex flex-col justify-between h-28 sm:h-32" style={{backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)'}}>
                              <div className="flex justify-between items-start">
@@ -283,8 +251,8 @@ const StatsModal: React.FC<StatsModalProps> = ({ onClose, currentGrade: initialG
                                 <CheckCircle size={18} className="text-green-500" />
                             </div>
                             <div>
-                                <span className="text-2xl sm:text-3xl font-black" style={{color: 'var(--color-text-main)'}}>{memorizedCount}</span>
-                                <span className="text-[10px] sm:text-xs font-medium ml-1" style={{color: 'var(--color-text-muted)'}}>/ {totalWords}</span>
+                                <span className="text-2xl sm:text-3xl font-black" style={{color: 'var(--color-text-main)'}}>{formatVal(memorizedCount)}</span>
+                                <span className="text-[10px] sm:text-xs font-medium ml-1" style={{color: 'var(--color-text-muted)'}}>/ {formatVal(totalWords)}</span>
                             </div>
                             <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-2">
                                 <div className="h-full bg-green-500 rounded-full" style={{ width: `${totalWords > 0 ? (memorizedCount / totalWords) * 100 : 0}%` }}></div>
@@ -298,20 +266,46 @@ const StatsModal: React.FC<StatsModalProps> = ({ onClose, currentGrade: initialG
                                 <Bookmark size={18} className="text-orange-500" />
                             </div>
                             <div>
-                                <span className="text-2xl sm:text-3xl font-black" style={{color: 'var(--color-text-main)'}}>{bookmarksCount}</span>
-                            </div>
-                            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-2">
-                                <div className="h-full bg-orange-500 rounded-full" style={{ width: `${totalWords > 0 ? (bookmarksCount / totalWords) * 100 : 0}%` }}></div>
+                                <span className="text-2xl sm:text-3xl font-black" style={{color: 'var(--color-text-main)'}}>{formatVal(bookmarksCount)}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Detailed Breakdown */}
-                    <div>
-                        <div className="flex items-center justify-between mb-4">
-                             <div className="flex items-center gap-2 text-sm font-bold" style={{color: 'var(--color-text-main)'}}>
-                                <PieChart size={18} className="text-teal-500" /> Ünite Detayları
-                             </div>
+                    {/* Detailed Breakdown List */}
+                    <div className="pt-4 border-t" style={{borderColor: 'var(--color-border)'}}>
+                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider mb-3" style={{color: 'var(--color-text-muted)'}}>
+                            <Filter size={14} /> Filtrele
+                         </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                            <select 
+                                value={filterGrade}
+                                onChange={(e) => { 
+                                    setFilterGrade(e.target.value as GradeLevel | 'ALL' | 'GENERAL'); 
+                                    setFilterUnit('ALL'); 
+                                }}
+                                className="w-full p-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                style={{backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)'}}
+                            >
+                                <option value="ALL">Tüm Sınıflar</option>
+                                <optgroup label="İlkokul"><option value="2">2. Sınıf</option><option value="3">3. Sınıf</option><option value="4">4. Sınıf</option></optgroup>
+                                <optgroup label="Ortaokul"><option value="5">5. Sınıf</option><option value="6">6. Sınıf</option><option value="7">7. Sınıf</option><option value="8">8. Sınıf</option></optgroup>
+                                <optgroup label="Lise"><option value="9">9. Sınıf</option><option value="10">10. Sınıf</option><option value="11">11. Sınıf</option><option value="12">12. Sınıf</option></optgroup>
+                                <option value="GENERAL">Genel İngilizce</option>
+                            </select>
+                            <select 
+                                value={filterUnit}
+                                onChange={(e) => setFilterUnit(e.target.value)}
+                                disabled={filterGrade === 'ALL'}
+                                className="w-full p-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
+                                style={{backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)', color: 'var(--color-text-main)'}}
+                            >
+                                <option value="ALL">Tüm Üniteler</option>
+                                {filterGrade !== 'ALL' && filterGrade !== 'GENERAL' && UNIT_ASSETS[filterGrade]?.map(u => (
+                                    !u.id.endsWith('all') && u.id !== 'uAll' && (
+                                        <option key={u.id} value={u.id}>{u.unitNo} - {u.title}</option>
+                                    )
+                                ))}
+                            </select>
                         </div>
                         
                         {unitStats.length > 0 ? (
@@ -336,9 +330,63 @@ const StatsModal: React.FC<StatsModalProps> = ({ onClose, currentGrade: initialG
                             </div>
                         )}
                     </div>
-
                 </div>
-            ) : (
+            )}
+
+            {/* GAMES TAB */}
+            {activeTab === 'games' && (
+                <div className="space-y-4">
+                     <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                         <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center"><Swords size={20} /></div>
+                             <div className="flex flex-col">
+                                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Düello</span>
+                                 <span className="text-[10px] text-slate-500">Toplam Puan / Zafer</span>
+                             </div>
+                         </div>
+                         <div className="text-right">
+                             <div className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formatVal(stats?.duelPoints || 0)} P</div>
+                             <div className="text-xs font-bold text-green-500">{stats?.duelWins || 0} Win</div>
+                         </div>
+                     </div>
+
+                     <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                         <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center"><Grid3X3 size={20} /></div>
+                             <div className="flex flex-col">
+                                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Eşleştirme</span>
+                                 <span className="text-[10px] text-slate-500">En yüksek puan</span>
+                             </div>
+                         </div>
+                         <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formatVal(stats?.weekly.matchingBestTime || 0)}</span>
+                     </div>
+
+                     <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                         <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center"><Gamepad2 size={20} /></div>
+                             <div className="flex flex-col">
+                                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Labirent</span>
+                                 <span className="text-[10px] text-slate-500">En yüksek puan</span>
+                             </div>
+                         </div>
+                         <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formatVal(stats?.weekly.mazeHighScore || 0)}</span>
+                     </div>
+
+                     <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                         <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center"><Search size={20} /></div>
+                             <div className="flex flex-col">
+                                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Bulmaca</span>
+                                 <span className="text-[10px] text-slate-500">En yüksek puan</span>
+                             </div>
+                         </div>
+                         <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formatVal(stats?.weekly.wordSearchHighScore || 0)}</span>
+                     </div>
+                </div>
+            )}
+
+            {/* BADGES TAB */}
+            {activeTab === 'badges' && (
                 <div className="grid grid-cols-2 gap-4 sm:gap-6">
                     {sortedBadges.map((badge) => {
                         const isUnlocked = stats?.badges.includes(badge.id);

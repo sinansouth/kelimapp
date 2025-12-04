@@ -50,9 +50,20 @@ const WordChainGame: React.FC<WordChainGameProps> = ({ unitWords, allWords, onFi
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Helper: Removes non-alphabetic characters from a word (like ? . !) and gets last char
+  const getCleanLastChar = (text: string): string => {
+      const clean = text.replace(/[^a-zA-Z]/g, '').toLowerCase();
+      return clean.slice(-1);
+  };
+  
+  // Helper: Cleans a word for comparison (removes spaces, punctuation, lowercases)
+  const cleanWord = (text: string): string => {
+      return text.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
+
   const startNewGame = () => {
       // Pick a random starting word from the UNIT
-      const startWord = unitWords[Math.floor(Math.random() * unitWords.length)].english.toLocaleLowerCase('en');
+      const startWord = unitWords[Math.floor(Math.random() * unitWords.length)].english;
       
       setMessages([{
           id: Date.now(),
@@ -60,11 +71,12 @@ const WordChainGame: React.FC<WordChainGameProps> = ({ unitWords, allWords, onFi
           sender: 'bot'
       }]);
       
-      const newUsed = new Set([startWord]);
+      const cleanStart = cleanWord(startWord);
+      const newUsed = new Set([cleanStart]);
       setUsedWords(newUsed);
       usedWordsRef.current = newUsed;
       
-      setCurrentLetter(startWord.slice(-1));
+      setCurrentLetter(getCleanLastChar(startWord));
       setScore(0);
       setLives(3);
       setIsGameOver(false);
@@ -77,22 +89,24 @@ const WordChainGame: React.FC<WordChainGameProps> = ({ unitWords, allWords, onFi
       e.preventDefault();
       if (isGameOver || !input.trim()) return;
       
-      const userWord = input.trim().toLocaleLowerCase('en');
+      const userRawInput = input.trim();
+      const userWordClean = cleanWord(userRawInput);
       
       // 1. Check if word starts with correct letter
-      if (userWord.charAt(0) !== currentLetter) {
+      if (userWordClean.charAt(0) !== currentLetter) {
           handleError(`Kelime "${currentLetter.toUpperCase()}" harfiyle başlamalı!`);
           return;
       }
 
       // 2. Check if word was already used (Using Ref for immediate check)
-      if (usedWordsRef.current.has(userWord)) {
+      if (usedWordsRef.current.has(userWordClean)) {
           handleError(`Bu kelime zaten kullanıldı!`);
           return;
       }
 
       // 3. Check if word exists in our dictionary (any unit)
-      const wordExists = allWords.some(w => w.english.toLocaleLowerCase('en') === userWord);
+      // We compare "cleaned" versions of dictionary words against user input
+      const wordExists = allWords.some(w => cleanWord(w.english) === userWordClean);
       
       if (!wordExists) {
            handleError(`Bu kelime sözlüğümüzde yok!`);
@@ -101,11 +115,11 @@ const WordChainGame: React.FC<WordChainGameProps> = ({ unitWords, allWords, onFi
 
       // Valid Move
       playSound('correct');
-      setMessages(prev => [...prev, { id: Date.now(), text: userWord, sender: 'user' }]);
+      setMessages(prev => [...prev, { id: Date.now(), text: userRawInput, sender: 'user' }]);
       
       // Update both state and ref
       setUsedWords(prev => {
-          const next = new Set(prev).add(userWord);
+          const next = new Set(prev).add(userWordClean);
           usedWordsRef.current = next;
           return next;
       });
@@ -118,7 +132,7 @@ const WordChainGame: React.FC<WordChainGameProps> = ({ unitWords, allWords, onFi
       setInput('');
       
       // Bot's Turn
-      const nextLetter = userWord.slice(-1);
+      const nextLetter = getCleanLastChar(userRawInput);
       setTimeout(() => botTurn(nextLetter), 800);
   };
 
@@ -139,30 +153,31 @@ const WordChainGame: React.FC<WordChainGameProps> = ({ unitWords, allWords, onFi
 
   const botTurn = (startChar: string) => {
       // Bot tries to find a word starting with startChar
-      // CRITICAL: Check against usedWordsRef.current to ensure we have the latest list including user's last word
       const usedSet = usedWordsRef.current;
       
       const availableWords = allWords.filter(w => {
-          const wLower = w.english.toLocaleLowerCase('en');
-          return wLower.startsWith(startChar) && !usedSet.has(wLower);
+          const wClean = cleanWord(w.english);
+          return wClean.startsWith(startChar) && !usedSet.has(wClean);
       });
 
       if (availableWords.length > 0) {
           // Pick one (prefer unit words if possible for relevance)
-          const unitMatches = availableWords.filter(w => unitWords.some(uw => uw.english.toLocaleLowerCase('en') === w.english.toLocaleLowerCase('en')));
+          const unitMatches = availableWords.filter(w => unitWords.some(uw => cleanWord(uw.english) === cleanWord(w.english)));
           const pickPool = unitMatches.length > 0 ? unitMatches : availableWords;
-          const pick = pickPool[Math.floor(Math.random() * pickPool.length)].english.toLocaleLowerCase('en');
+          const pickObj = pickPool[Math.floor(Math.random() * pickPool.length)];
+          const pickText = pickObj.english;
 
-          setMessages(prev => [...prev, { id: Date.now(), text: pick, sender: 'bot' }]);
+          setMessages(prev => [...prev, { id: Date.now(), text: pickText, sender: 'bot' }]);
           
           // Update both state and ref
+          const pickClean = cleanWord(pickText);
           setUsedWords(prev => {
-              const next = new Set(prev).add(pick);
+              const next = new Set(prev).add(pickClean);
               usedWordsRef.current = next;
               return next;
           });
 
-          setCurrentLetter(pick.slice(-1));
+          setCurrentLetter(getCleanLastChar(pickText));
           playSound('pop');
       } else {
           // Bot can't find a word! User wins bonus!

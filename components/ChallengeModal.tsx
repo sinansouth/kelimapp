@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
-import { X, Swords, Copy, ArrowRight, Hash, GraduationCap, BookOpen, Settings, Check } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
+import { X, Swords, Copy, ArrowRight, Hash, GraduationCap, BookOpen, Settings, Check, Globe, Lock, Users, UserPlus, Search, User, Clock, History } from 'lucide-react';
 import { playSound } from '../services/soundService';
-import { getChallenge } from '../services/firebase';
-import { WordCard, GradeLevel, UnitDef, QuizDifficulty } from '../types';
+import { getChallenge, getOpenChallenges, getFriends, getAuthInstance, getPastChallenges } from '../services/firebase';
+import { WordCard, GradeLevel, UnitDef, QuizDifficulty, Challenge } from '../types';
 import { VOCABULARY } from '../data/vocabulary';
 import { UNIT_ASSETS } from '../data/assets';
 
@@ -14,10 +15,12 @@ interface ChallengeModalProps {
 }
 
 const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChallenge, onJoinChallenge }) => {
-  const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
+  const [mode, setMode] = useState<'menu' | 'create' | 'join' | 'history'>('menu');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [challengeList, setChallengeList] = useState<Challenge[]>([]);
+  const [historyList, setHistoryList] = useState<Challenge[]>([]);
 
   // Creation States
   const [step, setStep] = useState<number>(1);
@@ -25,6 +28,11 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
   const [selectedUnit, setSelectedUnit] = useState<UnitDef | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<QuizDifficulty>('normal');
   const [selectedCount, setSelectedCount] = useState<number>(10);
+  
+  // New Creation Options
+  const [challengeType, setChallengeType] = useState<'public' | 'friend' | 'private'>('public');
+  const [friends, setFriends] = useState<{uid: string, name: string}[]>([]);
+  const [selectedFriendId, setSelectedFriendId] = useState<string>('');
 
   const grades: GradeLevel[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'A1', 'A2', 'B1', 'B2', 'C1'];
   
@@ -38,15 +46,64 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
 
   const countOptions = [10, 20, 30];
 
-  const handleJoin = async (e: React.FormEvent) => {
+  useEffect(() => {
+      if (mode === 'join') {
+          fetchOpenChallenges();
+      }
+      if (mode === 'history') {
+          fetchHistory();
+      }
+      if (mode === 'create' && step === 3) {
+          // Load friends when reaching step 3
+          const auth = getAuthInstance();
+          if (auth.currentUser) {
+              getFriends(auth.currentUser.uid).then(list => {
+                  setFriends(list.map(f => ({ uid: f.uid, name: f.name })));
+              });
+          }
+      }
+  }, [mode, step]);
+
+  const fetchOpenChallenges = async () => {
+      setLoading(true);
+      const auth = getAuthInstance();
+      if (auth.currentUser) {
+          try {
+              const list = await getOpenChallenges(auth.currentUser.uid);
+              setChallengeList(list);
+          } catch (e) {
+              console.error(e);
+          }
+      }
+      setLoading(false);
+  };
+
+  const fetchHistory = async () => {
+      setLoading(true);
+      const auth = getAuthInstance();
+      if (auth.currentUser) {
+          try {
+              const list = await getPastChallenges(auth.currentUser.uid);
+              setHistoryList(list);
+          } catch (e) {
+              console.error(e);
+          }
+      }
+      setLoading(false);
+  }
+
+  const handleJoinByCode = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!joinCode.trim()) return;
+      joinSpecificChallenge(joinCode.trim());
+  };
 
+  const joinSpecificChallenge = async (cId: string) => {
       setLoading(true);
       setError('');
 
       try {
-          const challenge = await getChallenge(joinCode.trim());
+          const challenge = await getChallenge(cId);
           if (!challenge) {
               setError("Böyle bir düello bulunamadı.");
               playSound('wrong');
@@ -54,7 +111,6 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
               setError("Bu düello zaten tamamlanmış.");
               playSound('wrong');
           } else {
-              // Reconstruct Word List
               let challengeWords: WordCard[] = [];
               if (challenge.unitId && challenge.wordIndices) {
                    let pool: WordCard[] = [];
@@ -63,7 +119,6 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
                    } else if (VOCABULARY[challenge.unitId]) {
                        pool = VOCABULARY[challenge.unitId];
                    } else {
-                        // Fallback: Just use all words
                         pool = Object.values(VOCABULARY).flat();
                    }
                    
@@ -86,11 +141,13 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
 
   const handleCreateSubmit = () => {
       if (selectedGrade && selectedUnit) {
-          onCreateChallenge({
+          (onCreateChallenge as any)({
               grade: selectedGrade,
               unit: selectedUnit,
               difficulty: selectedDifficulty,
-              count: selectedCount
+              count: selectedCount,
+              type: challengeType,
+              targetFriendId: selectedFriendId
           });
       }
   };
@@ -131,55 +188,131 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
                         className="w-full py-5 px-6 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-orange-500 dark:hover:border-orange-500 text-slate-700 dark:text-white rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-between group"
                     >
                         <div className="text-left">
-                            <div className="text-lg font-black">Koda Katıl</div>
-                            <div className="text-xs text-slate-500 font-medium mt-1">Arkadaşının kodunu gir</div>
+                            <div className="text-lg font-black">Düelloya Katıl</div>
+                            <div className="text-xs text-slate-500 font-medium mt-1">Açık davetleri gör</div>
                         </div>
                         <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-400 group-hover:text-orange-500 transition-colors">
                              <Hash size={20} />
                         </div>
                     </button>
+                    
+                    <button 
+                        onClick={() => setMode('history')}
+                        className="w-full py-4 px-6 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2 group"
+                    >
+                        <History size={18} /> Geçmiş Düellolar
+                    </button>
                 </div>
             ) : mode === 'join' ? (
-                <form onSubmit={handleJoin} className="space-y-6">
-                    <div className="text-center">
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Düello Kodunu Gir</h3>
-                        <p className="text-xs text-slate-500">Arkadaşının paylaştığı kodu buraya yapıştır.</p>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-slate-800 dark:text-white">Aktif Düellolar</h3>
+                        <button onClick={fetchOpenChallenges} className="text-xs text-indigo-500 font-bold hover:underline">Yenile</button>
                     </div>
-
-                    <div>
-                        <input 
-                            type="text" 
-                            value={joinCode}
-                            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                            placeholder="Örn: A1B2C3"
-                            className="w-full p-4 text-center text-3xl font-black tracking-widest uppercase bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 focus:border-orange-500 rounded-2xl outline-none transition-all dark:text-white placeholder:text-slate-300"
-                            autoFocus
-                        />
-                    </div>
-
-                    {error && (
-                        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-bold text-center animate-pulse">
-                            {error}
+                    
+                    {loading ? (
+                        <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
+                    ) : challengeList.length > 0 ? (
+                        <div className="space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-1">
+                            {challengeList.map(c => (
+                                <button 
+                                    key={c.id}
+                                    onClick={() => joinSpecificChallenge(c.id)}
+                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-orange-500 bg-slate-50 dark:bg-slate-800/50 text-left transition-all group"
+                                >
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="font-bold text-sm text-slate-800 dark:text-white">{c.creatorName}</span>
+                                        <span className="text-xs font-black text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-0.5 rounded">{c.creatorScore}%</span>
+                                    </div>
+                                    <div className="flex justify-between text-[10px] text-slate-500">
+                                         <span className="flex items-center gap-1">
+                                             {c.type === 'friend' ? <User size={10} /> : <Globe size={10} />}
+                                             {c.type === 'friend' ? 'Sana Özel' : 'Herkese Açık'}
+                                         </span>
+                                         <span className="flex items-center gap-1">
+                                             <Clock size={10} />
+                                             {Math.floor((Date.now() - c.createdAt) / 60000)} dk önce
+                                         </span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+                            Şu an açık düello yok.
                         </div>
                     )}
 
-                    <div className="flex gap-3">
-                        <button 
-                            type="button" 
-                            onClick={() => { setMode('menu'); setError(''); setJoinCode(''); }}
-                            className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
-                        >
-                            Geri
-                        </button>
-                        <button 
-                            type="submit" 
-                            disabled={loading || !joinCode}
-                            className="flex-[2] py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-orange-200 dark:shadow-none transition-all active:scale-95"
-                        >
-                            {loading ? 'Aranıyor...' : 'Katıl'}
-                        </button>
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-2 text-center">Veya Kod ile Katıl</p>
+                        <form onSubmit={handleJoinByCode} className="flex gap-2">
+                            <input 
+                                type="text" 
+                                value={joinCode}
+                                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                                placeholder="KOD"
+                                className="flex-1 p-3 text-center font-bold uppercase bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-orange-500"
+                            />
+                            <button 
+                                type="submit" 
+                                disabled={!joinCode}
+                                className="px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold disabled:opacity-50"
+                            >
+                                <ArrowRight size={20} />
+                            </button>
+                        </form>
+                        {error && <p className="text-xs text-red-500 font-bold mt-2 text-center">{error}</p>}
                     </div>
-                </form>
+
+                    <button onClick={() => setMode('menu')} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl">Geri</button>
+                </div>
+            ) : mode === 'history' ? (
+                 <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-bold text-slate-800 dark:text-white">Geçmiş Düellolar</h3>
+                        <button onClick={fetchHistory} className="text-xs text-indigo-500 font-bold hover:underline">Yenile</button>
+                    </div>
+
+                    {loading ? (
+                         <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
+                    ) : historyList.length > 0 ? (
+                         <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
+                             {historyList.map(c => {
+                                 const auth = getAuthInstance();
+                                 const myUid = auth.currentUser?.uid;
+                                 const isCreator = c.creatorId === myUid;
+                                 const opponentName = isCreator ? (c.opponentName || 'Rakip') : c.creatorName;
+                                 const myScore = isCreator ? c.creatorScore : c.opponentScore;
+                                 const oppScore = isCreator ? c.opponentScore : c.creatorScore;
+                                 
+                                 let resultColor = 'text-slate-500';
+                                 if (c.winnerId === 'tie') resultColor = 'text-yellow-500';
+                                 else if (c.winnerId === myUid) resultColor = 'text-green-500';
+                                 else if (c.winnerId && c.winnerId !== 'tie') resultColor = 'text-red-500';
+
+                                 return (
+                                     <div key={c.id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex justify-between items-center">
+                                         <div>
+                                             <div className="text-xs text-slate-400 mb-1">{new Date(c.createdAt).toLocaleDateString()}</div>
+                                             <div className="font-bold text-sm text-slate-800 dark:text-white">vs {opponentName}</div>
+                                         </div>
+                                         <div className="text-right">
+                                             <div className={`font-black text-lg ${resultColor}`}>
+                                                 {myScore}% - {oppScore}%
+                                             </div>
+                                             <div className="text-[10px] text-slate-400 uppercase font-bold">
+                                                 {c.winnerId === 'tie' ? 'Berabere' : (c.winnerId === myUid ? 'Kazandın' : 'Kaybettin')}
+                                             </div>
+                                         </div>
+                                     </div>
+                                 )
+                             })}
+                         </div>
+                    ) : (
+                        <div className="text-center py-10 text-slate-400 text-sm">Henüz tamamlanmış düellon yok.</div>
+                    )}
+                    <button onClick={() => setMode('menu')} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl mt-4">Geri</button>
+                 </div>
             ) : (
                 // CREATE MODE STEPS
                 <div className="space-y-4">
@@ -231,12 +364,44 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
 
                     {step === 3 && (
                         <>
-                            <div className="flex items-center gap-2 mb-4">
-                                <Settings className="text-indigo-500" size={20} />
-                                <h3 className="font-bold text-slate-800 dark:text-white">Ayarlar</h3>
-                            </div>
+                            <div className="space-y-6">
+                                {/* Challenge Type */}
+                                <div>
+                                     <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Düello Tipi</label>
+                                     <div className="grid grid-cols-3 gap-2">
+                                         <button onClick={() => setChallengeType('public')} className={`p-2 rounded-xl border-2 flex flex-col items-center gap-1 text-xs font-bold transition-all ${challengeType === 'public' ? 'border-green-500 bg-green-50 text-green-600' : 'border-slate-200 text-slate-500'}`}>
+                                             <Globe size={20} /> Herkese Açık
+                                         </button>
+                                         <button onClick={() => setChallengeType('friend')} className={`p-2 rounded-xl border-2 flex flex-col items-center gap-1 text-xs font-bold transition-all ${challengeType === 'friend' ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-500'}`}>
+                                             <UserPlus size={20} /> Arkadaşla
+                                         </button>
+                                         <button onClick={() => setChallengeType('private')} className={`p-2 rounded-xl border-2 flex flex-col items-center gap-1 text-xs font-bold transition-all ${challengeType === 'private' ? 'border-purple-500 bg-purple-50 text-purple-600' : 'border-slate-200 text-slate-500'}`}>
+                                             <Lock size={20} /> Gizli (Kod)
+                                         </button>
+                                     </div>
+                                </div>
 
-                            <div className="space-y-4">
+                                {/* Friend Selector (If Type is Friend) */}
+                                {challengeType === 'friend' && (
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Arkadaş Seç</label>
+                                        {friends.length > 0 ? (
+                                            <select 
+                                                value={selectedFriendId}
+                                                onChange={(e) => setSelectedFriendId(e.target.value)}
+                                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-indigo-500 text-sm font-bold"
+                                            >
+                                                <option value="">Bir arkadaş seç...</option>
+                                                {friends.map(f => (
+                                                    <option key={f.uid} value={f.uid}>{f.name}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div className="text-xs text-red-500 text-center p-2 bg-red-50 rounded-lg">Henüz arkadaşın yok. Profilinden ekle.</div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Zorluk (Süre)</label>
                                     <div className="flex flex-wrap gap-2">
@@ -270,7 +435,11 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
 
                             <div className="flex gap-3 mt-8">
                                 <button onClick={() => { setStep(2); setSelectedUnit(null); }} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl">Geri</button>
-                                <button onClick={handleCreateSubmit} className="flex-[2] py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-2">
+                                <button 
+                                    onClick={handleCreateSubmit} 
+                                    disabled={challengeType === 'friend' && !selectedFriendId}
+                                    className="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"
+                                >
                                     <Check size={18} /> Oluştur
                                 </button>
                             </div>

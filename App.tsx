@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge } from './types';
 import { VOCABULARY } from './data/vocabulary';
 import TopicSelector from './components/TopicSelector';
-import { UNIT_ASSETS, UI_ICONS, AVATARS, FRAMES, BACKGROUNDS, BADGES } from './data/assets';
+import { UNIT_ASSETS, UI_ICONS, AVATARS, FRAMES, BACKGROUNDS, BADGES, THEME_COLORS } from './data/assets';
 import FlashcardDeck from './components/FlashcardDeck';
 import Quiz from './components/Quiz';
 import Profile from './components/Profile';
@@ -24,42 +24,35 @@ import OnboardingModal from './components/OnboardingModal';
 import FeedbackModal from './components/FeedbackModal';
 import AdminModal from './components/AdminModal'; 
 import InstallPromptModal from './components/InstallPromptModal';
-import OnboardingTutorial from './components/OnboardingTutorial';
 import ChallengeModal from './components/ChallengeModal';
+import UserProfileModal from './components/UserProfileModal';
+import CustomAlert, { AlertType } from './components/CustomAlert'; 
 import { ChevronLeft, Zap, Trophy, User, Swords } from 'lucide-react';
-import { getUserProfile, getTheme, saveTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, clearLocalUserData, UserStats } from './services/userService';
-import { getAuthInstance, syncLocalToCloud, subscribeToUserChanges, syncData } from './services/firebase'; 
+import { getUserProfile, getTheme, saveTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, clearLocalUserData, UserStats, hasSeenTutorial, markTutorialAsSeen } from './services/userService';
+import { getAuthInstance, syncLocalToCloud, subscribeToUserChanges, syncData, getOpenChallenges } from './services/firebase'; 
 import { ANNOUNCEMENTS } from './data/announcements';
 import { playSound } from './services/soundService';
 import { APP_CONFIG } from './config/appConfig';
-// Capacitor Imports
 import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import { onAuthStateChanged } from 'firebase/auth';
 import MatchingGame from './components/MatchingGame'; 
-import TypingGame from './components/TypingGame'; 
-import WordChainGame from './components/WordChainGame'; 
 import MazeGame from './components/MazeGame'; 
 import WordSearchGame from './components/WordSearchGame'; 
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
+  // Navigation History Stack
+  const [history, setHistory] = useState<AppMode[]>([]);
+
   const [currentTheme, setCurrentTheme] = useState<ThemeType>('dark');
   
   const [userStats, setUserStats] = useState<UserStats>(getUserStats());
 
-  const [showSettings, setShowSettings] = useState(false);
-  const [showSRSInfo, setShowSRSInfo] = useState(false);
-  const [showMarket, setShowMarket] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-  const [showGradeSelection, setShowGradeSelection] = useState(false);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false); 
-  const [showAdminModal, setShowAdminModal] = useState(false); 
-  const [showTutorial, setShowTutorial] = useState(false);
-  const [showAvatarModal, setShowAvatarModal] = useState(false); 
-  const [showChallengeModal, setShowChallengeModal] = useState(false);
+  // Modals State
+  const [activeModal, setActiveModal] = useState<'settings' | 'srs' | 'market' | 'auth' | 'grade' | 'feedback' | 'admin' | 'avatar' | 'challenge' | null>(null);
+  const [authInitialView, setAuthInitialView] = useState<'login' | 'register'>('login');
 
   const [availableGradesForReview, setAvailableGradesForReview] = useState<string[]>([]);
   const [topicTitle, setTopicTitle] = useState<string>('');
@@ -82,7 +75,7 @@ const App: React.FC = () => {
   } | null>(null);
   
   // Challenge Props for Quiz
-  const [challengeState, setChallengeState] = useState<{ mode: 'create' | 'join', data?: Challenge, unitId?: string } | null>(null);
+  const [challengeState, setChallengeState] = useState<{ mode: 'create' | 'join', data?: Challenge, unitId?: string, challengeType?: 'public'|'private'|'friend', targetFriendId?: string } | null>(null);
 
   const lastQuizConfig = useRef<{count: number, difficulty: QuizDifficulty, originalWords: WordCard[], allDistractors: WordCard[]} | null>(null);
   
@@ -93,56 +86,47 @@ const App: React.FC = () => {
   const [celebration, setCelebration] = useState<{ show: boolean; message: string; type: 'unit' | 'quiz' | 'goal' } | null>(null);
   const [newBadge, setNewBadge] = useState<Badge | null>(null);
   const [hasUnreadAnnouncements, setHasUnreadAnnouncements] = useState(false);
+  const [hasPendingDuel, setHasPendingDuel] = useState(false);
 
   const [isBoostActive, setIsBoostActive] = useState(false);
   const [boostTimeLeft, setBoostTimeLeft] = useState('');
   
   const [headerProfile, setHeaderProfile] = useState(getUserProfile());
 
+  // Custom Alert State
+  const [alertState, setAlertState] = useState<{ visible: boolean; title: string; message: string; type: AlertType; onConfirm?: () => void }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+  
+  // View Profile Modal
+  const [viewProfileId, setViewProfileId] = useState<string | null>(null);
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info', onConfirm?: () => void) => {
+      setAlertState({ visible: true, title, message, type, onConfirm });
+  };
+
   const refreshGlobalState = () => {
       setUserStats(getUserStats());
       setHeaderProfile(getUserProfile());
   };
+  
+  const checkForDuels = async () => {
+      const auth = getAuthInstance();
+      if (auth?.currentUser) {
+          try {
+              const challenges = await getOpenChallenges(auth.currentUser.uid);
+              setHasPendingDuel(challenges.length > 0);
+          } catch (e) {
+              console.error("Duel check error", e);
+          }
+      }
+  };
 
   useEffect(() => {
-    const preloadImages = () => {
-      const imagesToPreload: string[] = [
-        'https://8upload.com/image/1641107f2693dc1d/WAIT.gif',
-        'https://8upload.com/image/596771d7c98774d8/HAPPY.gif',
-        'https://8upload.com/image/53ce9b7a4f38eefa/SAD.gif',
-        'https://8upload.com/image/24fff6d1ca0ec801/Gemini_Generated_Image_1ri1941ri1941ri1.png'
-      ];
-
-      AVATARS.forEach(a => {
-          if (a.image) imagesToPreload.push(a.image);
-          else if (a.icon && a.icon.startsWith('http')) imagesToPreload.push(a.icon);
-      });
-
-      BADGES.forEach(b => {
-          if (b.image) imagesToPreload.push(b.image);
-          else if (b.icon && b.icon.startsWith('http')) imagesToPreload.push(b.icon);
-      });
-
-      FRAMES.forEach(f => {
-          if (f.image) imagesToPreload.push(f.image);
-      });
-
-      BACKGROUNDS.forEach(b => {
-          if (b.image) imagesToPreload.push(b.image);
-      });
-      
-      Object.values(UNIT_ASSETS).flat().forEach(u => {
-          if (u.image) imagesToPreload.push(u.image);
-      });
-
-      const uniqueImages = [...new Set(imagesToPreload)];
-
-      uniqueImages.forEach(src => {
-          const img = new Image();
-          img.src = src;
-      });
-    };
-
+    const preloadImages = () => { /* ... */ };
     setTimeout(preloadImages, 2000);
   }, []);
 
@@ -158,8 +142,9 @@ const App: React.FC = () => {
   }, []);
 
   const applyTheme = (theme: ThemeType) => {
-      document.documentElement.classList.remove('dark');
-      if (theme === 'light' || theme === 'retro' || theme === 'comic' || theme === 'nature_soft') {
+      // 1. Handle Dark Mode Class for Tailwind
+      const lightThemes = ['light', 'retro', 'comic', 'nature_soft'];
+      if (lightThemes.includes(theme)) {
           document.documentElement.classList.remove('dark');
       } else {
           document.documentElement.classList.add('dark');
@@ -167,50 +152,63 @@ const App: React.FC = () => {
       setCurrentTheme(theme);
   };
 
+  // Dynamic Theme CSS Variables Application
+  useEffect(() => {
+      const currentThemeColors = THEME_COLORS[currentTheme] || THEME_COLORS.dark;
+      const root = document.documentElement;
+      
+      // RGB Helpers
+      const hexToRgb = (hex: string) => {
+          const r = parseInt(hex.slice(1,3), 16);
+          const g = parseInt(hex.slice(3,5), 16);
+          const b = parseInt(hex.slice(5,7), 16);
+          return `${r}, ${g}, ${b}`;
+      };
+
+      root.style.setProperty('--color-primary', currentThemeColors.primary);
+      root.style.setProperty('--color-bg-main', currentThemeColors.bgMain);
+      root.style.setProperty('--color-bg-card', currentThemeColors.bgCard);
+      root.style.setProperty('--color-text-main', currentThemeColors.textMain);
+      root.style.setProperty('--color-text-muted', currentThemeColors.textMuted);
+      root.style.setProperty('--color-border', currentThemeColors.border);
+      
+      root.style.setProperty('--color-bg-card-rgb', hexToRgb(currentThemeColors.bgCard));
+      root.style.setProperty('--color-primary-rgb', hexToRgb(currentThemeColors.primary));
+  }, [currentTheme]);
+
   useEffect(() => {
       const auth = getAuthInstance();
       let unsubscribeSnapshot: (() => void) | undefined;
 
-      // Initialize theme
       const currentSettings = getAppSettings();
       applyTheme(currentSettings.theme);
+
+      const localProfile = getUserProfile();
 
       if (auth) {
           const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
               if (!user) {
-                  // If no user logged in, trigger Auth Modal
-                  const localProfile = getUserProfile();
                   if (!localProfile.name) {
-                       setShowAuthModal(true);
+                       setAuthInitialView('login');
+                       setActiveModal('auth');
                   }
                   if (unsubscribeSnapshot) {
                       unsubscribeSnapshot();
                       unsubscribeSnapshot = undefined;
                   }
               } else {
-                  const lastUid = localStorage.getItem('lgs_last_uid');
-                  if (lastUid && lastUid !== user.uid) {
-                      // New user logged in, clear previous local data
-                      clearLocalUserData();
-                  }
+                  // Check duels
+                  checkForDuels();
+                  
                   localStorage.setItem('lgs_last_uid', user.uid);
-
-                  if (navigator.onLine) {
-                      await syncData(user.uid);
-                  }
 
                   refreshGlobalState();
                   
-                  // Re-apply theme in case user data has different theme
                   const updatedSettings = getAppSettings();
                   applyTheme(updatedSettings.theme);
                   
                   if (navigator.onLine) {
-                           unsubscribeSnapshot = subscribeToUserChanges(user.uid, () => {
-                               refreshGlobalState();
-                               const newestSettings = getAppSettings();
-                               applyTheme(newestSettings.theme);
-                           });
+                       // Background sync logic is in firebase.ts
                   }
               }
           });
@@ -220,118 +218,34 @@ const App: React.FC = () => {
               if (unsubscribeSnapshot) unsubscribeSnapshot();
           };
       }
-      // Note: If auth is not available (e.g. initialization failed), we still allow app to run but AuthModal might pop up if local profile missing.
   }, []);
 
   useEffect(() => {
-      const handleVisibilityChange = async () => {
-          if (document.visibilityState === 'visible') {
-              const now = Date.now();
-              const hoursSinceLastActive = (now - lastActiveTime.current) / (1000 * 60 * 60);
-
-              if (hoursSinceLastActive > 3) {
-                  window.location.reload();
-                  return;
-              }
-
-              const auth = getAuthInstance();
-              const user = auth?.currentUser;
-              if (user && navigator.onLine) {
-                  await syncData(user.uid);
+      const handleVisibilityChange = async () => { 
+        if (document.hidden) {
+             // Background
+        } else {
+             // Foreground
+             const now = Date.now();
+             if (now - lastActiveTime.current > 1000 * 60 * 5) { // 5 minutes
                   refreshGlobalState();
-                  const currentSettings = getAppSettings();
-                  applyTheme(currentSettings.theme);
-              }
-              
-              lastActiveTime.current = now;
-          } else {
-              lastActiveTime.current = Date.now();
-          }
+                  checkForDuels(); // Re-check duels
+                  const auth = getAuthInstance();
+                  if (auth?.currentUser && navigator.onLine) {
+                      await syncData(auth.currentUser.uid);
+                  }
+             }
+             lastActiveTime.current = now;
+        }
       };
-
       document.addEventListener("visibilitychange", handleVisibilityChange);
-      return () => {
-          document.removeEventListener("visibilitychange", handleVisibilityChange);
-      };
+      return () => { document.removeEventListener("visibilitychange", handleVisibilityChange); };
   }, []);
 
 
   useEffect(() => {
       window.history.pushState({ appState: 'root' }, '', window.location.href);
   }, []);
-
-  useEffect(() => {
-      if (Capacitor.isNativePlatform()) {
-          const configureStatusBar = async () => {
-              try {
-                  await StatusBar.setStyle({ style: currentTheme === 'light' ? Style.Light : Style.Dark });
-                  if (Capacitor.getPlatform() === 'android') {
-                      await StatusBar.setBackgroundColor({ color: currentTheme === 'light' ? '#f8fafc' : '#0f172a' });
-                  }
-              } catch (e) {
-                  console.log("Status bar not supported in this environment");
-              }
-          };
-          configureStatusBar();
-      }
-  }, [currentTheme]);
-
-  useEffect(() => {
-      const timeInterval = setInterval(() => {
-          const earnedBadges = updateTimeSpent(1);
-          if (earnedBadges.length > 0) {
-              earnedBadges.forEach(b => handleBadgeUnlock(b));
-          }
-      }, 60000);
-
-      return () => clearInterval(timeInterval);
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const body = document.body;
-    
-    body.className = body.className.replace(/theme-\S+/g, '');
-    body.classList.add(`theme-${currentTheme}`);
-
-    let primary = '#4f46e5'; 
-    let bgMain = '#0f172a'; 
-    let bgCard = '#1e293b'; 
-    let textMain = '#f8fafc'; 
-    let textMuted = '#94a3b8'; 
-    let border = '#334155'; 
-
-    switch (currentTheme) {
-        case 'light': primary = '#4f46e5'; bgMain = '#f8fafc'; bgCard = '#ffffff'; textMain = '#0f172a'; textMuted = '#64748b'; border = '#e2e8f0'; break;
-        case 'neon': primary = '#33ff00'; bgMain = '#000000'; bgCard = '#111111'; textMain = '#33ff00'; textMuted = '#00cc00'; border = '#33ff00'; break;
-        case 'ocean': primary = '#0ea5e9'; bgMain = '#0c4a6e'; bgCard = '#075985'; textMain = '#e0f2fe'; textMuted = '#7dd3fc'; border = '#0369a1'; break;
-        case 'sunset': primary = '#f97316'; bgMain = '#431407'; bgCard = '#7c2d12'; textMain = '#ffedd5'; textMuted = '#fdba74'; border = '#9a3412'; break;
-        case 'forest': primary = '#22c55e'; bgMain = '#052e16'; bgCard = '#14532d'; textMain = '#dcfce7'; textMuted = '#86efac'; border = '#15803d'; break;
-        case 'royal': primary = '#fbbf24'; bgMain = '#312e81'; bgCard = '#4338ca'; textMain = '#fef3c7'; textMuted = '#fde68a'; border = '#fbbf24'; break;
-        case 'candy': primary = '#f472b6'; bgMain = '#831843'; bgCard = '#9d174d'; textMain = '#fce7f3'; textMuted = '#fbcfe8'; border = '#be185d'; break;
-        case 'cyberpunk': primary = '#facc15'; bgMain = '#18181b'; bgCard = '#27272a'; textMain = '#facc15'; textMuted = '#06b6d4'; border = '#facc15'; break;
-        case 'coffee': primary = '#d7ccc8'; bgMain = '#3e2723'; bgCard = '#4e342e'; textMain = '#d7ccc8'; textMuted = '#a1887f'; border = '#6d4c41'; break;
-        case 'galaxy': primary = '#c084fc'; bgMain = '#0f172a'; bgCard = '#1e1b4b'; textMain = '#e9d5ff'; textMuted = '#a855f7'; border = '#6b21a8'; break;
-        case 'retro': primary = '#d33682'; bgMain = '#fdf6e3'; bgCard = '#eee8d5'; textMain = '#657b83'; textMuted = '#93a1a1'; border = '#b58900'; break;
-        case 'matrix': primary = '#00ff41'; bgMain = '#000000'; bgCard = '#001100'; textMain = '#00ff41'; textMuted = '#008f11'; border = '#003b00'; break;
-        case 'midnight': primary = '#6366f1'; bgMain = '#020617'; bgCard = '#1e293b'; textMain = '#e2e8f0'; textMuted = '#94a3b8'; border = '#334155'; break;
-        case 'volcano': primary = '#ef4444'; bgMain = '#1a0505'; bgCard = '#2b0b0b'; textMain = '#fee2e2'; textMuted = '#fca5a5'; border = '#7f1d1d'; break;
-        case 'ice': primary = '#06b6d4'; bgMain = '#083344'; bgCard = '#164e63'; textMain = '#cffafe'; textMuted = '#67e8f9'; border = '#155e75'; break;
-        case 'lavender': primary = '#a78bfa'; bgMain = '#2e1065'; bgCard = '#4c1d95'; textMain = '#ede9fe'; textMuted = '#c4b5fd'; border = '#6d28d9'; break;
-        case 'gamer': primary = '#ef4444'; bgMain = '#000000'; bgCard = '#111111'; textMain = '#ffffff'; textMuted = '#6b7280'; border = '#ef4444'; break;
-        case 'luxury': primary = '#fbbf24'; bgMain = '#1a1a1a'; bgCard = '#262626'; textMain = '#fcfcd4'; textMuted = '#a3a3a3'; border = '#fbbf24'; break;
-        case 'comic': primary = '#3b82f6'; bgMain = '#ffffff'; bgCard = '#f3f4f6'; textMain = '#000000'; textMuted = '#4b5563'; border = '#000000'; break;
-        case 'nature_soft': primary = '#84cc16'; bgMain = '#f0fdf4'; bgCard = '#dcfce7'; textMain = '#14532d'; textMuted = '#166534'; border = '#84cc16'; break;
-    }
-    
-    root.style.setProperty('--color-primary', primary);
-    root.style.setProperty('--color-bg-main', bgMain);
-    root.style.setProperty('--color-bg-card', bgCard);
-    root.style.setProperty('--color-text-main', textMain);
-    root.style.setProperty('--color-text-muted', textMuted);
-    root.style.setProperty('--color-border', border);
-
-  }, [currentTheme]);
 
   useEffect(() => {
       const checkBoost = () => {
@@ -363,16 +277,15 @@ const App: React.FC = () => {
         return;
     }
     
-    // Check for existing profile
     const localProfile = getUserProfile();
     if (!localProfile.name) {
-        // If no local profile, show auth modal (which handles registration)
-        setShowAuthModal(true);
+        setAuthInitialView('login');
+        setActiveModal('auth');
     } else {
-        // If profile exists, check tutorial
-        const tutorialSeen = localStorage.getItem('tutorial_seen');
-        if (!tutorialSeen) {
-            setShowTutorial(true);
+        // Check tutorial only if profile exists (logged in or guest)
+        if (!hasSeenTutorial()) {
+            changeMode(AppMode.INFO);
+            markTutorialAsSeen();
         }
     }
 
@@ -386,54 +299,81 @@ const App: React.FC = () => {
     refreshGlobalState();
   }, [applyUserProfileGrade]);
 
-  const closeModalOrGoBack = useCallback(() => {
-      if (showAuthModal) { 
-          const userProfile = getUserProfile();
-          if (!userProfile.name) {
-               // Mandatory login/reg
-               return false; 
-          }
-          setShowAuthModal(false); return true; 
+  // --- NAVIGATION LOGIC ---
+
+  const changeMode = (newMode: AppMode) => {
+      setHistory(prev => [...prev, mode]);
+      setMode(newMode);
+  };
+
+  const goBack = useCallback(() => {
+      if (viewProfileId) {
+          setViewProfileId(null);
+          return true;
       }
-      if (showOnboardingModal) {
-          const userProfile = getUserProfile();
-          if (userProfile.name) {
-             setShowOnboardingModal(false);
-             return true;
-          }
-          return false; // Mandatory
-      }
-      if (showSettings) { setShowSettings(false); return true; }
-      if (showAdminModal) { setShowAdminModal(false); return true; }
-      if (showSRSInfo) { setShowSRSInfo(false); return true; }
-      if (showMarket) { setShowMarket(false); return true; }
-      if (showGradeSelection) { setShowGradeSelection(false); return true; }
-      if (showFeedbackModal) { setShowFeedbackModal(false); return true; }
-      if (pendingQuizConfig) { setPendingQuizConfig(null); return true; }
-      if (showTutorial) { setShowTutorial(false); localStorage.setItem('tutorial_seen', 'true'); return true; }
-      if (showAvatarModal) { setShowAvatarModal(false); return true; }
-      if (showChallengeModal) { setShowChallengeModal(false); return true; }
       
+      if (activeModal) {
+          if (activeModal === 'auth') {
+              const userProfile = getUserProfile();
+              if (!userProfile.name) return false; 
+          }
+          
+          setActiveModal(null);
+          return true;
+      }
+
+      if (pendingQuizConfig) {
+          setPendingQuizConfig(null);
+          return true;
+      }
+      
+      // HOME LEVEL NAVIGATION LOGIC
+      // Priority: Unit -> Mode -> Grade -> Category -> Exit
+      if (mode === AppMode.HOME) {
+          if (selectedUnit) { 
+              setSelectedUnit(null); 
+              return true; 
+          }
+          // If unit is cleared but we have a study mode open (unlikely in current flow but safe to check)
+          if (selectedStudyMode) {
+               setSelectedStudyMode(null);
+               return true;
+          }
+          if (selectedGrade) { 
+              setSelectedGrade(null); 
+              return true; 
+          }
+          if (selectedCategory) { 
+              setSelectedCategory(null); 
+              return true; 
+          }
+          // At root of home
+          return false; 
+      }
+
+      // SUB-MODE NAVIGATION LOGIC
+      // If we are in a game/activity, return to the unit view (HOME with selectedUnit)
       if (mode !== AppMode.HOME) {
           setMode(AppMode.HOME);
           setIsSRSReview(false);
           setChallengeState(null);
-          refreshGlobalState();
           return true;
       }
       
-      if (selectedUnit) { setSelectedUnit(null); return true; }
-      if (selectedGrade) { setSelectedGrade(null); return true; }
-      if (selectedCategory) { setSelectedCategory(null); return true; }
-      
-      return false; 
-  }, [mode, selectedUnit, selectedGrade, selectedCategory, showSettings, showSRSInfo, showMarket, showGradeSelection, showFeedbackModal, showAdminModal, pendingQuizConfig, showAuthModal, showOnboardingModal, showTutorial, showAvatarModal, showChallengeModal]);
+      return true;
 
+  }, [activeModal, mode, pendingQuizConfig, selectedUnit, selectedGrade, selectedCategory, selectedStudyMode, viewProfileId]);
+
+  const handleManualBack = () => {
+      goBack();
+  };
+
+  // Hardware Back Button
   useEffect(() => {
     const setupBackButton = async () => {
         if (Capacitor.isNativePlatform()) {
              await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-                const handled = closeModalOrGoBack();
+                const handled = goBack();
                 if (!handled) {
                     CapacitorApp.exitApp();
                 }
@@ -441,34 +381,34 @@ const App: React.FC = () => {
         }
     };
     setupBackButton();
-
-    return () => {
-        if (Capacitor.isNativePlatform()) {
-            CapacitorApp.removeAllListeners();
-        }
-    }
-  }, [closeModalOrGoBack]);
+    return () => { if (Capacitor.isNativePlatform()) CapacitorApp.removeAllListeners(); }
+  }, [goBack]);
 
   const handlePopState = useCallback((event: PopStateEvent) => {
-      closeModalOrGoBack();
-  }, [closeModalOrGoBack]);
+      goBack();
+  }, [goBack]);
 
   useEffect(() => {
       window.addEventListener('popstate', handlePopState);
       return () => { window.removeEventListener('popstate', handlePopState); };
   }, [handlePopState]);
 
-  const addHistoryEntry = () => {
-      window.history.pushState({ appState: 'navigated' }, '', '');
-  };
 
   const handleThemeChange = () => {
       const newTheme = getTheme();
       applyTheme(newTheme);
   };
 
-  const handleProfileUpdate = () => { 
+  const handleProfileUpdate = async () => { 
       applyUserProfileGrade(); 
+      const auth = getAuthInstance();
+      const user = auth?.currentUser;
+      const profile = getUserProfile();
+      
+      if (user && !profile.isGuest) {
+          await syncLocalToCloud(user.uid);
+          checkForDuels();
+      }
       refreshGlobalState();
   };
   
@@ -486,19 +426,26 @@ const App: React.FC = () => {
   };
   
   const handleGoHome = () => { 
-      setMode(AppMode.HOME); setTopicTitle(''); setWords([]); setAllUnitWords([]); setSelectedUnit(null); setSelectedStudyMode(null); setSelectedGrade(null); setSelectedCategory(null); setIsSRSReview(false); setPendingQuizConfig(null); setShowGradeSelection(false); setChallengeState(null);
+      setHistory([]); 
+      setMode(AppMode.HOME); 
+      setTopicTitle(''); setWords([]); setAllUnitWords([]); setSelectedUnit(null); setSelectedStudyMode(null); setSelectedGrade(null); setSelectedCategory(null); setIsSRSReview(false); setPendingQuizConfig(null); setActiveModal(null); setChallengeState(null);
       refreshGlobalState();
   };
   
-  const handleManualBack = () => { 
-     closeModalOrGoBack();
-  };
+  const handleOpenProfile = () => { changeMode(AppMode.PROFILE); setTopicTitle('Profilim'); refreshGlobalState(); };
+  const handleOpenInfo = () => { changeMode(AppMode.INFO); setTopicTitle('İpuçları'); };
+  const handleOpenMarket = () => { setActiveModal('market'); };
+  const handleOpenAnnouncements = () => { changeMode(AppMode.ANNOUNCEMENTS); setTopicTitle('Duyurular'); if (ANNOUNCEMENTS.length > 0) { setLastReadAnnouncementId(ANNOUNCEMENTS[0].id); setHasUnreadAnnouncements(false); } };
+  const handleOpenSettings = () => { setActiveModal('settings'); };
   
-  const handleOpenProfile = () => { addHistoryEntry(); setMode(AppMode.PROFILE); setTopicTitle('Profilim'); refreshGlobalState(); };
-  const handleOpenInfo = () => { addHistoryEntry(); setMode(AppMode.INFO); setTopicTitle('İpuçları'); };
-  const handleOpenMarket = () => { addHistoryEntry(); setShowMarket(true); };
-  const handleOpenAnnouncements = () => { addHistoryEntry(); setMode(AppMode.ANNOUNCEMENTS); setTopicTitle('Duyurular'); if (ANNOUNCEMENTS.length > 0) { setLastReadAnnouncementId(ANNOUNCEMENTS[0].id); setHasUnreadAnnouncements(false); } };
-  const handleOpenSettings = () => { addHistoryEntry(); setShowSettings(true); };
+  const handleOpenChallenge = () => { 
+      const profile = getUserProfile();
+      if (profile.isGuest) {
+          showAlert("Misafir Modu", "Düello modunu kullanmak için lütfen giriş yapın veya kayıt olun.", "warning", () => { setAuthInitialView('register'); setActiveModal('auth'); });
+          return;
+      }
+      setActiveModal('challenge'); 
+  };
 
   const shuffleArray = <T,>(array: T[]): T[] => { const newArray = [...array]; for (let i = newArray.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [newArray[i], newArray[j]] = [newArray[j], newArray[i]]; } return newArray; };
   
@@ -512,7 +459,7 @@ const App: React.FC = () => {
       setActiveQuizType(pendingQuizConfig.type); 
       setActiveQuizDifficulty(difficulty);
       setTopicTitle(pendingQuizConfig.title); 
-      setMode(AppMode.QUIZ); 
+      changeMode(AppMode.QUIZ); 
       setPendingQuizConfig(null); 
   };
 
@@ -527,7 +474,7 @@ const App: React.FC = () => {
           setMode(AppMode.LOADING); 
           setTimeout(() => { setMode(AppMode.QUIZ); }, 50);
       } else {
-          setMode(AppMode.HOME);
+          handleGoHome();
       }
   };
 
@@ -554,8 +501,7 @@ const App: React.FC = () => {
               const dueGrades = getDueGrades(); 
               if (dueGrades.length > 1) { 
                   setAvailableGradesForReview(dueGrades); 
-                  addHistoryEntry(); 
-                  setShowGradeSelection(true); 
+                  setActiveModal('grade');
                   return; 
               } else if (dueGrades.length === 1) { 
                   const g = dueGrades[0] as GradeLevel; 
@@ -586,66 +532,51 @@ const App: React.FC = () => {
       let newTitle = (action === 'review' || action === 'review-flashcards') ? 'Günlük Tekrar' : (isAllInOne ? unit.title : `${unit.unitNo} - ${unit.title}`); 
       
       if (action !== 'grammar' && unitWords.length === 0 && action !== 'quiz-bookmarks' && action !== 'quiz-memorized') { 
-          alert("Bu ünite için içerik henüz hazırlanmamış veya boş."); 
+          showAlert("Uyarı", "Bu ünite için içerik henüz hazırlanmamış veya boş.", "warning"); 
           return; 
       } 
-      
-      addHistoryEntry(); 
       
       if (action === 'study') { 
           setAllUnitWords(allDistractors); 
           setWords(shuffleArray(unitWords)); 
           setTopicTitle(newTitle); 
-          setMode(AppMode.FLASHCARDS); 
+          changeMode(AppMode.FLASHCARDS); 
        } else if (action === 'matching') {
           setAllUnitWords(allDistractors);
           setWords(shuffleArray(unitWords)); 
           setTopicTitle(newTitle + ' (Eşleştirme)');
-          setMode(AppMode.MATCHING);
-      } else if (action === 'typing') {
-          setAllUnitWords(allDistractors);
-          setWords(shuffleArray(unitWords)); 
-          setTopicTitle(newTitle + ' (Yazma)');
-          setMode(AppMode.TYPING);
-      } else if (action === 'chain') {
-          setAllUnitWords(allDistractors);
-          setWords(shuffleArray(unitWords)); 
-          setTopicTitle(newTitle + ' (Kelime Türet)');
-          setMode(AppMode.WORD_CHAIN);
+          changeMode(AppMode.MATCHING);
       } else if (action === 'maze') {
           setAllUnitWords(allDistractors);
           setWords(shuffleArray(unitWords));
           setTopicTitle(newTitle + ' (Labirent)');
-          setMode(AppMode.MAZE);
+          changeMode(AppMode.MAZE);
       } else if (action === 'wordSearch') {
           setAllUnitWords(allDistractors);
           setWords(shuffleArray(unitWords));
           setTopicTitle(newTitle + ' (Bulmaca)');
-          setMode(AppMode.WORD_SEARCH);
+          changeMode(AppMode.WORD_SEARCH);
       } else if (action === 'grammar') { 
           setTopicTitle(newTitle + ' (Gramer)'); 
-          setMode(AppMode.GRAMMAR); 
+          changeMode(AppMode.GRAMMAR); 
       } else if (action === 'practice-select') { 
           setAllUnitWords(allDistractors); 
           setTopicTitle(newTitle + ' (Özel Çalışma)'); 
-          setMode(AppMode.CUSTOM_PRACTICE); 
+          changeMode(AppMode.CUSTOM_PRACTICE); 
       } else if (action === 'review') {
-          // SWITCH TO QUIZ FOR DAILY REVIEW
           setAllUnitWords(allDistractors); 
           setWords(shuffleArray(unitWords)); 
           setTopicTitle(newTitle + ' (Test)'); 
           setIsSRSReview(true); 
           setActiveQuizType('review');
-          // Default difficulty for review
           setActiveQuizDifficulty('normal');
-          setMode(AppMode.QUIZ);
+          changeMode(AppMode.QUIZ);
       } else if (action === 'review-flashcards') { 
-          // Optional fallback if users really want flashcards (can be triggered differently)
           setAllUnitWords(allDistractors); 
           setWords(shuffleArray(unitWords)); 
           setTopicTitle(newTitle + ' (Kartlar)'); 
           setIsSRSReview(true); 
-          setMode(AppMode.FLASHCARDS); 
+          changeMode(AppMode.FLASHCARDS); 
       } else { 
           let targetWords = unitWords; 
           let type: 'standard' | 'bookmarks' | 'memorized' | 'review' = 'standard'; 
@@ -659,7 +590,7 @@ const App: React.FC = () => {
                   }); 
                   if (targetWords.length === 0) { 
                       setEmptyWarningType('bookmarks'); 
-                      setMode(AppMode.EMPTY_WARNING); 
+                      changeMode(AppMode.EMPTY_WARNING); 
                       setTopicTitle(newTitle); 
                       return; 
                   } 
@@ -674,7 +605,7 @@ const App: React.FC = () => {
               }); 
               if (targetWords.length === 0) { 
                   setEmptyWarningType('memorized'); 
-                  setMode(AppMode.EMPTY_WARNING); 
+                  changeMode(AppMode.EMPTY_WARNING); 
                   setTopicTitle(newTitle); 
                   return; 
               } 
@@ -686,7 +617,7 @@ const App: React.FC = () => {
   };
 
   const handleGradeSelectForReview = (grade: GradeLevel) => { 
-      setShowGradeSelection(false); 
+      setActiveModal(null);
       const gradeUnits = UNIT_ASSETS[grade]; 
       let allowedUnitIds: string[] = []; 
       if (gradeUnits) { allowedUnitIds = gradeUnits.map(u => u.id); } 
@@ -698,59 +629,73 @@ const App: React.FC = () => {
       setTopicTitle(`Günlük Tekrar (${grade}. Sınıf)`); 
       setIsSRSReview(true); 
       setActiveQuizType('review');
-      setActiveQuizDifficulty('normal'); // Review default
-      setMode(AppMode.QUIZ); 
+      setActiveQuizDifficulty('normal'); 
+      changeMode(AppMode.QUIZ); 
   };
 
   const handleCustomPracticeStart = (selectedWords: WordCard[], startMode: 'study' | 'quiz') => { 
       if (startMode === 'study') { 
           setWords(shuffleArray(selectedWords)); 
-          setMode(AppMode.FLASHCARDS); 
+          changeMode(AppMode.FLASHCARDS); 
       } else { 
           setPendingQuizConfig({ words: selectedWords, allDistractors: allUnitWords, title: topicTitle.replace(' (Özel Çalışma)', '') + ' (Seçmeli Test)', type: 'custom' }); 
       } 
   };
 
   // --- Challenge Logic ---
-  const handleCreateChallenge = (config: { grade: GradeLevel, unit: UnitDef, difficulty: QuizDifficulty, count: number }) => {
-      setShowChallengeModal(false);
+  const handleCreateChallenge = (config: any) => {
+      setActiveModal(null);
       
       if (VOCABULARY[config.unit.id]) {
           const unitWords = VOCABULARY[config.unit.id].map(w => ({...w, unitId: config.unit.id}));
-          // Shuffle and pick specific count
           const challengeWords = shuffleArray(unitWords).slice(0, config.count);
           
           setWords(challengeWords);
-          setAllUnitWords(unitWords); // Distractors can be from the full unit
+          setAllUnitWords(unitWords); 
           setTopicTitle(`Düello Oluştur: ${config.unit.title}`);
           setActiveQuizDifficulty(config.difficulty);
           
-          setChallengeState({ mode: 'create', unitId: config.unit.id });
-          setMode(AppMode.QUIZ);
+          setChallengeState({ 
+              mode: 'create', 
+              unitId: config.unit.id, 
+              challengeType: config.type,
+              targetFriendId: config.targetFriendId
+          });
+          changeMode(AppMode.QUIZ);
       } else {
-          alert("Bu ünitede kelime bulunamadı.");
+          showAlert("Hata", "Bu ünitede kelime bulunamadı.", "error");
       }
   };
 
   const handleJoinChallenge = (challengeData: Challenge, challengeWords: WordCard[]) => {
-       setShowChallengeModal(false);
+       setActiveModal(null);
        setWords(challengeWords);
-       setAllUnitWords(challengeWords); // Distractors same as pool for fairness or simpler
+       setAllUnitWords(challengeWords); 
+       
        setTopicTitle(`Düello: ${challengeData.creatorName}`);
        setActiveQuizDifficulty(challengeData.difficulty);
        setChallengeState({ mode: 'join', data: challengeData });
-       setMode(AppMode.QUIZ);
+       changeMode(AppMode.QUIZ);
   };
 
-  const onSelectCategoryHandler = (cat: CategoryType | null) => { if (cat) addHistoryEntry(); setSelectedCategory(cat); };
-  const onSelectGradeHandler = (grade: GradeLevel | null) => { if (grade) addHistoryEntry(); setSelectedGrade(grade); };
-  const onSelectUnitHandler = (unit: UnitDef | null) => { if (unit) addHistoryEntry(); setSelectedUnit(unit); };
+  const onSelectCategoryHandler = (cat: CategoryType | null) => { setSelectedCategory(cat); };
+  const onSelectGradeHandler = (grade: GradeLevel | null) => { setSelectedGrade(grade); };
+  const onSelectUnitHandler = (unit: UnitDef | null) => { setSelectedUnit(unit); };
   const showBackButton = (mode !== AppMode.HOME) || (selectedCategory !== null);
   
   let content;
   switch (mode) {
     case AppMode.HOME: content = ( <TopicSelector selectedCategory={selectedCategory} selectedGrade={selectedGrade} selectedMode={selectedStudyMode} selectedUnit={selectedUnit} onSelectCategory={onSelectCategoryHandler} onSelectGrade={onSelectGradeHandler} onSelectMode={(mode) => setSelectedStudyMode(mode)} onSelectUnit={onSelectUnitHandler} onStartModule={handleStartModule} onGoHome={handleGoHome} onOpenMarket={handleOpenMarket} /> ); break;
-    case AppMode.LOADING: content = <div className="text-center mt-20" style={{color: 'var(--color-text-muted)'}}>Yükleniyor...</div>; break;
+    case AppMode.LOADING: content = (
+        <div className="flex flex-col items-center justify-center h-full animate-pulse">
+             <img 
+                 src="https://8upload.com/image/c49034ea8b367878/AppLogo.png" 
+                 alt="Loading..." 
+                 className="w-24 h-24 rounded-2xl mb-4 shadow-lg"
+             />
+             <div className="text-center font-bold" style={{color: 'var(--color-text-muted)'}}>Yükleniyor...</div>
+        </div>
+    ); break;
     case AppMode.FLASHCARDS: content = ( <FlashcardDeck words={words} onFinish={handleManualBack} onBack={handleManualBack} onHome={handleGoHome} isReviewMode={isSRSReview} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} /> ); break;
     case AppMode.QUIZ: content = ( 
         <Quiz 
@@ -768,6 +713,8 @@ const App: React.FC = () => {
             challengeMode={challengeState?.mode}
             challengeData={challengeState?.data}
             unitIdForChallenge={challengeState?.unitId}
+            challengeType={challengeState?.challengeType}
+            targetFriendId={challengeState?.targetFriendId}
         /> 
     ); break;
     case AppMode.CUSTOM_PRACTICE: content = ( <WordSelector words={allUnitWords} unitTitle={topicTitle.replace(' (Özel Çalışma)', '')} onStart={handleCustomPracticeStart} onBack={handleManualBack} /> ); break;
@@ -778,8 +725,10 @@ const App: React.FC = () => {
         onBack={handleManualBack} 
         onProfileUpdate={handleProfileUpdate} 
         onOpenMarket={handleOpenMarket}
-        onLoginRequest={() => setShowAuthModal(true)} 
+        onLoginRequest={(initialView) => { setAuthInitialView(initialView || 'login'); setActiveModal('auth'); }}
         externalStats={userStats}
+        showAlert={showAlert}
+        onViewProfile={(id) => setViewProfileId(id)}
       />
     ); break;
     case AppMode.INFO: content = <InfoView onBack={handleManualBack} />; break;
@@ -792,27 +741,6 @@ const App: React.FC = () => {
             onHome={handleGoHome} 
             onCelebrate={handleTriggerCelebration} 
             onBadgeUnlock={handleBadgeUnlock} 
-            grade={selectedGrade} 
-         />
-    ); break;
-    case AppMode.TYPING: content = (
-         <TypingGame 
-            words={words} 
-            onFinish={handleManualBack} 
-            onBack={handleManualBack} 
-            onHome={handleGoHome} 
-            onCelebrate={handleTriggerCelebration} 
-            grade={selectedGrade} 
-         />
-    ); break;
-    case AppMode.WORD_CHAIN: content = (
-         <WordChainGame 
-            unitWords={words}
-            allWords={Object.values(VOCABULARY).flat()}
-            onFinish={handleManualBack} 
-            onBack={handleManualBack} 
-            onHome={handleGoHome} 
-            onCelebrate={handleTriggerCelebration} 
             grade={selectedGrade} 
          />
     ); break;
@@ -829,7 +757,7 @@ const App: React.FC = () => {
     case AppMode.WORD_SEARCH: content = (
         <WordSearchGame
             words={words}
-            onFinish={() => handleStartModule('wordSearch', selectedUnit!)} // Re-start logic
+            onFinish={() => handleStartModule('wordSearch', selectedUnit!)} 
             onBack={handleManualBack} 
             onHome={handleGoHome} 
             onCelebrate={handleTriggerCelebration} 
@@ -862,42 +790,39 @@ const App: React.FC = () => {
          </div>
       )}
 
-      {showTutorial && <OnboardingTutorial onComplete={() => { setShowTutorial(false); localStorage.setItem('tutorial_seen', 'true'); }} />}
-
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { handleProfileUpdate(); setShowAuthModal(false); }} />}
-      {showOnboardingModal && <OnboardingModal onComplete={() => { handleProfileUpdate(); setShowOnboardingModal(false); }} />}
+      {activeModal === 'auth' && <AuthModal onClose={() => setActiveModal(null)} onSuccess={() => { handleProfileUpdate(); setActiveModal(null); }} initialView={authInitialView} />}
       
-      {showSettings && (
+      {activeModal === 'settings' && (
         <SettingsModal 
-            onClose={handleManualBack} 
-            onOpenFeedback={() => setShowFeedbackModal(true)} 
-            onOpenAdmin={() => setShowAdminModal(true)}
-            onRestartTutorial={() => { setShowSettings(false); setShowTutorial(true); }}
+            onClose={() => setActiveModal(null)} 
+            onOpenFeedback={() => setActiveModal('feedback')} 
+            onOpenAdmin={() => setActiveModal('admin')}
+            onRestartTutorial={() => {}}
         />
       )}
-      {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} />}
-      {showAdminModal && (
+      {activeModal === 'feedback' && <FeedbackModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'admin' && (
         <AdminModal 
-            onClose={() => setShowAdminModal(false)} 
+            onClose={() => setActiveModal(null)} 
             onUpdate={() => { handleProfileUpdate(); }} 
         />
       )}
-      {showChallengeModal && (
+      {activeModal === 'challenge' && (
           <ChallengeModal 
-              onClose={() => setShowChallengeModal(false)} 
+              onClose={() => setActiveModal(null)} 
               onCreateChallenge={handleCreateChallenge}
               onJoinChallenge={handleJoinChallenge}
           />
       )}
       <InstallPromptModal />
       
-      {showSRSInfo && <SRSInfoModal onClose={handleManualBack} />}
-      {showMarket && <MarketModal onClose={() => { setShowMarket(false); handleProfileUpdate(); }} onThemeChange={handleThemeChange} />}
-      {showGradeSelection && <GradeSelectionModal onClose={handleManualBack} onSelect={handleGradeSelectForReview} grades={availableGradesForReview} />}
+      {activeModal === 'srs' && <SRSInfoModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'market' && <MarketModal onClose={() => { setActiveModal(null); handleProfileUpdate(); }} onThemeChange={handleThemeChange} />}
+      {activeModal === 'grade' && <GradeSelectionModal onClose={() => setActiveModal(null)} onSelect={handleGradeSelectForReview} grades={availableGradesForReview} />}
       {pendingQuizConfig && <QuizSetupModal onClose={handleManualBack} onStart={startQuizWithCount} totalWords={pendingQuizConfig.words.length} title={pendingQuizConfig.title} />}
       {celebration?.show && <Celebration message={celebration.message} type={celebration.type} onClose={() => setCelebration(null)} />}
       
-      {showAvatarModal && <AvatarModal onClose={() => setShowAvatarModal(false)} userStats={userStats || {
+      {activeModal === 'avatar' && <AvatarModal onClose={() => setActiveModal(null)} userStats={userStats || {
         flashcardsViewed: 0, 
         quizCorrect: 0, 
         quizWrong: 0, 
@@ -914,10 +839,29 @@ const App: React.FC = () => {
         perfectQuizzes: 0, 
         questsCompleted: 0, 
         totalTimeSpent: 0, 
+        duelWins: 0,
+        duelPoints: 0,
         completedUnits: [], 
         completedGrades: [],
-        weekly: { weekId: '', quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, typingHighScore: 0, chainHighScore: 0, mazeHighScore: 0, wordSearchHighScore: 0 }
+        weekly: { weekId: '', quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, mazeHighScore: 0, wordSearchHighScore: 0, typingHighScore: 0, chainHighScore: 0 }
     }} onUpdate={() => { setHeaderProfile(getUserProfile()); if(handleProfileUpdate) handleProfileUpdate(); }} />}
+    
+    {viewProfileId && (
+        <UserProfileModal 
+            userId={viewProfileId} 
+            onClose={() => setViewProfileId(null)} 
+        />
+    )}
+    
+      {/* Custom Alert Integration */}
+      <CustomAlert 
+          visible={alertState.visible} 
+          title={alertState.title} 
+          message={alertState.message} 
+          type={alertState.type} 
+          onClose={() => setAlertState(prev => ({ ...prev, visible: false }))}
+          onConfirm={alertState.onConfirm}
+      />
       
       <header className="backdrop-blur-xl border-b z-50 shrink-0 transition-colors h-16 header-theme"
               style={{backgroundColor: 'rgba(var(--color-bg-card-rgb), 0.8)', borderColor: 'rgba(255,255,255,0.1)'}}>
@@ -946,12 +890,13 @@ const App: React.FC = () => {
           <div className="flex items-center gap-0.5 sm:gap-1 justify-end min-w-fit">
              {mode !== AppMode.ANNOUNCEMENTS && (
                 <button onClick={handleOpenAnnouncements} className="relative flex items-center justify-center w-10 h-10 rounded-full transition-all active:scale-95" style={{color: 'var(--color-text-muted)'}}>
-                  {UI_ICONS.notifications} {hasUnreadAnnouncements && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>}
+                  {UI_ICONS.notifications} {hasUnreadAnnouncements && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-50 rounded-full ring-2 ring-white"></span>}
                 </button>
              )}
              {/* Challenge Button */}
-             <button onClick={() => setShowChallengeModal(true)} className="flex items-center justify-center w-10 h-10 rounded-full transition-all active:scale-95 text-orange-500 bg-orange-100 dark:bg-orange-900/30">
+             <button onClick={handleOpenChallenge} className="flex items-center justify-center w-10 h-10 rounded-full transition-all active:scale-95 text-orange-500 bg-orange-100 dark:bg-orange-900/30 relative">
                  <Swords size={20} />
+                 {hasPendingDuel && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>}
              </button>
 
              {mode !== AppMode.INFO && <button onClick={handleOpenInfo} className="flex items-center justify-center w-10 h-10 rounded-full transition-all active:scale-95" style={{color: 'var(--color-text-muted)'}}>{UI_ICONS.info}</button>}
@@ -972,16 +917,6 @@ const App: React.FC = () => {
         {content}
       </main>
       
-      <style>{`
-        :root {
-            --color-primary: #4f46e5;
-            --color-bg-main: #0f172a;
-            --color-bg-card: #1e293b;
-            --color-text-main: #f8fafc;
-            --color-text-muted: #94a3b8;
-            --color-border: #334155;
-        }
-      `}</style>
     </div>
   );
 };

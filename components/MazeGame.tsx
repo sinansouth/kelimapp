@@ -4,6 +4,7 @@ import { WordCard, Badge, GradeLevel } from '../types';
 import { Ghost, Bot, CheckCircle, XCircle, ArrowRight, MapPin, ChevronUp, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { playSound } from '../services/soundService';
 import { updateStats, updateQuestProgress, updateGameStats } from '../services/userService';
+import { getSmartDistractors, VOCABULARY } from '../data/vocabulary';
 
 interface MazeGameProps {
   words: WordCard[];
@@ -76,8 +77,13 @@ const MazeGrid = React.memo(({ grid, doors }: { grid: CellType[][], doors: DoorA
                 }
             }
 
+            // Improved Wall Visibility: Lighter color, thicker look for mobile
+            const wallClass = 'bg-slate-700 border-[0.5px] border-slate-600 shadow-inner'; 
+            const pathClass = 'bg-[#0f172a]';
+            const poolClass = 'bg-indigo-900/50 border border-indigo-500/30';
+
             return (
-                <div key={`${x}-${y}`} className={`w-full h-full relative ${cell === 'wall' ? 'bg-indigo-950 border-[0.5px] border-indigo-900/30' : cell === 'pool' ? 'bg-indigo-900/40' : ''}`}>
+                <div key={`${x}-${y}`} className={`w-full h-full relative ${cell === 'wall' ? wallClass : cell === 'pool' ? poolClass : pathClass}`}>
                     {cell === 'path' && <div className="w-1 h-1 bg-white/5 rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>}
                     
                     {poolContent && (
@@ -109,7 +115,7 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
-  const [gameState, setGameState] = useState<'playing' | 'won' | 'lost' | 'hit'>('playing');
+  const [gameState, setGameState] = useState<'starting' | 'playing' | 'won' | 'lost' | 'hit'>('starting');
   const [hitMessage, setHitMessage] = useState<string>('');
 
   // Game Loop Refs
@@ -124,6 +130,14 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
   useEffect(() => { playerPosRef.current = playerPos; }, [playerPos]);
   useEffect(() => { doorsRef.current = doors; }, [doors]);
   useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
+
+  const handleExit = () => {
+      if (score > 0) {
+          updateGameStats('maze', score);
+          updateQuestProgress('earn_xp', score);
+      }
+      onBack();
+  };
 
   const generateMaze = () => {
     const newGrid: CellType[][] = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill('wall'));
@@ -199,7 +213,20 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
     const target = words[Math.floor(Math.random() * words.length)];
     setCurrentWord(target);
 
-    const distractors = words.filter(w => w.english !== target.english).sort(() => 0.5 - Math.random()).slice(0, 3);
+    // Smart Distractors Logic
+    const allVocab = Object.values(VOCABULARY).flat();
+    const distractors = getSmartDistractors(target, allVocab, 3);
+    
+    // Fallback if not enough smart distractors
+    if (distractors.length < 3) {
+        const remaining = 3 - distractors.length;
+        const randoms = words
+            .filter(w => w.english !== target.english && !distractors.includes(w))
+            .sort(() => 0.5 - Math.random())
+            .slice(0, remaining);
+        distractors.push(...randoms);
+    }
+    
     const options = [target, ...distractors].sort(() => 0.5 - Math.random());
 
     const poolLocations = [
@@ -253,7 +280,14 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
         });
     }
     setEnemies(newEnemies);
-    setGameState('playing');
+    
+    // Start with countdown state
+    setGameState('starting');
+    
+    setTimeout(() => {
+        setGameState('playing');
+    }, 2000);
+
   }, [words, level]);
 
   const getValidMoves = (pos: Position, currentGrid: CellType[][]) => {
@@ -577,9 +611,9 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
              <h2 className="text-xl font-black text-white tracking-wide drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] px-2">{currentWord?.english}</h2>
         </div>
 
-        {/* Game Area - Pushed up slightly by flex-1 */}
+        {/* Game Area - UPDATED: Larger size on mobile, w-full max-w-xl */}
         <div className="flex-1 flex items-center justify-center p-2 relative overflow-hidden touch-none" style={{ touchAction: 'none' }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-            <div className="relative rounded-xl shadow-2xl overflow-hidden bg-slate-900 border-4 border-slate-700 aspect-square w-full max-w-[90vw] sm:max-w-[400px]">
+            <div className="relative rounded-xl shadow-2xl overflow-hidden bg-slate-900 border-4 border-slate-700 aspect-square w-full max-w-xl">
                 
                 <MazeGrid grid={grid} doors={doors} />
 
@@ -597,6 +631,17 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
                     </div>
                 </div>
 
+                {/* States Overlays */}
+                {gameState === 'starting' && (
+                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in">
+                         <div className="bg-slate-900/90 p-6 rounded-2xl border-2 border-cyan-500 shadow-xl text-center animate-pulse">
+                             <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-1 block">HEDEF KELİME</span>
+                             <h3 className="text-3xl font-black text-white drop-shadow-[0_0_10px_cyan]">{currentWord?.english}</h3>
+                             <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-wider">Hazırlan...</p>
+                         </div>
+                    </div>
+                )}
+
                 {(gameState === 'hit' || gameState === 'won') && (
                     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
                          {gameState === 'won' ? <CheckCircle size={64} className="text-green-500 mb-4 animate-bounce" /> : <XCircle size={64} className="text-red-500 mb-4 animate-pulse" />}
@@ -608,6 +653,11 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
 
         {/* Controls Area - Bottom */}
         <div className="pb-safe bg-slate-900/80 border-t border-slate-800/50 p-2 shrink-0 z-20">
+            <div className="flex justify-between items-center px-4 mb-2">
+                <button onClick={handleExit} className="text-slate-500 hover:text-red-400 text-xs font-bold">Çıkış</button>
+                <div className="text-[10px] text-slate-500 opacity-50">Kaydır veya Tuşları Kullan</div>
+                <div className="w-8"></div>
+            </div>
             <div className="grid grid-cols-3 gap-1 max-w-[200px] mx-auto">
                  {/* Empty Top Left */}
                  <div></div>
@@ -647,7 +697,6 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
                     <ChevronRightIcon size={32} />
                  </button>
             </div>
-            <div className="text-center text-[10px] text-slate-500 mt-2 opacity-50">Kaydır veya Tuşları Kullan</div>
         </div>
     </div>
   );

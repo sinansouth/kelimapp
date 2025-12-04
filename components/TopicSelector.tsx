@@ -22,7 +22,7 @@ interface TopicSelectorProps {
   onSelectGrade: (grade: GradeLevel | null) => void;
   onSelectMode: (mode: StudyMode | null) => void;
   onSelectUnit: (unit: UnitDef | null) => void;
-  onStartModule: (action: 'study' | 'matching' | 'typing' | 'chain' | 'maze' | 'wordSearch' | 'quiz' | 'quiz-bookmarks' | 'quiz-memorized' | 'grammar' | 'practice-select' | 'review' | 'review-flashcards', unit: UnitDef, count?: number) => void;
+  onStartModule: (action: 'study' | 'matching' | 'maze' | 'wordSearch' | 'quiz' | 'quiz-bookmarks' | 'quiz-memorized' | 'grammar' | 'practice-select' | 'review' | 'review-flashcards', unit: UnitDef, count?: number) => void;
   onGoHome: () => void;
   onOpenMarket: () => void;
 }
@@ -126,7 +126,7 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
       setShowStudyModes(true);
   };
 
-  const handleModeSelect = (mode: 'study' | 'matching' | 'typing' | 'chain' | 'maze' | 'wordSearch') => {
+  const handleModeSelect = (mode: 'study' | 'matching' | 'maze' | 'wordSearch') => {
       if (selectedUnit) {
           setShowStudyModes(false);
           onStartModule(mode, selectedUnit);
@@ -249,20 +249,6 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
                             <span className="font-bold text-sm text-slate-700 dark:text-white">Eşleştirme</span>
                         </button>
 
-                        <button onClick={() => handleModeSelect('chain')} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all group flex flex-col items-center gap-2">
-                            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
-                                <WholeWord size={24} />
-                            </div>
-                            <span className="font-bold text-sm text-slate-700 dark:text-white">Kelime Türet</span>
-                        </button>
-
-                        <button onClick={() => handleModeSelect('typing')} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all group flex flex-col items-center gap-2">
-                            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
-                                <Type size={24} />
-                            </div>
-                            <span className="font-bold text-sm text-slate-700 dark:text-white">Yazma</span>
-                        </button>
-
                         <button onClick={() => handleModeSelect('wordSearch')} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group flex flex-col items-center gap-2">
                             <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
                                 <Search size={24} />
@@ -288,7 +274,7 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
   if (!selectedCategory) {
     return (
       <div className="flex flex-col items-center min-h-full p-4 pt-2 animate-in fade-in duration-500 relative">
-        {/* ... (Home UI Code) ... */}
+        
         <div className="text-center mb-6 mt-2 w-full max-w-md">
              <h1 className="text-3xl font-black tracking-tighter" style={{color: 'var(--color-text-main)'}}>
                Kelim<span className="text-indigo-500">App</span>

@@ -1,4 +1,3 @@
-
 import { WordCard } from '../types';
 import { VOCABULARY_G2 } from './vocabulary_g2';
 import { VOCABULARY_G3 } from './vocabulary_g3';
@@ -49,4 +48,46 @@ export const getRandomWords = (unitId: string, count: number = 20): WordCard[] =
   }
   
   return shuffled.slice(0, count);
+};
+
+// Helper to get smart distractors (same context)
+export const getSmartDistractors = (correctWord: WordCard, allWords: WordCard[], count: number = 3): WordCard[] => {
+    // 1. Filter words with same context
+    let sameContextWords = allWords.filter(w => 
+        w.english !== correctWord.english && 
+        w.turkish.trim().toLowerCase() !== correctWord.turkish.trim().toLowerCase() &&
+        w.context === correctWord.context
+    );
+
+    // 2. Filter other words (if not enough same context)
+    let otherWords = allWords.filter(w => 
+        w.english !== correctWord.english && 
+        w.turkish.trim().toLowerCase() !== correctWord.turkish.trim().toLowerCase() &&
+        w.context !== correctWord.context
+    );
+
+    const selectedDistractors: WordCard[] = [];
+    const seenMeanings = new Set<string>();
+    seenMeanings.add(correctWord.turkish.trim().toLowerCase());
+
+    // Helper to shuffle and pick
+    const addFromPool = (pool: WordCard[]) => {
+        const shuffled = [...pool].sort(() => 0.5 - Math.random());
+        for (const d of shuffled) {
+            if (selectedDistractors.length >= count) break;
+            const meaning = d.turkish.trim().toLowerCase();
+            if (!seenMeanings.has(meaning)) {
+                selectedDistractors.push(d);
+                seenMeanings.add(meaning);
+            }
+        }
+    };
+
+    addFromPool(sameContextWords);
+    
+    if (selectedDistractors.length < count) {
+        addFromPool(otherWords);
+    }
+
+    return selectedDistractors;
 };

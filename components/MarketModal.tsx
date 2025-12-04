@@ -5,6 +5,7 @@ import { getUserStats, getUserProfile, buyTheme, buyFrame, buyBackground, buyIte
 import { MarketItem, ThemeType } from '../types';
 import { playSound } from '../services/soundService';
 import { FRAMES, BACKGROUNDS } from '../data/assets';
+import CustomAlert, { AlertType } from './CustomAlert';
 
 interface MarketModalProps {
   onClose: () => void;
@@ -16,8 +17,22 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
   const [profile, setProfile] = useState(getUserProfile());
   const [currentTheme, setCurrentTheme] = useState(getTheme());
   const [activeTab, setActiveTab] = useState<'themes' | 'frames' | 'backgrounds' | 'powerups'>('themes');
+  
+  // Internal Alert State
+  const [alert, setAlert] = useState<{ visible: boolean; title: string; message: string; type: AlertType }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
 
-  // Helper to sort items: Owned first, then by Cost (Ascending)
+  const showAlert = (title: string, message: string, type: AlertType) => {
+      setAlert({ visible: true, title, message, type });
+  };
+
+  // ... (Keep sortItems and raw items arrays same as before)
+  // Since I'm replacing the file content, I will include them here for completeness.
+  
   const sortItems = (items: MarketItem[]) => {
       return [...items].sort((a, b) => {
           let aOwned = false;
@@ -32,11 +47,9 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
           if (a.type === 'background') aOwned = profile.purchasedBackgrounds?.includes(a.id) || a.id === 'bg_default';
           if (b.type === 'background') bOwned = profile.purchasedBackgrounds?.includes(b.id) || b.id === 'bg_default';
 
-          // 1. Sort by ownership (Owned comes first)
           if (aOwned && !bOwned) return -1;
           if (!aOwned && bOwned) return 1;
 
-          // 2. Sort by cost (Cheapest first)
           return a.cost - b.cost;
       });
   };
@@ -89,7 +102,6 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
       unlockLevel: b.unlockLevel || 1
   }));
 
-  // Power-ups (Manually added)
   const powerups: MarketItem[] = [
       { 
           id: 'streak_freeze', 
@@ -113,7 +125,6 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
       }
   ];
 
-  // APPLY SORTING
   const themes = sortItems(rawThemes);
   const frameMarketItems = sortItems(rawFrames);
   const backgroundMarketItems = sortItems(rawBackgrounds);
@@ -121,7 +132,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
   const handlePurchase = (item: MarketItem) => {
     if (item.unlockLevel && stats.level < item.unlockLevel) {
          playSound('wrong');
-         alert(`Bu ürünü almak için ${item.unlockLevel}. seviyeye ulaşmalısın!`);
+         showAlert("Seviye Yetersiz", `Bu ürünü almak için ${item.unlockLevel}. seviyeye ulaşmalısın!`, "warning");
          return;
     }
 
@@ -138,7 +149,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
                 setProfile(getUserProfile());
             } else {
                 playSound('wrong');
-                alert("Yetersiz XP!");
+                showAlert("Yetersiz XP", "Bu temayı almak için yeterli puanın yok.", "error");
             }
         }
     } else if (item.type === 'frame') {
@@ -153,7 +164,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
                 setProfile(getUserProfile());
             } else {
                 playSound('wrong');
-                alert("Yetersiz XP!");
+                showAlert("Yetersiz XP", "Bu çerçeveyi almak için yeterli puanın yok.", "error");
             }
         }
     } else if (item.type === 'background') {
@@ -168,13 +179,13 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
                 setProfile(getUserProfile());
              } else {
                  playSound('wrong');
-                 alert("Yetersiz XP!");
+                 showAlert("Yetersiz XP", "Bu arka planı almak için yeterli puanın yok.", "error");
              }
         }
     } else if ((item.type as any) === 'powerup') {
         if (item.value === 'xp_boost' && stats.xpBoostEndTime > Date.now()) {
              playSound('wrong');
-             alert("Zaten aktif bir XP Takviyen var!");
+             showAlert("Zaten Aktif", "Zaten aktif bir XP Takviyen var!", "warning");
              return;
         }
 
@@ -183,14 +194,14 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
             setStats(getUserStats());
             setProfile(getUserProfile());
             if (item.value === 'xp_boost') {
-                alert("XP Boost aktif! 1 saat boyunca 2 kat puan kazanacaksın.");
-                onThemeChange(); // Trigger UI update
+                showAlert("Başarılı", "XP Boost aktif! 1 saat boyunca 2 kat puan kazanacaksın.", "success");
+                onThemeChange();
             } else {
-                alert("Satın alındı!");
+                showAlert("Başarılı", "Satın alma işlemi tamamlandı!", "success");
             }
         } else {
             playSound('wrong');
-            alert("Yetersiz XP!");
+            showAlert("Yetersiz XP", "Bu güçlendirmeyi almak için yeterli puanın yok.", "error");
         }
     }
   };
@@ -260,6 +271,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div 
          className="w-full max-w-lg rounded-3xl shadow-2xl border overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 h-[80vh]"
@@ -285,6 +297,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
              </div>
         </div>
 
+        {/* Tabs Logic same as before ... */}
         <div className="flex border-b px-2 gap-2 shrink-0 overflow-x-auto no-scrollbar" style={{borderColor: 'var(--color-border)'}}>
             <button 
                 onClick={() => setActiveTab('themes')}
@@ -399,6 +412,16 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
         </div>
       </div>
     </div>
+
+    {/* Custom Alert */}
+    <CustomAlert 
+        visible={alert.visible} 
+        title={alert.title} 
+        message={alert.message} 
+        type={alert.type} 
+        onClose={() => setAlert(prev => ({ ...prev, visible: false }))}
+    />
+    </>
   );
 };
 

@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel, QuizDifficulty, Challenge } from '../types';
-import { CheckCircle, XCircle, Bookmark, Info, Clock, Swords, Copy, Trophy } from 'lucide-react';
+import { CheckCircle, XCircle, Bookmark, Info, Clock, Swords, Copy, Trophy, HelpCircle, Zap, Divide } from 'lucide-react';
 import { updateStats, handleQuizResult, handleReviewResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress, getUserProfile } from '../services/userService';
 import { playSound } from '../services/soundService';
 import { createChallenge, completeChallenge } from '../services/firebase';
+import { getSmartDistractors } from '../data/vocabulary';
 import Mascot from './Mascot';
 
 interface QuizProps {
@@ -23,18 +24,28 @@ interface QuizProps {
   // Challenge Props
   challengeMode?: 'create' | 'join';
   challengeData?: Challenge;
-  unitIdForChallenge?: string; // To reconstruct or save reference
+  unitIdForChallenge?: string;
+  challengeType?: 'public' | 'private' | 'friend';
+  targetFriendId?: string;
 }
 
-const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome, isBookmarkQuiz, isReviewMode, onCelebrate, onBadgeUnlock, grade, difficulty = 'normal', challengeMode, challengeData, unitIdForChallenge }) => {
+const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome, isBookmarkQuiz, isReviewMode, onCelebrate, onBadgeUnlock, grade, difficulty = 'normal', challengeMode, challengeData, unitIdForChallenge, challengeType, targetFriendId }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0); // Track wrong answers locally
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [autoBookmarked, setAutoBookmarked] = useState(false);
   const [addedToMemorized, setAddedToMemorized] = useState(false);
   
+  // Joker States
+  const [jokersUsed, setJokersUsed] = useState({ fifty: false, double: false, ask: false });
+  const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
+  const [isDoubleChanceActive, setIsDoubleChanceActive] = useState(false);
+  const [doubleChanceUsedForQuestion, setDoubleChanceUsedForQuestion] = useState(false); // Track if used on current question
+  const [showTeacherHint, setShowTeacherHint] = useState(false);
+
   // Challenge States
   const [createdChallengeId, setCreatedChallengeId] = useState<string | null>(null);
   const [challengeResult, setChallengeResult] = useState<'win' | 'loss' | 'tie' | null>(null);
@@ -68,44 +79,8 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
     const distractorPool = (allWords && allWords.length > 3) ? allWords : words;
 
     return words.map((word) => {
-      const sameContextWords = distractorPool.filter(w => 
-          w.english !== word.english && 
-          w.turkish.trim().toLowerCase() !== word.turkish.trim().toLowerCase() &&
-          w.context === word.context
-      );
-
-      const otherWords = distractorPool.filter(w => 
-        w.english !== word.english && 
-        w.turkish.trim().toLowerCase() !== word.turkish.trim().toLowerCase() &&
-        w.context !== word.context
-      );
-
-      const selectedDistractors: WordCard[] = [];
-      const seenMeanings = new Set<string>();
-      seenMeanings.add(word.turkish.trim().toLowerCase());
-
-      const addDistractor = (pool: WordCard[]) => {
-          const shuffledPool = [...pool].sort(() => 0.5 - Math.random());
-          for (const d of shuffledPool) {
-              if (selectedDistractors.length >= 3) break;
-              const meaning = d.turkish.trim().toLowerCase();
-              if (!seenMeanings.has(meaning)) {
-                  selectedDistractors.push(d);
-                  seenMeanings.add(meaning);
-              }
-          }
-      };
-
-      addDistractor(sameContextWords);
-      
-      if (selectedDistractors.length < 3) {
-          addDistractor(otherWords);
-      }
-
-      if (selectedDistractors.length < 3 && words.length > 3) {
-         const remaining = words.filter(w => !seenMeanings.has(w.turkish.trim().toLowerCase()) && w.english !== word.english);
-         addDistractor(remaining);
-      }
+      // Use new Smart Distractor Logic
+      const selectedDistractors = getSmartDistractors(word, distractorPool, 3);
       
       const optionsRaw = [word, ...selectedDistractors];
 
@@ -165,6 +140,12 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
         setMascotMessage(getHighlightedSentence(currentQ.wordObj.exampleEng, currentQ.word));
         setMascotMood('thinking');
         
+        // Reset per question states
+        setHiddenOptions([]);
+        setIsDoubleChanceActive(false);
+        setDoubleChanceUsedForQuestion(false);
+        setShowTeacherHint(false);
+
         // Reset and Start Timer
         setTimeLeft(QUESTION_TIME_LIMIT);
         if (questionTimerRef.current) clearInterval(questionTimerRef.current);
@@ -190,8 +171,75 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
     };
   }, []);
 
+  const handleExit = () => {
+      // Save partial progress if not a challenge (challenges are usually all-or-nothing for integrity)
+      if (!challengeMode && !showResults) {
+          if (score > 0) updateStats('quiz_correct', grade, undefined, score);
+          if (wrongCount > 0) updateStats('quiz_wrong', grade, undefined, wrongCount);
+      }
+      onBack();
+  };
+
+  // Joker Handlers
+  const handleFiftyFifty = () => {
+      if (jokersUsed.fifty || isAnswered) return;
+      
+      const currentQ = questions[currentQuestionIndex];
+      const wrongIndices = currentQ.options
+          .map((opt, idx) => ({ idx, isCorrect: opt.isCorrect }))
+          .filter(opt => !opt.isCorrect)
+          .map(opt => opt.idx);
+      
+      // Shuffle wrong indices and pick 2 to hide
+      const shuffledWrong = wrongIndices.sort(() => 0.5 - Math.random());
+      const toHide = shuffledWrong.slice(0, 2);
+      
+      setHiddenOptions(toHide);
+      setJokersUsed(prev => ({ ...prev, fifty: true }));
+      playSound('pop');
+  };
+
+  const handleAskTeacher = () => {
+      if (jokersUsed.ask || isAnswered) return;
+      
+      setMascotMessage(
+          <span className="text-green-600 font-bold">
+              Psst! Doğru cevap: "{questions[currentQuestionIndex].correctAnswer}"
+          </span>
+      );
+      setMascotMood('happy');
+      setShowTeacherHint(true);
+      setJokersUsed(prev => ({ ...prev, ask: true }));
+      playSound('pop');
+  };
+
+  const handleDoubleChance = () => {
+      if (jokersUsed.double || isAnswered) return;
+      
+      setIsDoubleChanceActive(true);
+      setJokersUsed(prev => ({ ...prev, double: true }));
+      setMascotMessage(<span className="text-blue-600 font-bold">İki hakkın var! Yanlış yaparsan bir şansın daha olacak.</span>);
+      playSound('pop');
+  };
+
   const handleOptionClick = (index: number) => {
-    if (isAnswered) return;
+    if (isAnswered && !isDoubleChanceActive) return; // Block if answered and no double chance or double chance exhausted
+
+    // Handle Double Chance Logic
+    if (isDoubleChanceActive && index !== -1) {
+         const isCorrect = questions[currentQuestionIndex].options[index].isCorrect;
+         if (!isCorrect) {
+             // First wrong answer with double chance
+             setIsDoubleChanceActive(false); // Consume the chance
+             setDoubleChanceUsedForQuestion(true);
+             setHiddenOptions(prev => [...prev, index]); // Hide the wrong option
+             playSound('wrong');
+             setMascotMood('sad');
+             setMascotMessage(<span className="text-red-500 font-bold">Yanlış! Bir hakkın daha var.</span>);
+             return; // Do not proceed to normal wrong answer logic yet
+         }
+         // If correct, proceed normally
+    }
 
     if (questionTimerRef.current) clearInterval(questionTimerRef.current);
     
@@ -204,7 +252,11 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
     const wordId = getUniqueId(questions[currentQuestionIndex].wordObj);
     
     const newScore = isCorrect ? score + 1 : score;
-    if (isCorrect) setScore(newScore);
+    if (isCorrect) {
+        setScore(newScore);
+    } else {
+        setWrongCount(prev => prev + 1);
+    }
 
     if (!isTimeUp && navigator.vibrate) navigator.vibrate(isCorrect ? 50 : 200);
 
@@ -217,11 +269,15 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
             handleReviewResult(wordId, true);
             updateStats('review_remember', grade, wordId);
         } else if (!challengeMode) {
-            const newBadges = updateStats('quiz_correct', grade);
-            if (newBadges.length > 0 && onBadgeUnlock) {
-                newBadges.forEach(b => onBadgeUnlock(b));
-            }
-            handleQuizResult(wordId, true);
+            // In normal mode, we just track streak/SRS immediately for UX, 
+            // but aggregate stats are saved on finish or exit.
+            // Actually SRS needs immediate update.
+            handleQuizResult(wordId, true); 
+
+            // We do NOT call updateStats('quiz_correct') here anymore to avoid double counting if user finishes quiz.
+            // We will call it at the end (handleNext when finished) OR on exit.
+            // Exception: We DO need to update streak/XP for immediate feedback? 
+            // Let's save bulk stats at end/exit, but SRS/Memory is immediate.
 
             const memorizedSet = getMemorizedSet();
             if (!memorizedSet.has(wordId)) {
@@ -254,7 +310,6 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
              handleReviewResult(wordId, false); 
              updateStats('review_forgot', grade, wordId);
         } else if (!challengeMode) {
-             updateStats('quiz_wrong', grade);
              handleQuizResult(wordId, false);
 
             try {
@@ -292,6 +347,7 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
       setAutoBookmarked(false);
       setAddedToMemorized(false);
     } else {
+      // Quiz Finished
       playSound('success');
       setShowResults(true);
       
@@ -299,19 +355,22 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
       
       // HANDLE CHALLENGE COMPLETION
       if (challengeMode === 'create') {
-           // Map current words back to indices in ALL_WORDS (requires passing a huge list or just storing specific IDs)
-           // Simplification: We need to store sufficient info to reconstruct this quiz.
-           // Since we passed specific `words` to this component, we can just find their indices in the full VOCABULARY.
-           // For optimization, let's assume `allWords` was passed correctly containing these words.
            if (allWords && unitIdForChallenge) {
-                const wordIndices = words.map(w => allWords.findIndex(aw => aw.english === w.english && aw.unitId === w.unitId));
+                const wordIndices = words.map(w => allWords!.findIndex(aw => aw.english === w.english && aw.unitId === w.unitId));
                 const user = getUserProfile();
-                
-                // Calculate score based on percentage (0-100) for simplicity in comparison
                 const finalScore = percentage;
                 
                 try {
-                    const id = await createChallenge(user.name, finalScore, wordIndices, unitIdForChallenge, difficulty);
+                    const id = await createChallenge(
+                        user.name, 
+                        finalScore, 
+                        wordIndices, 
+                        unitIdForChallenge, 
+                        difficulty as QuizDifficulty, 
+                        words.length,
+                        challengeType || 'private',
+                        targetFriendId
+                    );
                     setCreatedChallengeId(id);
                 } catch (e) {
                     console.error("Error creating challenge", e);
@@ -324,12 +383,25 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
           
           await completeChallenge(challengeData.id, user.name, myScore);
           
-          if (myScore > oppScore) setChallengeResult('win');
-          else if (myScore < oppScore) setChallengeResult('loss');
-          else setChallengeResult('tie');
+          if (myScore > oppScore) {
+               setChallengeResult('win');
+               updateStats('duel_result', grade, undefined, 3); // 3 Points for Win
+          }
+          else if (myScore < oppScore) {
+              setChallengeResult('loss');
+              updateStats('duel_result', grade, undefined, 0); // 0 Points for Loss
+          }
+          else {
+              setChallengeResult('tie');
+              updateStats('duel_result', grade, undefined, 1); // 1 Point for Tie
+          }
       }
       
       if (!isReviewMode && !challengeMode) {
+          // Update Stats at the end
+          if (actualScore > 0) updateStats('quiz_correct', grade, undefined, actualScore);
+          if (wrongCount > 0) updateStats('quiz_wrong', grade, undefined, wrongCount);
+
           updateQuestProgress('finish_quiz', 1);
           if (percentage === 100) {
              updateQuestProgress('perfect_quiz', 1);
@@ -357,10 +429,14 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
 
   if (!questions.length) return <div className="p-10 text-center text-slate-500">Soru bulunamadı.</div>;
 
+  // --- RESULTS VIEW ---
   if (showResults) {
     const percentage = Math.round((score / questions.length) * 100);
     
     if (challengeMode === 'create') {
+        const isPublic = challengeType === 'public';
+        const isFriend = challengeType === 'friend';
+
         return (
              <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto p-6 text-center animate-in fade-in zoom-in duration-500">
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-2xl w-full border-2 border-orange-400 relative overflow-hidden">
@@ -375,17 +451,25 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                      
                      {createdChallengeId ? (
                          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 mb-6">
-                             <p className="text-xs text-slate-500 uppercase font-bold mb-2">Düello Kodu</p>
-                             <div className="flex items-center justify-center gap-3">
-                                 <span className="text-3xl font-black tracking-widest text-slate-800 dark:text-white">{createdChallengeId}</span>
-                                 <button onClick={copyCode} className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:scale-105 transition-transform">
-                                     <Copy size={20} className="text-slate-600 dark:text-slate-300" />
-                                 </button>
-                             </div>
-                             <p className="text-[10px] text-slate-400 mt-2">Bu kodu arkadaşına gönder!</p>
+                             {isPublic ? (
+                                 <div className="text-green-600 font-bold">Herkese Açık Listeye Eklendi!</div>
+                             ) : isFriend ? (
+                                 <div className="text-blue-600 font-bold">Arkadaşına Gönderildi!</div>
+                             ) : (
+                                 <>
+                                     <p className="text-xs text-slate-500 uppercase font-bold mb-2">Düello Kodu</p>
+                                     <div className="flex items-center justify-center gap-3">
+                                         <span className="text-3xl font-black tracking-widest text-slate-800 dark:text-white">{createdChallengeId}</span>
+                                         <button onClick={copyCode} className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:scale-105 transition-transform">
+                                             <Copy size={20} className="text-slate-600 dark:text-slate-300" />
+                                         </button>
+                                     </div>
+                                     <p className="text-[10px] text-slate-400 mt-2">Bu kodu arkadaşına gönder!</p>
+                                 </>
+                             )}
                          </div>
                      ) : (
-                         <div className="mb-6 text-slate-400 text-sm animate-pulse">Kod oluşturuluyor...</div>
+                         <div className="mb-6 text-slate-400 text-sm animate-pulse">Oluşturuluyor...</div>
                      )}
 
                      <button onClick={onHome} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">Ana Menüye Dön</button>
@@ -395,6 +479,20 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
     }
 
     if (challengeMode === 'join' && challengeData) {
+        let resultText = 'BERABERE';
+        let resultColor = 'text-yellow-500';
+        let pointsEarned = 1;
+
+        if (challengeResult === 'win') {
+            resultText = 'KAZANDIN!';
+            resultColor = 'text-green-500';
+            pointsEarned = 3;
+        } else if (challengeResult === 'loss') {
+            resultText = 'KAYBETTİN';
+            resultColor = 'text-red-500';
+            pointsEarned = 0;
+        }
+
         return (
              <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto p-6 text-center animate-in fade-in zoom-in duration-500">
                 <div className={`bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-2xl w-full border-4 ${challengeResult === 'win' ? 'border-green-500' : challengeResult === 'loss' ? 'border-red-500' : 'border-yellow-500'}`}>
@@ -405,9 +503,10 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                           <div className="text-4xl">🤝</div>}
                      </div>
                      
-                     <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-6">
-                         {challengeResult === 'win' ? 'KAZANDIN!' : challengeResult === 'loss' ? 'KAYBETTİN' : 'BERABERE'}
+                     <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2">
+                         {resultText}
                      </h2>
+                     <p className={`text-sm font-bold ${resultColor} mb-6`}>+{pointsEarned} Düello Puanı</p>
                      
                      <div className="flex justify-center items-center gap-8 mb-8">
                          <div className="text-center">
@@ -453,7 +552,11 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
 
   const currentQuestion = questions[currentQuestionIndex];
 
-  // CHANGED: Use min-h-full and justify-start to prevent cutting off content on small screens.
+  // Joker Availability Logic
+  const showFiftyFifty = !jokersUsed.fifty; // Available in all counts
+  const showDouble = questions.length >= 20 && !jokersUsed.double; // Available if count >= 20
+  const showAsk = questions.length >= 30 && !jokersUsed.ask; // Available if count >= 30
+
   return (
     <div className="w-full max-w-2xl mx-auto p-4 flex flex-col min-h-full justify-start pt-4 pb-20">
        
@@ -478,6 +581,21 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                   ></div>
               </div>
               <span className={`text-xs font-bold w-4 text-right ${timeLeft <= 5 ? 'text-red-500' : 'text-slate-400'}`}>{timeLeft}</span>
+          </div>
+      )}
+      
+      {/* Jokers */}
+      {!isAnswered && !isReviewMode && !challengeMode && (
+          <div className="flex justify-center gap-3 mb-2">
+              <button onClick={handleFiftyFifty} disabled={jokersUsed.fifty} className={`p-2 rounded-lg flex items-center gap-1 text-xs font-bold transition-all ${jokersUsed.fifty ? 'bg-slate-100 text-slate-300 dark:bg-slate-800 dark:text-slate-700' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200'}`}>
+                  <Divide size={14} /> %50
+              </button>
+              <button onClick={handleDoubleChance} disabled={!showDouble} className={`p-2 rounded-lg flex items-center gap-1 text-xs font-bold transition-all ${!showDouble ? 'bg-slate-100 text-slate-300 dark:bg-slate-800 dark:text-slate-700' : 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300 hover:bg-purple-200'}`}>
+                  <Zap size={14} /> x2
+              </button>
+               <button onClick={handleAskTeacher} disabled={!showAsk} className={`p-2 rounded-lg flex items-center gap-1 text-xs font-bold transition-all ${!showAsk ? 'bg-slate-100 text-slate-300 dark:bg-slate-800 dark:text-slate-700' : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200'}`}>
+                  <HelpCircle size={14} /> Hoca
+              </button>
           </div>
       )}
 
@@ -519,17 +637,22 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
          
          <div className="grid grid-cols-1 gap-3">
             {currentQuestion.options.map((option, index) => {
+                if (hiddenOptions.includes(index)) return <div key={index} className="h-[60px]"></div>; // Placeholder for layout stability
+
                 let style = "bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-200 dark:hover:border-indigo-800";
                 if (isAnswered) {
                     if (option.isCorrect) style = "bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-400";
                     else if (selectedOption === index) style = "bg-red-50 dark:bg-red-900/20 border-red-500 text-red-700 dark:text-red-400";
                     else style = "opacity-40 border-transparent";
                 }
+                // Show correct answer if ask joker used
+                if (showTeacherHint && option.isCorrect) style = "border-green-500 ring-2 ring-green-200 bg-green-50 dark:bg-green-900/10";
+
                 return (
                     <button
                         key={index}
                         onClick={() => handleOptionClick(index)}
-                        disabled={isAnswered}
+                        disabled={isAnswered && !isDoubleChanceActive}
                         className={`p-4 sm:p-5 rounded-2xl text-base sm:text-lg font-bold transition-all active:scale-[0.99] shadow-sm text-left flex items-center justify-between ${style}`}
                     >
                         <span>{option.text}</span>
@@ -551,10 +674,15 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
          )}
       </div>
       
-      {isAnswered && (
+      {isAnswered && !isDoubleChanceActive ? (
           <button onClick={() => handleNext()} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none active:scale-[0.98] transition-transform mt-4 mb-6 animate-in slide-in-from-bottom-4 text-lg shrink-0">
               {currentQuestionIndex < questions.length - 1 ? 'Sonraki Soru' : 'Sonuçları Gör'}
           </button>
+      ) : (
+          // Exit button when playing
+           <button onClick={handleExit} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl font-bold mt-4 mb-6 shrink-0">
+               Çıkış
+           </button>
       )}
     </div>
   );

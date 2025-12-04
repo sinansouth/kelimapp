@@ -14,6 +14,8 @@ export interface UserProfile {
   purchasedBackgrounds: string[];
   inventory: { streakFreezes: number };
   lastUsernameChange?: number;
+  isGuest?: boolean;
+  friendCode?: string;
 }
 
 export interface UserStats {
@@ -33,6 +35,8 @@ export interface UserStats {
   perfectQuizzes: number;
   questsCompleted: number;
   totalTimeSpent: number;
+  duelWins: number; 
+  duelPoints: number; 
   completedUnits: string[];
   completedGrades: string[];
   weekly: {
@@ -41,12 +45,12 @@ export interface UserStats {
     quizWrong: number;
     cardsViewed: number;
     matchingBestTime: number;
-    typingHighScore: number;
-    chainHighScore: number;
     mazeHighScore: number;
     wordSearchHighScore: number;
+    typingHighScore: number; // Kept for data consistency, but unused in quests
+    chainHighScore: number;  // Kept for data consistency, but unused in quests
   };
-  lastActivity?: { grade: string, unitId: string };
+  lastActivity?: { grade: string; unitId: string };
 }
 
 export interface AppSettings {
@@ -56,15 +60,12 @@ export interface AppSettings {
 
 // --- TIME UTILITIES (Turkey Time Zone Enforcement) ---
 
-// Returns the current time as a Date object, adjusted to Turkey Time (Europe/Istanbul)
 export const getTurkeyTime = (): Date => {
     const now = new Date();
-    // 'tr-TR' locale with 'Europe/Istanbul' timeZone automatically handles DST and offsets
     const turkeyTimeStr = now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" });
     return new Date(turkeyTimeStr);
 };
 
-// Returns YYYY-MM-DD string based on Turkey Time
 export const getTodayDateString = (): string => {
     const trDate = getTurkeyTime();
     const year = trDate.getFullYear();
@@ -73,9 +74,17 @@ export const getTodayDateString = (): string => {
     return `${year}-${month}-${day}`;
 };
 
-// Get current timestamp in Turkey Time (milliseconds)
 export const getTurkeyTimestamp = (): number => {
     return getTurkeyTime().getTime();
+};
+
+const generateFriendCode = (): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
 };
 
 // Default Values
@@ -88,11 +97,13 @@ const DEFAULT_PROFILE: UserProfile = {
     purchasedThemes: ['light', 'dark'],
     purchasedFrames: ['frame_none'],
     purchasedBackgrounds: ['bg_default'],
-    inventory: { streakFreezes: 0 }
+    inventory: { streakFreezes: 0 },
+    isGuest: false,
+    friendCode: ''
 };
 
 const getWeekId = () => {
-    const d = getTurkeyTime(); // Use Turkey Time
+    const d = getTurkeyTime(); 
     d.setHours(0,0,0,0);
     d.setDate(d.getDate() + 4 - (d.getDay() || 7));
     const yearStart = new Date(d.getFullYear(),0,1);
@@ -110,25 +121,27 @@ const DEFAULT_STATS: UserStats = {
     quizCorrect: 0,
     quizWrong: 0,
     dailyGoal: 20,
-    date: getTodayDateString(), // Use Turkey Date
+    date: getTodayDateString(),
     xpBoostEndTime: 0,
     lastGoalMetDate: null,
     viewedWordsToday: [],
     perfectQuizzes: 0,
     questsCompleted: 0,
     totalTimeSpent: 0,
+    duelWins: 0,
+    duelPoints: 0,
     completedUnits: [],
     completedGrades: [],
     weekly: {
-        weekId: getWeekId(), // Use Turkey Week
+        weekId: getWeekId(),
         quizCorrect: 0,
         quizWrong: 0,
         cardsViewed: 0,
         matchingBestTime: 0,
-        typingHighScore: 0,
-        chainHighScore: 0,
         mazeHighScore: 0,
-        wordSearchHighScore: 0
+        wordSearchHighScore: 0,
+        typingHighScore: 0,
+        chainHighScore: 0
     }
 };
 
@@ -147,7 +160,8 @@ const KEYS = {
     SRS: 'lgs_srs_data',
     DAILY: 'lgs_daily_state',
     LAST_UPDATE: 'lgs_last_update_ts',
-    VERSION: 'lgs_data_version'
+    VERSION: 'lgs_data_version',
+    TUTORIAL_SEEN: 'lgs_tutorial_seen'
 };
 
 // --- Profile ---
@@ -155,13 +169,35 @@ const KEYS = {
 export const getUserProfile = (): UserProfile => {
     try {
         const stored = localStorage.getItem(KEYS.PROFILE);
-        return stored ? { ...DEFAULT_PROFILE, ...JSON.parse(stored) } : DEFAULT_PROFILE;
+        if (!stored) return DEFAULT_PROFILE;
+        const parsed = JSON.parse(stored);
+        if (!parsed.friendCode) {
+             parsed.friendCode = generateFriendCode();
+             localStorage.setItem(KEYS.PROFILE, JSON.stringify(parsed));
+        }
+        return { ...DEFAULT_PROFILE, ...parsed };
     } catch { return DEFAULT_PROFILE; }
 };
 
 export const saveUserProfile = (profile: UserProfile, sync: boolean = false) => {
+    if (!profile.friendCode) profile.friendCode = generateFriendCode();
     localStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
     updateLastUpdatedTimestamp();
+};
+
+export const createGuestProfile = (grade: string) => {
+    const guestName = `Misafir-${Math.floor(Math.random() * 10000)}`;
+    const profile: UserProfile = {
+        ...DEFAULT_PROFILE,
+        name: guestName,
+        grade: grade,
+        isGuest: true,
+        friendCode: generateFriendCode()
+    };
+    saveUserProfile(profile);
+    const stats = getUserStats();
+    saveUserStats(stats);
+    return profile;
 };
 
 // --- Stats ---
@@ -172,23 +208,16 @@ export const getUserStats = (): UserStats => {
         if (!stored) return DEFAULT_STATS;
         const stats = JSON.parse(stored);
         
-        // Daily Reset Logic (Based on Turkey Time)
         const today = getTodayDateString();
         
         if (stats.date !== today) {
             stats.date = today;
-            stats.flashcardsViewed = 0;
-            stats.quizCorrect = 0;
-            stats.quizWrong = 0;
             stats.viewedWordsToday = [];
             
-            // Streak Logic: Check if streak is broken
             const lastDateStr = stats.lastStudyDate;
             if (lastDateStr) {
-                // We parse strings to dates, assuming they are YYYY-MM-DD
                 const d1 = new Date(lastDateStr); 
                 const d2 = new Date(today);
-                // Calculate difference in days
                 const diffTime = Math.abs(d2.getTime() - d1.getTime());
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
@@ -197,7 +226,6 @@ export const getUserStats = (): UserStats => {
                     if (prof.inventory && prof.inventory.streakFreezes > 0) {
                          prof.inventory.streakFreezes--;
                          saveUserProfile(prof);
-                         // Freeze used: Pretend last study date was yesterday
                          const yesterday = new Date(getTurkeyTime());
                          yesterday.setDate(yesterday.getDate() - 1);
                          stats.lastStudyDate = yesterday.toISOString().split('T')[0];
@@ -208,23 +236,23 @@ export const getUserStats = (): UserStats => {
             }
         }
 
-        // Weekly Reset (Turkey Time)
         const currentWeek = getWeekId();
         if (stats.weekly?.weekId !== currentWeek) {
             stats.weekly = {
                 weekId: currentWeek,
-                quizCorrect: 0,
-                quizWrong: 0,
-                cardsViewed: 0,
-                matchingBestTime: 0,
+                quizCorrect: stats.weekly?.quizCorrect || 0, 
+                quizWrong: stats.weekly?.quizWrong || 0,     
+                cardsViewed: stats.weekly?.cardsViewed || 0, 
+                matchingBestTime: 0, 
+                mazeHighScore: 0,    
+                wordSearchHighScore: 0,
                 typingHighScore: 0,
-                chainHighScore: 0,
-                mazeHighScore: 0,
-                wordSearchHighScore: 0
+                chainHighScore: 0
             };
         }
 
-        return { ...DEFAULT_STATS, ...stats };
+        const mergedWeekly = { ...DEFAULT_STATS.weekly, ...stats.weekly };
+        return { ...DEFAULT_STATS, ...stats, weekly: mergedWeekly };
     } catch { return DEFAULT_STATS; }
 };
 
@@ -299,11 +327,11 @@ export const removeFromBookmarks = (id: string) => {
     } catch {}
 };
 
-// --- SRS System (Using Turkey Time) ---
+// --- SRS System ---
 
 interface SRSData {
-    box: number; // 1-5
-    nextReview: number; // Timestamp
+    box: number; 
+    nextReview: number; 
 }
 
 export const getSRSData = (): Record<string, SRSData> => {
@@ -322,7 +350,6 @@ export const registerSRSInteraction = (wordId: string) => {
     const data = getSRSData();
     const now = getTurkeyTimestamp();
     if (!data[wordId]) {
-        // Initial interaction places it in box 1, but scheduled for TOMORROW
         data[wordId] = { box: 1, nextReview: now + (24 * 60 * 60 * 1000) };
         saveSRSData(data);
     }
@@ -331,19 +358,21 @@ export const registerSRSInteraction = (wordId: string) => {
 export const handleReviewResult = (wordId: string, success: boolean) => {
     const data = getSRSData();
     const now = getTurkeyTimestamp();
-    // Default to box 1 if not found (shouldn't happen in review mode but safety check)
-    let entry = data[wordId] || { box: 1, nextReview: now };
+    let entry = data[wordId];
 
-    if (success) {
-        entry.box = Math.min(entry.box + 1, 5);
+    if (!entry) {
+        entry = { box: 1, nextReview: now + (24 * 60 * 60 * 1000) };
     } else {
-        entry.box = 1;
+        if (success) {
+            entry.box = Math.min(entry.box + 1, 5);
+        } else {
+            entry.box = 1;
+        }
+        
+        const intervals = [0, 1, 3, 7, 14, 30];
+        const daysToAdd = intervals[entry.box];
+        entry.nextReview = now + (daysToAdd * 24 * 60 * 60 * 1000);
     }
-
-    // Intervals: 1d, 3d, 7d, 14d, 30d
-    const intervals = [0, 1, 3, 7, 14, 30];
-    const daysToAdd = intervals[entry.box];
-    entry.nextReview = now + (daysToAdd * 24 * 60 * 60 * 1000);
 
     data[wordId] = entry;
     saveSRSData(data);
@@ -448,18 +477,16 @@ export const getSRSStatus = () => {
 // --- Stats Updates ---
 
 export const updateStats = (
-    action: 'card_view' | 'quiz_correct' | 'quiz_wrong' | 'memorized' | 'review_remember' | 'review_forgot' | 'perfect_quiz',
+    action: 'card_view' | 'quiz_correct' | 'quiz_wrong' | 'memorized' | 'review_remember' | 'review_forgot' | 'perfect_quiz' | 'duel_result',
     grade?: GradeLevel | null,
     unitId?: string,
     amount: number = 1
 ): Badge[] => {
     const stats = getUserStats();
-    const today = getTodayDateString(); // Turkey Time Date
+    const today = getTodayDateString(); 
     
     if (stats.date !== today) {
-        // New day!
         const lastDateStr = stats.lastStudyDate;
-        
         if (lastDateStr) {
             const d1 = new Date(lastDateStr);
             const d2 = new Date(today);
@@ -469,8 +496,6 @@ export const updateStats = (
             if (diffDays === 1) {
                 stats.streak++;
             } else if (diffDays > 1) {
-                 // Freeze logic should have handled this in getUserStats, 
-                 // but if not, reset to 1 (starting fresh today)
                  stats.streak = 1;
             }
         } else {
@@ -481,9 +506,8 @@ export const updateStats = (
         if (!stats.lastStudyDate) stats.lastStudyDate = today;
     }
 
-    // XP Calculation
     let xpGain = 0;
-    const multiplier = (stats.xpBoostEndTime > Date.now()) ? 2 : 1; // Boost uses local device time for duration, acceptable
+    const multiplier = (stats.xpBoostEndTime > Date.now()) ? 2 : 1;
 
     switch (action) {
         case 'card_view':
@@ -517,6 +541,19 @@ export const updateStats = (
             stats.perfectQuizzes++;
             xpGain = 100;
             break;
+        case 'duel_result':
+            stats.duelPoints = (stats.duelPoints || 0) + amount;
+            if (amount === 3) {
+                stats.duelWins = (stats.duelWins || 0) + 1;
+                updateQuestProgress('win_duel', 1);
+                xpGain = 100; // XP for winning
+            } else if (amount === 1) {
+                xpGain = 30; // XP for tie
+            } else {
+                xpGain = 10; // Participation XP
+            }
+            updateQuestProgress('play_duel', 1);
+            break;
     }
 
     stats.xp += xpGain * multiplier;
@@ -545,15 +582,11 @@ export const updateStats = (
     return unlockedBadges;
 };
 
-export const updateGameStats = (game: 'matching' | 'typing' | 'chain' | 'maze' | 'wordSearch', score: number) => {
+export const updateGameStats = (game: 'matching' | 'maze' | 'wordSearch' | 'typing' | 'chain', score: number) => {
     const stats = getUserStats();
     
     if (game === 'matching') {
         if (score > stats.weekly.matchingBestTime) stats.weekly.matchingBestTime = score;
-    } else if (game === 'typing') {
-        if (score > stats.weekly.typingHighScore) stats.weekly.typingHighScore = score;
-    } else if (game === 'chain') {
-        if (score > stats.weekly.chainHighScore) stats.weekly.chainHighScore = score;
     } else if (game === 'maze') {
         if (score > stats.weekly.mazeHighScore) stats.weekly.mazeHighScore = score;
     } else if (game === 'wordSearch') {
@@ -582,24 +615,22 @@ export const updateTimeSpent = (minutes: number): Badge[] => {
     return unlockedBadges;
 };
 
-// --- Daily Quests (Turkey Time) ---
+// --- Daily Quests ---
 
 export const getDailyState = () => {
     try {
         const stored = localStorage.getItem(KEYS.DAILY);
-        const today = getTodayDateString(); // Turkey Date
+        const today = getTodayDateString();
         
         if (stored) {
             const data = JSON.parse(stored);
             if (data.date === today) return data;
         }
 
-        // Generate New Quests
         const newQuests = generateDailyQuests();
         const newState = {
             date: today,
             quests: newQuests,
-            // wordOfTheDayIndex no longer needed for random word, but keeping structure for compatibility
             wordOfTheDayIndex: 0 
         };
         localStorage.setItem(KEYS.DAILY, JSON.stringify(newState));
@@ -616,10 +647,10 @@ const generateDailyQuests = (): Quest[] => {
         'perfect_quiz', 
         'earn_xp', 
         'play_matching', 
-        'play_typing', 
-        'play_chain', 
         'play_maze', 
-        'play_word_search'
+        'play_word_search',
+        'play_duel',
+        'win_duel'
     ];
     const pickedTypes = allTypes.sort(() => 0.5 - Math.random()).slice(0, 3);
     
@@ -634,10 +665,10 @@ const generateDailyQuests = (): Quest[] => {
             case 'perfect_quiz': target = 1; reward = 250; desc = '1 Testi Hatasız Bitir'; break;
             case 'earn_xp': target = 500; reward = 150; desc = '500 XP Kazan'; break;
             case 'play_matching': target = 1; reward = 100; desc = 'Eşleştirme Oyunu Oyna'; break;
-            case 'play_typing': target = 100; reward = 150; desc = 'Yazma Oyununda 100 Puan Al'; break;
-            case 'play_chain': target = 50; reward = 150; desc = 'Kelime Türetmece 50 Puan Al'; break;
-            case 'play_maze': target = 1; reward = 100; desc = 'Labirent Oyununu Kazan'; break;
+            case 'play_maze': target = 1; reward = 100; desc = 'Labirent Oyununu Oyna'; break;
             case 'play_word_search': target = 100; reward = 120; desc = 'Bulmacada 100 Puan Al'; break;
+            case 'play_duel': target = 1; reward = 100; desc = 'Bir Düello Yap'; break;
+            case 'win_duel': target = 1; reward = 200; desc = 'Bir Düello Kazan'; break;
         }
         
         return {
@@ -789,26 +820,17 @@ export const adminResetDailyQuests = () => {
     localStorage.removeItem(KEYS.DAILY);
 };
 
-// --- Random Word (Revised Logic) ---
+// --- Random Word ---
 
 export const getRandomWordForGrade = (grade: GradeLevel | string | null) => {
     if (!grade) return null;
-
-    // Get units for this grade
     const units = UNIT_ASSETS[grade];
     if (!units || units.length === 0) return null;
-
-    // Pick a random unit (ignoring 'all' units if preferred, but keeping it simple for variety)
-    // Filter out empty units first
     const validUnits = units.filter(u => VOCABULARY[u.id] && VOCABULARY[u.id].length > 0);
-    
     if (validUnits.length === 0) return null;
-
     const randomUnit = validUnits[Math.floor(Math.random() * validUnits.length)];
     const words = VOCABULARY[randomUnit.id];
-    
     if (!words || words.length === 0) return null;
-
     const randomWord = words[Math.floor(Math.random() * words.length)];
     return randomWord;
 };
@@ -844,6 +866,16 @@ export const checkDataVersion = () => {
     return false;
 };
 
+// --- Tutorial ---
+
+export const hasSeenTutorial = () => {
+    return localStorage.getItem(KEYS.TUTORIAL_SEEN) === 'true';
+};
+
+export const markTutorialAsSeen = () => {
+    localStorage.setItem(KEYS.TUTORIAL_SEEN, 'true');
+};
+
 export const resetAppProgress = (scope: { type: 'all' | 'grade' | 'unit', value?: string }) => {
     if (scope.type === 'all') {
         localStorage.clear();
@@ -868,4 +900,13 @@ export const clearLocalUserData = () => {
     localStorage.removeItem(KEYS.MEMORIZED);
     localStorage.removeItem(KEYS.BOOKMARKS);
     localStorage.removeItem(KEYS.SRS);
+};
+
+export const overwriteLocalWithCloud = (cloudData: any) => {
+    if (cloudData.profile) saveUserProfile(cloudData.profile);
+    if (cloudData.stats) saveUserStats(cloudData.stats);
+    if (cloudData.memorized) localStorage.setItem(KEYS.MEMORIZED, cloudData.memorized);
+    if (cloudData.bookmarks) localStorage.setItem(KEYS.BOOKMARKS, cloudData.bookmarks);
+    if (cloudData.srs) localStorage.setItem(KEYS.SRS, cloudData.srs);
+    updateLastUpdatedTimestamp();
 };

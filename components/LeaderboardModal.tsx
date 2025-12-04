@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Trophy, Medal, Crown, WifiOff, RefreshCw, CheckCircle, Zap, BookOpen, Target, Grid3X3, Keyboard, Star, WholeWord, Flame, Gamepad2, Search } from 'lucide-react';
+import { X, Trophy, Medal, Crown, WifiOff, RefreshCw, CheckCircle, Zap, BookOpen, Target, Grid3X3, WholeWord, Flame, Gamepad2, Search, LogIn, Star, Swords } from 'lucide-react';
 import { getLeaderboard, LeaderboardEntry, syncLocalToCloud } from '../services/firebase';
-import { AVATARS, FRAMES, BACKGROUNDS } from '../data/assets';
+import { AVATARS, FRAMES, BACKGROUNDS, THEME_COLORS } from '../data/assets';
 import UserProfileModal from './UserProfileModal';
+import { getUserProfile } from '../services/userService';
+import AuthModal from './AuthModal';
 
 interface LeaderboardModalProps {
   onClose: () => void;
@@ -11,13 +13,15 @@ interface LeaderboardModalProps {
   currentUserGrade: string;
 }
 
-type LeaderboardMode = 'xp' | 'quiz' | 'flashcard' | 'matching' | 'typing' | 'chain' | 'maze' | 'wordSearch';
+type LeaderboardMode = 'xp' | 'quiz' | 'flashcard' | 'matching' | 'maze' | 'wordSearch' | 'duel';
 
 const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUserXP, currentUserGrade }) => {
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<LeaderboardMode>('xp');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [currentUserProfile, setCurrentUserProfile] = useState(getUserProfile());
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
@@ -31,8 +35,10 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
     setIsOffline(false);
     setLoading(true);
     
-    // Ensure local data is synced before fetching
-    await syncLocalToCloud();
+    // Only sync if not guest
+    if (!currentUserProfile.isGuest) {
+        await syncLocalToCloud();
+    }
 
     // Always fetch ALL for no grade distinction
     const data = await getLeaderboard('ALL', mode);
@@ -44,6 +50,11 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
     fetchData();
   }, [mode]);
 
+  const onAuthSuccess = () => {
+      setCurrentUserProfile(getUserProfile());
+      fetchData(); // Retry sync after login
+  };
+
   const getRankIcon = (index: number) => {
       switch(index) {
           case 0: return <Crown size={20} className="text-yellow-500 fill-yellow-500" />;
@@ -53,32 +64,14 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
       }
   };
 
-  const getThemeStyles = (theme?: string) => {
-    let bg = '#ffffff'; let text = '#1e293b'; let border = '#e2e8f0'; let font = "'Inter', sans-serif";
-    switch (theme) {
-        case 'light': bg = '#ffffff'; text = '#1e293b'; border = '#e2e8f0'; break;
-        case 'dark': bg = '#1e293b'; text = '#f8fafc'; border = '#334155'; break;
-        case 'neon': bg = '#000000'; text = '#33ff00'; border = '#33ff00'; break;
-        case 'ocean': bg = '#0c4a6e'; text = '#e0f2fe'; border = '#0369a1'; break;
-        case 'sunset': bg = '#431407'; text = '#ffedd5'; border = '#9a3412'; break;
-        case 'forest': bg = '#052e16'; text = '#dcfce7'; border = '#15803d'; break;
-        case 'royal': bg = '#312e81'; text = '#fef3c7'; border = '#fbbf24'; font = "'Playfair Display', serif"; break;
-        case 'candy': bg = '#831843'; text = '#fce7f3'; border = '#be185d'; font = "'Fredoka', sans-serif"; break;
-        case 'cyberpunk': bg = '#18181b'; text = '#facc15'; border = '#facc15'; font = "'Orbitron', sans-serif"; break;
-        case 'coffee': bg = '#3e2723'; text = '#d7ccc8'; border = '#6d4c41'; break;
-        case 'galaxy': bg = '#0f172a'; text = '#e9d5ff'; border = '#6b21a8'; break;
-        case 'retro': bg = '#fdf6e3'; text = '#657b83'; border = '#b58900'; font = "'Courier Prime', monospace"; break;
-        case 'matrix': bg = '#000000'; text = '#00ff41'; border = '#003b00'; font = "'Courier Prime', monospace"; break;
-        case 'midnight': bg = '#020617'; text = '#e2e8f0'; border = '#334155'; break;
-        case 'volcano': bg = '#1a0505'; text = '#fee2e2'; border = '#7f1d1d'; font = "'Rubik Burned', system-ui"; break;
-        case 'ice': bg = '#083344'; text = '#cffafe'; border = '#155e75'; break;
-        case 'lavender': bg = '#2e1065'; text = '#ede9fe'; border = '#6d28d9'; break;
-        case 'gamer': bg = '#000000'; text = '#ffffff'; border = '#ef4444'; font = "'Russo One', sans-serif"; break;
-        case 'luxury': bg = '#1a1a1a'; text = '#fcfcd4'; border = '#fbbf24'; font = "'Playfair Display', serif"; break;
-        case 'comic': bg = '#ffffff'; text = '#000000'; border = '#000000'; font = "'Bangers', system-ui"; break;
-        case 'nature_soft': bg = '#f0fdf4'; text = '#14532d'; border = '#84cc16'; font = "'Patrick Hand', cursive"; break;
-    }
-    return { backgroundColor: bg, color: text, borderColor: border, fontFamily: font };
+  const getThemeStyles = (theme: string) => {
+      const themeConfig = THEME_COLORS[theme as any] || THEME_COLORS['dark'];
+      return {
+          backgroundColor: themeConfig.bgCard,
+          color: themeConfig.textMain,
+          borderColor: themeConfig.border,
+          fontFamily: themeConfig.fontFamily
+      };
   };
 
   const formatValue = (val: number) => {
@@ -91,15 +84,16 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
           case 'quiz': return 'Test Çözme';
           case 'flashcard': return 'Kelime Çalışma';
           case 'matching': return 'Eşleştirme Oyunu';
-          case 'typing': return 'Yazma Oyunu';
-          case 'chain': return 'Kelime Türetmece';
           case 'maze': return 'Labirent';
           case 'wordSearch': return 'Kelime Bulmaca';
+          case 'duel': return 'Düello Puanı';
       }
   }
 
   return (
     <>
+    {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={onAuthSuccess} />}
+
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-md rounded-3xl shadow-2xl border overflow-hidden flex flex-col h-[85vh] animate-in zoom-in-95 duration-200"
            style={{backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)'}}>
@@ -116,15 +110,27 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
                  <button onClick={() => setMode('xp')} className={`p-2 rounded-lg transition-all ${mode === 'xp' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Trophy size={16} /></button>
                  <button onClick={() => setMode('quiz')} className={`p-2 rounded-lg transition-all ${mode === 'quiz' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Target size={16} /></button>
                  <button onClick={() => setMode('flashcard')} className={`p-2 rounded-lg transition-all ${mode === 'flashcard' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><BookOpen size={16} /></button>
+                 <button onClick={() => setMode('duel')} className={`p-2 rounded-lg transition-all ${mode === 'duel' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Swords size={16} /></button>
                  <button onClick={() => setMode('matching')} className={`p-2 rounded-lg transition-all ${mode === 'matching' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Grid3X3 size={16} /></button>
-                 <button onClick={() => setMode('typing')} className={`p-2 rounded-lg transition-all ${mode === 'typing' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Keyboard size={16} /></button>
-                 <button onClick={() => setMode('chain')} className={`p-2 rounded-lg transition-all ${mode === 'chain' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><WholeWord size={16} /></button>
                  <button onClick={() => setMode('maze')} className={`p-2 rounded-lg transition-all ${mode === 'maze' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Gamepad2 size={16} /></button>
                  <button onClick={() => setMode('wordSearch')} className={`p-2 rounded-lg transition-all ${mode === 'wordSearch' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Search size={16} /></button>
             </div>
 
              <div className="text-[12px] text-white mt-2 font-bold bg-black/20 inline-block px-3 py-1 rounded-full border border-white/10">{getModeLabel()}</div>
         </div>
+
+        {/* Guest Warning */}
+        {currentUserProfile.isGuest && (
+            <div className="bg-orange-100 dark:bg-orange-900/30 p-3 text-center shrink-0 border-b border-orange-200 dark:border-orange-800">
+                <p className="text-xs text-orange-800 dark:text-orange-200 font-bold mb-2">Sıralamaya girmek için hesabını kaydetmelisin.</p>
+                <button 
+                    onClick={() => setShowAuthModal(true)}
+                    className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2 mx-auto"
+                >
+                    <LogIn size={12} /> Kayıt Ol
+                </button>
+            </div>
+        )}
 
         {/* List */}
         <div className="flex-1 overflow-y-auto p-3 custom-scrollbar" style={{backgroundColor: 'var(--color-bg-main)'}}>
@@ -173,6 +179,13 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
                                             <div className="flex gap-1 text-[8px] font-bold mt-0.5">
                                                 <span className="text-green-600 bg-green-100 px-1 rounded">{user.value} D</span>
                                                 <span className="text-red-600 bg-red-100 px-1 rounded">{user.quizWrong || 0} Y</span>
+                                            </div>
+                                        </div>
+                                    ) : mode === 'duel' ? (
+                                        <div className="flex flex-col items-end">
+                                            <div className="font-black text-sm leading-none" style={{color: themeStyle.color, opacity: 0.9}}>{formatValue(user.duelPoints || 0)} P</div>
+                                            <div className="text-[9px] font-bold text-green-500 mt-0.5">
+                                                {user.duelWins || 0} Zafer
                                             </div>
                                         </div>
                                     ) : (

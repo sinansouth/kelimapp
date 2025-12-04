@@ -1,4 +1,5 @@
 
+
 import { ReactNode } from 'react';
 
 export interface WordCard {
@@ -15,8 +16,6 @@ export enum AppMode {
   LOADING = 'LOADING',
   FLASHCARDS = 'FLASHCARDS',
   MATCHING = 'MATCHING',
-  TYPING = 'TYPING',
-  WORD_CHAIN = 'WORD_CHAIN',
   MAZE = 'MAZE',
   WORD_SEARCH = 'WORD_SEARCH',
   QUIZ = 'QUIZ',
@@ -133,7 +132,7 @@ export interface Quest {
   current: number;
   rewardXP: number;
   isCompleted: boolean;
-  type: 'view_cards' | 'finish_quiz' | 'perfect_quiz' | 'earn_xp' | 'play_matching' | 'play_typing' | 'play_chain' | 'play_maze' | 'play_word_search';
+  type: 'view_cards' | 'finish_quiz' | 'perfect_quiz' | 'earn_xp' | 'play_matching' | 'play_maze' | 'play_word_search' | 'play_duel' | 'win_duel';
 }
 
 export interface DailyState {
@@ -144,16 +143,19 @@ export interface DailyState {
 
 export interface Challenge {
     id: string;
+    type: 'public' | 'private' | 'friend';
     creatorId: string;
     creatorName: string;
     creatorScore: number;
-    wordIndices: number[]; // Store indices of words in ALL_WORDS pool or similar ID list
-    unitId: string; // If specific unit, or 'mixed'
+    wordIndices: number[]; 
+    unitId: string; 
     difficulty: QuizDifficulty;
     wordCount: number;
+    targetFriendId?: string; // If type is 'friend'
     opponentId?: string;
     opponentName?: string;
     opponentScore?: number;
     status: 'waiting' | 'completed';
+    winnerId?: string; // 'creator', 'opponent', or 'tie'
     createdAt: number;
 }

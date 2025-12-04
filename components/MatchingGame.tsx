@@ -4,6 +4,8 @@ import { WordCard, Badge, GradeLevel } from '../types';
 import { Shuffle, RotateCcw, CheckCircle, HelpCircle, Grid3X3 } from 'lucide-react';
 import { playSound } from '../services/soundService';
 import { updateStats, updateQuestProgress, updateGameStats } from '../services/userService';
+import { getSmartDistractors } from '../data/vocabulary';
+import { VOCABULARY } from '../data/vocabulary';
 
 interface MatchingGameProps {
   words: WordCard[];
@@ -53,18 +55,62 @@ const MatchingGame: React.FC<MatchingGameProps> = ({ words, onFinish, onBack, on
       return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
   }, [isTimerRunning]);
 
+  const handleExit = () => {
+       if (matches > 0) {
+           // Award partial XP/Stats for matches found
+           // Roughly 1 'correct' per match
+           updateStats('quiz_correct', grade, undefined, matches);
+           updateQuestProgress('earn_xp', matches * 5);
+       }
+       onBack();
+  };
+
   const startGame = (count: number) => {
-    // Deduplicate words based on English text to avoid confusion
+    // Filter duplicates first
     const uniqueWords = words.filter((word, index, self) => 
         index === self.findIndex((t) => (
             t.english.toLowerCase() === word.english.toLowerCase()
         ))
     );
 
-    const gameWords = [...uniqueWords].sort(() => 0.5 - Math.random()).slice(0, count);
+    // Smart Selection Logic:
+    // 1. Pick a random "seed" word from the unit.
+    // 2. Get its smart distractors (same context words) from the full vocabulary.
+    // 3. If we need more, pick random words from the unit.
+    
+    // Flatten all vocabulary for context search
+    const allVocab = Object.values(VOCABULARY).flat();
+
+    const seedWord = uniqueWords[Math.floor(Math.random() * uniqueWords.length)];
+    let selectedWords: WordCard[] = [];
+    
+    if (seedWord) {
+        // Get context-aware distractors (try to find up to count - 1)
+        const contextWords = getSmartDistractors(seedWord, allVocab, count - 1);
+        
+        // Filter context words that are also in the current unit (preferred) or just allow them for difficulty?
+        // For matching, it's better to stick to the current unit to avoid confusion if the user hasn't learned other units.
+        // So let's filter contextWords to only include those in uniqueWords (current unit).
+        const validContextWords = contextWords.filter(cw => uniqueWords.some(uw => uw.english === cw.english));
+        
+        selectedWords = [seedWord, ...validContextWords];
+    }
+
+    // Fill the rest with random words from the current unit
+    const remainingCount = count - selectedWords.length;
+    if (remainingCount > 0) {
+        const otherWords = uniqueWords
+            .filter(w => !selectedWords.some(sw => sw.english === w.english))
+            .sort(() => 0.5 - Math.random())
+            .slice(0, remainingCount);
+        selectedWords = [...selectedWords, ...otherWords];
+    }
+
+    // If we still don't have enough (small unit), just duplicate or limit game size? 
+    // The setup screen limits count based on unit size, so we should be safe.
     
     const newCards: CardItem[] = [];
-    gameWords.forEach(w => {
+    selectedWords.forEach(w => {
         newCards.push({ id: `eng-${w.english}`, text: w.english, type: 'eng', wordId: w.english, isMatched: false, isFlipped: false });
         newCards.push({ id: `tr-${w.english}`, text: w.turkish, type: 'tr', wordId: w.english, isMatched: false, isFlipped: false });
     });
@@ -259,7 +305,10 @@ const MatchingGame: React.FC<MatchingGameProps> = ({ words, onFinish, onBack, on
             ))}
         </div>
 
-        <div className="shrink-0 pt-2 flex justify-center pb-safe">
+        <div className="shrink-0 pt-2 flex justify-between pb-safe px-4">
+             <button onClick={handleExit} className="text-slate-400 hover:text-red-500 transition-colors text-xs font-bold">
+                Çıkış
+            </button>
             <button onClick={() => startGame(pairCount)} className="flex items-center gap-2 text-slate-400 hover:text-indigo-500 transition-colors text-xs font-bold">
                 <Shuffle size={14} /> Yeniden Dağıt
             </button>

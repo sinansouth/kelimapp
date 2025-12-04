@@ -162,6 +162,16 @@ const WordSearchGame: React.FC<WordSearchGameProps> = ({ words, onFinish, onBack
         setGameMode('playing');
     };
 
+    const handleExit = () => {
+        if (score > 0) {
+             // Save any points earned so far
+             updateGameStats('wordSearch', score);
+             updateQuestProgress('earn_xp', foundCount * 10); // Rough estimate XP
+             if (foundCount > 0) updateStats('quiz_correct', grade, undefined, foundCount);
+        }
+        onBack();
+    };
+
     const getCellsBetween = (start: {x: number, y: number}, end: {x: number, y: number}) => {
         const cells: {x: number, y: number}[] = [];
         const dx = end.x - start.x;
@@ -343,9 +353,14 @@ const WordSearchGame: React.FC<WordSearchGameProps> = ({ words, onFinish, onBack
                         {score} Puan
                     </div>
                 </div>
-                <button onClick={() => setGameMode('setup')} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    <RotateCcw size={20} className="text-slate-400" />
-                </button>
+                <div className="flex gap-2">
+                     <button onClick={handleExit} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 text-xs font-bold">
+                        Çıkış
+                    </button>
+                    <button onClick={() => setGameMode('setup')} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <RotateCcw size={20} className="text-slate-400" />
+                    </button>
+                </div>
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center relative min-h-0">
