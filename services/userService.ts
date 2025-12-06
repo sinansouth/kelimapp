@@ -541,14 +541,23 @@ export const updateStats = (
             xpGain = 100;
             break;
         case 'duel_result':
-            stats.duelPoints = (stats.duelPoints || 0) + amount;
+            // amount here represents result type (3: win, 1: tie, 0: loss)
+            // But we want to add to duelPoints too.
+            // Let's define convention: 
+            // amount 3 = WIN (Gain 100 XP + 3 Duel Points)
+            // amount 1 = TIE (Gain 30 XP + 1 Duel Point)
+            // amount 0 = LOSS (Gain 10 XP + 0 Duel Points)
+            
             if (amount === 3) { // WIN
                 stats.duelWins = (stats.duelWins || 0) + 1;
+                stats.duelPoints = (stats.duelPoints || 0) + 3;
                 xpGain = 100;
                 updateQuestProgress('win_duel', 1);
             } else if (amount === 1) { // TIE
+                stats.duelPoints = (stats.duelPoints || 0) + 1;
                 xpGain = 30;
-            } else { // LOSS
+            } else { // LOSS (0)
+                 // Even if loss, give some XP for participation
                 xpGain = 10; 
             }
             updateQuestProgress('play_duel', 1);
@@ -919,4 +928,3 @@ export const overwriteLocalWithCloud = (cloudData: any) => {
     
     updateLastUpdatedTimestamp();
 };
-

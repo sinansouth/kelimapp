@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge, Tournament, TournamentMatch } from '../types';
 import { VOCABULARY } from '../data/vocabulary';
@@ -239,28 +240,38 @@ const App: React.FC = () => {
   };
 
   const goBack = useCallback(() => {
+      // Priority 1: View Profile Overlay
       if (viewProfileId) { setViewProfileId(null); return true; }
+      
+      // Priority 2: Modals
       if (activeModal) { 
           setActiveModal(null); 
           setIsOnboardingGuest(false); 
           return true; 
       }
+
+      // Priority 3: Setup/Config
       if (pendingQuizConfig) { setPendingQuizConfig(null); return true; }
       
+      // Priority 4: Deep navigation in Home
       if (mode === AppMode.HOME) {
           if (selectedUnit) { setSelectedUnit(null); return true; }
           if (selectedStudyMode) { setSelectedStudyMode(null); return true; }
           if (selectedGrade) { setSelectedGrade(null); return true; }
           if (selectedCategory) { setSelectedCategory(null); return true; }
-          return false; 
+          return false; // Exit app if at absolute root
       }
+
+      // Priority 5: Not in Home, go back to Home
       if (mode !== AppMode.HOME) {
+          // Reset all specific states
           setMode(AppMode.HOME);
           setIsSRSReview(false);
           setChallengeState(null);
           return true;
       }
-      return true;
+      
+      return false; // Exit app
   }, [activeModal, mode, pendingQuizConfig, selectedUnit, selectedGrade, selectedCategory, selectedStudyMode, viewProfileId]);
 
   const handleManualBack = () => { goBack(); };
@@ -270,7 +281,9 @@ const App: React.FC = () => {
         if (Capacitor.isNativePlatform()) {
              await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
                 const handled = goBack();
-                if (!handled) CapacitorApp.exitApp();
+                if (!handled) {
+                    CapacitorApp.exitApp();
+                }
             });
         }
     };

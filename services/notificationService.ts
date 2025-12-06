@@ -1,7 +1,7 @@
 
 export const requestNotificationPermission = async () => {
     if (!("Notification" in window)) {
-        console.log("This browser does not support desktop notification");
+        // Browser does not support desktop notification
         return;
     }
 

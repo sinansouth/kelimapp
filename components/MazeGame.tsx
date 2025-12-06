@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
 import { Ghost, Bot, CheckCircle, XCircle, ArrowRight, MapPin, ChevronUp, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
@@ -67,7 +68,7 @@ const MazeGrid = React.memo(({ grid, doors }: { grid: CellType[][], doors: DoorA
                 if (door && x === door.x + 1 && y === door.y + 1) {
                     poolContent = (
                         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none overflow-visible w-[300%] h-[300%] -translate-x-1/3 -translate-y-1/3">
-                            <span className="text-[8px] sm:text-[10px] font-black text-yellow-200 text-center leading-tight drop-shadow-md px-1 break-words w-full">
+                            <span className="text-[10px] sm:text-xs font-black text-white bg-black/60 px-2 py-1 rounded-lg text-center leading-tight shadow-sm backdrop-blur-[2px] border border-white/10 break-words max-w-full">
                                 {door.word}
                             </span>
                         </div>

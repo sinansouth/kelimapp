@@ -1,8 +1,9 @@
 
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel, QuizDifficulty, Challenge } from '../types';
 import { CheckCircle, XCircle, Bookmark, Info, Clock, Swords, Copy, Trophy, HelpCircle, Zap, Divide } from 'lucide-react';
-import { updateStats, handleQuizResult, handleReviewResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress, getUserProfile } from '../services/userService';
+import { updateStats, handleQuizResult, handleReviewResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress, getUserProfile, saveUserStats } from '../services/userService';
 import { playSound } from '../services/soundService';
 import { createChallenge, completeChallenge, syncLocalToCloud, submitTournamentScore } from '../services/firebase';
 import { getSmartDistractors } from '../data/vocabulary';
@@ -383,8 +384,13 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
           }
           await syncLocalToCloud();
       } else if (challengeMode === 'tournament' && challengeData && tournamentMatchId) {
+          // Submit first
           await submitTournamentScore(challengeData.tournamentId, tournamentMatchId, percentage, totalSeconds);
-          updateStats('duel_result', grade, undefined, 1); 
+          
+          // Then update local stats
+          updateStats('duel_result', grade, undefined, 1); // Participation reward
+          
+          // Then sync
           await syncLocalToCloud();
       }
       

@@ -63,7 +63,7 @@ export interface Badge {
   description: string;
   icon: string;
   image?: string;
-  condition: (stats: any, context?: any) => boolean;
+  condition: (stats: import('./services/userService').UserStats, context?: any) => boolean;
   unlocked: boolean;
 }
 
