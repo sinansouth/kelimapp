@@ -1,43 +1,43 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge } from '../types';
-import TopicSelector from './TopicSelector';
-import { THEME_COLORS, UI_ICONS, UNIT_ASSETS } from '../data/assets';
-import FlashcardDeck from './FlashcardDeck';
-import Quiz from './Quiz';
-import Profile from './Profile';
-import GrammarView from './GrammarView';
-import WordSelector from './WordSelector';
-import InfoView from './InfoView';
-import AnnouncementsView from './AnnouncementsView';
-import EmptyStateWarning from './EmptyStateWarning';
-import Celebration from './Celebration';
-import SettingsModal from './SettingsModal';
-import QuizSetupModal from './QuizSetupModal';
-import SRSInfoModal from './SRSInfoModal';
-import GradeSelectionModal from './GradeSelectionModal';
-import MarketModal from './MarketModal';
-import AvatarModal from './AvatarModal';
-import AuthModal from './AuthModal';
-import FeedbackModal from './FeedbackModal';
-import AdminModal from './AdminModal';
-import InstallPromptModal from './InstallPromptModal';
-import ChallengeModal from './ChallengeModal';
-import UserProfileModal from './UserProfileModal';
-import WelcomeScreen from './WelcomeScreen';
-import CustomAlert, { AlertType } from './CustomAlert';
+import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge } from './types';
+import TopicSelector from './components/TopicSelector';
+import { THEME_COLORS, UI_ICONS, UNIT_ASSETS } from './data/assets';
+import FlashcardDeck from './components/FlashcardDeck';
+import Quiz from './components/Quiz';
+import Profile from './components/Profile';
+import GrammarView from './components/GrammarView';
+import WordSelector from './components/WordSelector';
+import InfoView from './components/InfoView';
+import AnnouncementsView from './components/AnnouncementsView';
+import EmptyStateWarning from './components/EmptyStateWarning';
+import Celebration from './components/Celebration';
+import SettingsModal from './components/SettingsModal';
+import QuizSetupModal from './components/QuizSetupModal';
+import SRSInfoModal from './components/SRSInfoModal';
+import GradeSelectionModal from './components/GradeSelectionModal';
+import MarketModal from './components/MarketModal';
+import AvatarModal from './components/AvatarModal';
+import AuthModal from './components/AuthModal';
+import FeedbackModal from './components/FeedbackModal';
+import AdminModal from './components/AdminModal';
+import InstallPromptModal from './components/InstallPromptModal';
+import ChallengeModal from './components/ChallengeModal';
+import UserProfileModal from './components/UserProfileModal';
+import WelcomeScreen from './components/WelcomeScreen';
+import CustomAlert, { AlertType } from './components/CustomAlert';
 import { ChevronLeft, Zap, Swords, Trophy, AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
-import { getUserProfile, getTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, createGuestProfile, hasSeenTutorial, markTutorialAsSeen, UserStats, saveSRSData, saveUserStats, overwriteLocalWithCloud, updateStats } from '../services/userService';
-import { supabase, syncLocalToCloud, getOpenChallenges, getGlobalSettings, getUserData } from '../services/supabase';
-import { getWordsForUnit, fetchAllWords, getVocabulary, fetchDynamicContent, getAnnouncements, getUnitAssets } from '../services/contentService';
-import { requestNotificationPermission } from '../services/notificationService';
-import { playSound } from '../services/soundService';
-import { APP_CONFIG } from '../config/appConfig';
+import { getUserProfile, getTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, createGuestProfile, hasSeenTutorial, markTutorialAsSeen, UserStats, saveSRSData, saveUserStats, overwriteLocalWithCloud, updateStats, DEFAULT_STATS } from './services/userService';
+import { supabase, syncLocalToCloud, getOpenChallenges, getGlobalSettings, getUserData, checkPendingDuelResults } from './services/supabase';
+import { getWordsForUnit, fetchAllWords, getVocabulary, fetchDynamicContent, getAnnouncements, getUnitAssets } from './services/contentService';
+import { requestNotificationPermission } from './services/notificationService';
+import { playSound } from './services/soundService';
+import { APP_CONFIG } from './config/appConfig';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import MatchingGame from './MatchingGame';
-import MazeGame from './MazeGame';
-import WordSearchGame from './WordSearchGame';
+import MatchingGame from './components/MatchingGame';
+import MazeGame from './components/MazeGame';
+import WordSearchGame from './components/WordSearchGame';
 
 const App: React.FC = () => {
     const [isAppLoading, setIsAppLoading] = useState(true);
@@ -114,7 +114,6 @@ const App: React.FC = () => {
     };
 
     const checkForDuels = async () => {
-        if (!navigator.onLine) return; // Internet yoksa düello kontrolü yapma
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             try {
@@ -190,42 +189,32 @@ const App: React.FC = () => {
         setLoadingError(false);
         
         try {
-            // Apply theme immediately from local storage to prevent flash
+            await Promise.all([
+                fetchAllWords().catch(e => console.warn("Failed to fetch all words, continuing with local/cache", e)),
+                fetchDynamicContent().catch(e => console.warn("Failed to fetch dynamic content", e))
+            ]);
+
             const currentSettings = getAppSettings();
             applyTheme(currentSettings.theme);
-
-            // DATA LOADING STRATEGY: LOCAL FIRST, CLOUD SECOND
-            // We initialize with local data immediately.
-            // Cloud fetching happens in background and updates cache seamlessly.
             
-            // 1. Fire off background sync tasks (don't await them for UI unblock)
-            fetchAllWords();
-            fetchDynamicContent();
-            
-            // 2. Sync user profile if logged in (Smart Sync with Timestamp)
-            syncLocalToCloud();
-
-            // 3. Check for settings/announcements in background
-            getGlobalSettings().then(settings => {
-                if (settings.maintenance_mode?.isActive) {
-                    const profile = getUserProfile();
-                    if (!profile.isAdmin) {
-                        setMaintenanceMode(true);
-                    }
+            const settings = await getGlobalSettings().catch(() => ({}));
+            if (settings.maintenance_mode?.isActive) {
+                const profile = getUserProfile();
+                if (!profile.isAdmin) {
+                    setMaintenanceMode(true);
                 }
-            });
+            }
             
-            getAnnouncements().then(announcements => {
-                const lastReadId = getLastReadAnnouncementId();
-                if (announcements.length > 0 && announcements[0].id !== lastReadId) {
-                    setHasUnreadAnnouncements(true);
-                }
-            });
+            const announcements = await getAnnouncements();
+            const lastReadId = getLastReadAnnouncementId();
+            if (announcements.length > 0 && announcements[0].id !== lastReadId) {
+                setHasUnreadAnnouncements(true);
+            }
 
+            setIsAppLoading(false);
         } catch (error) {
-            console.error("Initialization error (non-critical):", error);
-        } finally {
-            // ALWAYS turn off loading screen immediately
+            console.error("Initialization error (critical):", error);
+            setLoadingError(true);
             setIsAppLoading(false);
         }
     };
@@ -241,8 +230,21 @@ const App: React.FC = () => {
                      setShowWelcomeScreen(true);
                  }
              } else {
-                 // Trigger smart sync on auth change
-                 syncLocalToCloud(user.id);
+                 const userData = await getUserData(user.id);
+                 if (userData && userData.profile.isAdmin) {
+                     setMaintenanceMode(false);
+                 }
+                 
+                 // Sync data immediately
+                 await syncLocalToCloud(user.id);
+
+                 // Check for pending duel results (Creator check)
+                 const pendingResults = await checkPendingDuelResults(user.id);
+                 if (pendingResults.length > 0) {
+                     // Note: We do NOT update stats here anymore because the RPC function updates the DB directly, 
+                     // and syncLocalToCloud pulls the updated stats. We just notify.
+                     showAlert("Düello Sonuçlandı", `${pendingResults.length} adet düello siz yokken tamamlandı. İstatistikleriniz güncellendi.`, 'success');
+                 }
 
                  checkForDuels();
                  localStorage.setItem('lgs_last_uid', user.id);
@@ -253,9 +255,8 @@ const App: React.FC = () => {
         });
         
         const handleOnline = () => {
-            console.log("App is online, syncing...");
-            fetchAllWords();
-            syncLocalToCloud(); // Sync whenever we get back online
+            console.log("App is online, retrying initialization...");
+            if (loadingError) initializeApp();
         };
         window.addEventListener('online', handleOnline);
         
@@ -408,11 +409,27 @@ const App: React.FC = () => {
         setupChallengeQuiz();
     };
 
-    const handleJoinChallenge = (challengeData: any, challengeWords: WordCard[]) => {
+    const handleJoinChallenge = async (challengeData: any, challengeWords?: WordCard[]) => {
         setActiveModal(null);
+        
+        let wordsToUse = challengeWords || [];
+        if (wordsToUse.length === 0) {
+             setMode(AppMode.LOADING);
+             try {
+                 const unitWords = await getWordsForUnit(challengeData.unitId);
+                 if (unitWords) {
+                     wordsToUse = unitWords;
+                 }
+             } catch (e) {
+                 setMode(AppMode.HOME);
+                 showAlert("Hata", "Düello verisi yüklenemedi.", "error");
+                 return;
+             }
+        }
+
         if (challengeData.matchId) {
-            setWords(challengeWords); 
-            setAllUnitWords(challengeWords); 
+            setWords(wordsToUse); 
+            setAllUnitWords(wordsToUse); 
             setTopicTitle(`Turnuva Maçı: ${challengeData.tournamentName}`); 
             setActiveQuizDifficulty(challengeData.difficulty || 'normal');
             setChallengeState({ 
@@ -424,8 +441,9 @@ const App: React.FC = () => {
             changeMode(AppMode.QUIZ);
             return;
         }
-        setWords(challengeWords); 
-        setAllUnitWords(challengeWords); 
+        
+        setWords(wordsToUse); 
+        setAllUnitWords(wordsToUse); 
         setTopicTitle(`Düello: ${challengeData.creatorName}`); 
         setActiveQuizDifficulty(challengeData.difficulty);
         setChallengeState({ mode: 'join', data: challengeData });
@@ -435,28 +453,21 @@ const App: React.FC = () => {
     const handleOpenProfile = () => { changeMode(AppMode.PROFILE); setTopicTitle('Profilim'); refreshGlobalState(); };
     const handleOpenInfo = () => { changeMode(AppMode.INFO); setTopicTitle('İpuçları'); };
     const handleOpenMarket = () => { setActiveModal('market'); };
-    
     const handleOpenAnnouncements = async () => { 
         changeMode(AppMode.ANNOUNCEMENTS); 
         setTopicTitle('Duyurular'); 
         const announcements = await getAnnouncements(); 
-        if (announcements && announcements.length > 0) { 
+        if (announcements.length > 0) { 
             setLastReadAnnouncementId(announcements[0].id); 
             setHasUnreadAnnouncements(false); 
         } 
     };
-    
     const handleOpenSettings = () => { setActiveModal('settings'); };
 
     const handleOpenChallenge = () => {
         const profile = getUserProfile();
         if (profile.isGuest) {
             showAlert("Misafir Modu", "Düello modunu kullanmak için lütfen giriş yapın veya kayıt olun.", "warning", () => { setAuthInitialView('register'); setActiveModal('auth'); });
-            return;
-        }
-        // Online Check
-        if (!navigator.onLine) {
-            showAlert("Bağlantı Yok", "Düello modu için internet bağlantısı gereklidir.", "warning");
             return;
         }
         setActiveModal('challenge');
@@ -634,7 +645,6 @@ const App: React.FC = () => {
     const onSelectUnitHandler = (unit: UnitDef | null) => { setSelectedUnit(unit); };
     const showBackButton = (mode !== AppMode.HOME) || (selectedCategory !== null);
     
-    // ERROR/LOADING SCREEN
     if (loadingError) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-900 text-white">
@@ -709,46 +719,7 @@ const App: React.FC = () => {
             {activeModal === 'grade' && (<GradeSelectionModal onClose={() => { setActiveModal(null); setIsOnboardingGuest(false); }} onSelect={handleGradeSelect} grades={availableGradesForReview} title={isOnboardingGuest ? 'Sınıfını Seç' : undefined} description={isOnboardingGuest ? 'Hangi seviyede İngilizce çalışmak istorsun?' : undefined} />)}
             {pendingQuizConfig && <QuizSetupModal onClose={handleManualBack} onStart={startQuizWithCount} totalWords={pendingQuizConfig.words.length} title={pendingQuizConfig.title} />}
             {celebration?.show && <Celebration message={celebration.message} type={celebration.type} onClose={() => setCelebration(null)} />}
-            {activeModal === 'avatar' && <AvatarModal onClose={() => setActiveModal(null)} userStats={userStats || { 
-                flashcardsViewed: 0, 
-                quizCorrect: 0, 
-                quizWrong: 0, 
-                date: '', 
-                dailyGoal: 5, 
-                xp: 0, 
-                level: 1, 
-                streak: 0, 
-                lastStudyDate: null, 
-                badges: [], 
-                xpBoostEndTime: 0, 
-                lastGoalMetDate: null, 
-                viewedWordsToday: [], 
-                perfectQuizzes: 0, 
-                questsCompleted: 0, 
-                totalTimeSpent: 0, 
-                duelWins: 0, 
-                duelLosses: 0,
-                duelDraws: 0,
-                duelPoints: 0, 
-                matchingAllTimeBest: 0,
-                mazeAllTimeBest: 0,
-                wordSearchAllTimeBest: 0,
-                completedUnits: [], 
-                completedGrades: [], 
-                weekly: { 
-                    weekId: '', 
-                    quizCorrect: 0, 
-                    quizWrong: 0, 
-                    cardsViewed: 0, 
-                    matchingBestTime: 0, 
-                    mazeHighScore: 0, 
-                    wordSearchHighScore: 0,
-                    duelPoints: 0,
-                    duelWins: 0,
-                    duelLosses: 0,
-                    duelDraws: 0
-                } 
-            }} onUpdate={() => { setHeaderProfile(getUserProfile()); handleProfileUpdate(); }} />}
+            {activeModal === 'avatar' && <AvatarModal onClose={() => setActiveModal(null)} userStats={userStats || { flashcardsViewed: 0, quizCorrect: 0, quizWrong: 0, date: '', dailyGoal: 5, xp: 0, level: 1, streak: 0, lastStudyDate: null, badges: [], xpBoostEndTime: 0, lastGoalMetDate: null, viewedWordsToday: [], perfectQuizzes: 0, questsCompleted: 0, totalTimeSpent: 0, duelWins: 0, duelPoints: 0, duelLosses: 0, duelDraws: 0, matchingAllTimeBest: 0, mazeAllTimeBest: 0, wordSearchAllTimeBest: 0, completedUnits: [], completedGrades: [], weekly: { weekId: '', quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, mazeHighScore: 0, wordSearchHighScore: 0, duelPoints: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 }, updatedAt: Date.now() }} onUpdate={() => { setHeaderProfile(getUserProfile()); if (handleProfileUpdate) handleProfileUpdate(); }} />}
             {viewProfileId && (<UserProfileModal userId={viewProfileId} onClose={() => setViewProfileId(null)} />)}
             <CustomAlert visible={alertState.visible} title={alertState.title} message={alertState.message} type={alertState.type} onClose={() => setAlertState(prev => ({ ...prev, visible: false }))} onConfirm={alertState.onConfirm} />
             <header className="backdrop-blur-xl border-b z-50 shrink-0 transition-colors h-16 header-theme" style={{ backgroundColor: 'rgba(var(--color-bg-card-rgb), 0.8)', borderColor: 'rgba(255,255,255,0.1)' }}>

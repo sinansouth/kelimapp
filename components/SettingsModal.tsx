@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { X, Volume2, VolumeX, MessageSquare, Lock, Key, RotateCcw, ShieldCheck } from 'lucide-react';
 import { AppSettings, getAppSettings, saveAppSettings, resetAppProgress, getUserProfile, saveUserProfile } from '../services/userService';
@@ -66,12 +65,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onOpenFeedback, 
         }
     };
 
-    const handleResetConfirm = (scope: { type: 'all' | 'grade' | 'unit', value?: string }) => {
-        resetAppProgress(scope);
+    const handleResetConfirm = () => {
+        resetAppProgress();
         playSound('click');
         setShowResetModal(false);
-        alert("İlerleme başarıyla sıfırlandı.");
-        onClose();
+        // Force reload to sync with cloud immediately (App.tsx does sync on mount)
         window.location.reload();
     };
 
@@ -114,7 +112,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onOpenFeedback, 
                             </div>
                             <div>
                                 <div className="font-bold text-slate-800 dark:text-white text-sm">İlerlemeyi Sıfırla</div>
-                                <div className="text-xs text-slate-500">Tüm verileri veya üniteyi sil</div>
+                                <div className="text-xs text-slate-500">Tüm verileri sil</div>
                             </div>
                         </button>
 
@@ -189,7 +187,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onOpenFeedback, 
 
             {showResetModal && (
                 <ResetScopeModal
-                    title="Sıfırlama Seçenekleri"
+                    title="İlerlemeyi Sıfırla"
                     onClose={() => setShowResetModal(false)}
                     onConfirm={handleResetConfirm}
                 />

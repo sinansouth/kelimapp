@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { X, Lock, Image, Smile, Palette } from 'lucide-react';
-import { UserStats, saveUserProfile, getUserProfile, equipFrame, equipBackground } from '../services/userService';
+import { saveUserProfile, getUserProfile, equipFrame, equipBackground } from '../services/userService';
 import { getAvatars, getFrames, getBackgrounds } from '../services/contentService';
+import { UserStats } from '../types';
 
 interface AvatarModalProps {
   onClose: () => void;
