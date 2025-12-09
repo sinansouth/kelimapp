@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { Challenge, QuizDifficulty, Tournament, WordCard, TournamentMatch, Announcement } from '../types';
 import {
@@ -67,7 +66,7 @@ export interface LeaderboardEntry {
     duelPoints?: number;
 }
 
-// ... (Existing content: getSystemContent, upsertSystemContent, getAllGrammar, upsertGrammar, getUnitData, saveUnitData, updateUnitWords, loginUser, registerUser, resetUserPassword, updateUserEmail, logoutUser, checkUsernameExists, updateCloudUsername, deleteAccount, syncLocalToCloud, getUserData, searchUser, adminGiveXP, toggleAdminStatus, createGlobalAnnouncement, deleteAnnouncement, updateAnnouncement, getGlobalAnnouncements, getGlobalSettings, updateGlobalSettings, getTournaments, createTournament, updateTournament, deleteTournament, updateTournamentStatus, joinTournament, checkTournamentTimeouts, submitTournamentScore, forfeitTournamentMatch, sendFeedback, getLeaderboard, getPublicUserProfile, addFriend, getFriends) ...
+// ... (Existing content: getSystemContent, upsertSystemContent, getAllGrammar, upsertGrammar, getUnitData, saveUnitData, updateUnitWords, loginUser, registerUser, resetUserPassword, updateUserEmail, logoutUser, checkUsernameExists, updateCloudUsername, deleteAccount, syncLocalToCloud, getUserData, searchUser, adminGiveXP, toggleAdminStatus, createGlobalAnnouncement, deleteAnnouncement, updateAnnouncement, getGlobalAnnouncements, getGlobalSettings, getTournaments, createTournament, updateTournament, deleteTournament, updateTournamentStatus, joinTournament, checkTournamentTimeouts, submitTournamentScore, forfeitTournamentMatch, sendFeedback, getLeaderboard, getPublicUserProfile, addFriend, getFriends) ...
 
 export const getSystemContent = async (key: string) => {
     try {
@@ -587,96 +586,59 @@ export const updateTournamentStatus = async (id: string, status: string) => {
     await updateTournament(id, { status });
 };
 
+// --- UPDATED JOIN TOURNAMENT WITH RPC ---
 export const joinTournament = async (tournamentId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Giriş yapmalısınız.");
-    const { data: tournament } = await supabase.from('tournaments').select('participants, maxParticipants').eq('id', tournamentId).single();
-    if (tournament) {
-        const participants = tournament.participants || [];
-        if (participants.includes(user.id)) throw new Error("Zaten katıldınız.");
-        if (participants.length >= tournament.maxParticipants) throw new Error("Turnuva dolu.");
-        const newParticipants = [...participants, user.id];
-        await supabase.from('tournaments').update({ participants: newParticipants }).eq('id', tournamentId);
-    }
+    const { error } = await supabase.rpc('join_tournament_secure', {
+        p_tournament_id: tournamentId
+    });
+
+    if (error) throw error;
 };
 
 export const checkTournamentTimeouts = async (tournamentId: string): Promise<boolean> => {
-    const { data: tournament, error } = await supabase.from('tournaments').select('*').eq('id', tournamentId).single();
-    if (error || !tournament) return false;
-    if (tournament.status !== 'active') {
-        if (tournament.status === 'registration' && Date.now() > tournament.registrationEndDate) {
-            await supabase.from('tournaments').update({ status: 'active' }).eq('id', tournamentId);
-            return true;
-        }
-        return false;
+    const { data, error } = await supabase.rpc('process_tournament_round', { p_tournament_id: tournamentId });
+    if (error) {
+        console.error("Error processing tournament round:", error);
+        throw new Error(error.message);
     }
-    return false;
+    console.log("Process tournament result:", data);
+    return data && data.includes('oluşturuldu') || data.includes('belirlendi');
 };
 
+// --- UPDATED SUBMIT SCORE WITH RPC ---
 export const submitTournamentScore = async (tournamentId: string, matchId: string, score: number, timeTaken: number) => {
-    const { data: tournament } = await supabase.from('tournaments').select('*').eq('id', tournamentId).single();
-    if (!tournament) return;
-    const matches = tournament.matches || [];
-    const matchIndex = matches.findIndex((m: any) => m.id === matchId);
-    if (matchIndex === -1) return;
-    const match = matches[matchIndex];
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    
+    // We need to know if the current user is player1 or player2 for the RPC function
+    const { data: tournament } = await supabase.from('tournaments').select('matches').eq('id', tournamentId).single();
+    if (!tournament) throw new Error("Turnuva bulunamadı.");
+
+    const match = (tournament.matches as any[]).find(m => m.id === matchId);
+    if (!match) throw new Error("Maç bulunamadı.");
+
     const isPlayer1 = match.player1Id === user.id;
-    if (match.round === 2) { 
-        if (isPlayer1) { match.score1_leg1 = score; match.time1_leg1 = timeTaken; }
-        else { match.score2_leg1 = score; match.time2_leg1 = timeTaken; }
-        if (match.score1_leg1 !== undefined && match.score2_leg1 !== undefined) {
-            match.status = 'completed';
-            if (match.score1_leg1 > match.score2_leg1) match.winnerId = match.player1Id;
-            else if (match.score2_leg1 > match.score1_leg1) match.winnerId = match.player2Id;
-            else {
-                const t1 = match.time1_leg1 || 9999;
-                const t2 = match.time2_leg1 || 9999;
-                match.winnerId = t1 <= t2 ? match.player1Id : match.player2Id;
-            }
-            await supabase.from('tournaments').update({ championId: match.winnerId }).eq('id', tournamentId);
-            if (match.winnerId) adminGiveXP(match.winnerId, tournament.rewards.firstPlace);
-        }
-    } else {
-        if (isPlayer1) { match.score1_leg1 = score; match.time1_leg1 = timeTaken; }
-        else { match.score2_leg1 = score; match.time2_leg1 = timeTaken; }
-        if (match.score1_leg1 !== undefined && match.score2_leg1 !== undefined) {
-            match.status = 'completed';
-            if (match.score1_leg1 > match.score2_leg1) match.winnerId = match.player1Id;
-            else if (match.score2_leg1 > match.score1_leg1) match.winnerId = match.player2Id;
-            else {
-                 const t1 = match.time1_leg1 || 9999;
-                 const t2 = match.time2_leg1 || 9999;
-                 match.winnerId = t1 <= t2 ? match.player1Id : match.player2Id;
-            }
-        }
+
+    const { error } = await supabase.rpc('update_match_score_secure', {
+        p_tournament_id: tournamentId,
+        p_match_id: matchId,
+        p_score: score,
+        p_time: timeTaken,
+        p_is_player1: isPlayer1
+    });
+
+    if (error) {
+        console.error("Error submitting tournament score via RPC:", error);
+        throw error;
     }
-    matches[matchIndex] = match;
-    await supabase.from('tournaments').update({ matches }).eq('id', tournamentId);
 };
 
 export const forfeitTournamentMatch = async (tournamentId: string, matchId: string) => {
-    const { data: tournament } = await supabase.from('tournaments').select('*').eq('id', tournamentId).single();
-    if (!tournament) return;
-    const matches = tournament.matches || [];
-    const matchIndex = matches.findIndex((m: any) => m.id === matchId);
-    if (matchIndex === -1) return;
-    const match = matches[matchIndex];
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const isPlayer1 = match.player1Id === user.id;
-    const winnerId = isPlayer1 ? match.player2Id : match.player1Id;
-    if (!winnerId) return;
-    match.status = 'completed';
-    match.winnerId = winnerId;
-    if (isPlayer1) { match.score1_leg1 = 0; } else { match.score2_leg1 = 0; }
-    if (match.round === 2) {
-        await supabase.from('tournaments').update({ championId: winnerId }).eq('id', tournamentId);
-        adminGiveXP(winnerId, tournament.rewards.firstPlace);
-    }
-    matches[matchIndex] = match;
-    await supabase.from('tournaments').update({ matches }).eq('id', tournamentId);
+    // This logic should also be moved to an RPC function for security and atomicity,
+    // but for now we keep it as a direct update which requires lenient RLS.
+    // The `process_tournament_round` function can handle forfeits by timeout.
+    console.warn("forfeitTournamentMatch should be converted to an RPC call for better security.");
+    await submitTournamentScore(tournamentId, matchId, -1, 999); // Submit a forfeit score
 };
 
 export const sendFeedback = async (type: 'bug' | 'suggestion', message: string, contact: string) => {
@@ -771,27 +733,17 @@ export const getPublicUserProfile = async (uid: string) => {
     }
 };
 
-export const addFriend = async (currentUid: string, friendCode: string) => {
-    const { data: friendData, error } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .eq('friend_code', friendCode)
-        .single();
-    if (error || !friendData) throw new Error("Kullanıcı bulunamadı.");
-    if (friendData.id === currentUid) throw new Error("Kendini ekleyemezsin.");
-    const { data: myProfile } = await supabase.from('profiles').select('friends').eq('id', currentUid).single();
-    let myFriends: string[] = myProfile?.friends || [];
-    if (!myFriends.includes(friendData.id)) {
-        myFriends.push(friendData.id);
-        await supabase.from('profiles').update({ friends: myFriends }).eq('id', currentUid);
+// --- UPDATED ADD FRIEND WITH RPC ---
+export const addFriend = async (friendCode: string): Promise<string> => {
+    const { data, error } = await supabase.rpc('add_friend_secure', {
+        p_friend_code: friendCode
+    });
+
+    if (error) {
+        throw new Error(error.message || "Arkadaş eklenirken hata oluştu.");
     }
-    const { data: theirProfile } = await supabase.from('profiles').select('friends').eq('id', friendData.id).single();
-    let theirFriends: string[] = theirProfile?.friends || [];
-    if (!theirFriends.includes(currentUid)) {
-        theirFriends.push(currentUid);
-        await supabase.from('profiles').update({ friends: theirFriends }).eq('id', friendData.id);
-    }
-    return friendData.username;
+    
+    return data;
 };
 
 export const getFriends = async (uid: string): Promise<LeaderboardEntry[]> => {

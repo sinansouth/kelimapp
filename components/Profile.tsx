@@ -246,7 +246,7 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
 
       setAddingFriend(true);
       try {
-          const friendName = await addFriend(currentUser.id, friendCode.trim().toUpperCase());
+          const friendName = await addFriend(friendCode.trim().toUpperCase());
           showAlert("Başarılı", `${friendName} arkadaş olarak eklendi!`, "success");
           setFriendCode('');
           fetchFriends(currentUser.id);
