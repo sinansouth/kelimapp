@@ -1,7 +1,6 @@
 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge, UserStats } from './types';
+import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge } from './types';
 import TopicSelector from './components/TopicSelector';
 import { THEME_COLORS, UI_ICONS, UNIT_ASSETS } from './data/assets';
 import FlashcardDeck from './components/FlashcardDeck';
@@ -28,8 +27,8 @@ import UserProfileModal from './components/UserProfileModal';
 import WelcomeScreen from './components/WelcomeScreen';
 import CustomAlert, { AlertType } from './components/CustomAlert';
 import { ChevronLeft, Zap, Swords, Trophy, AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
-import { getUserProfile, getTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, createGuestProfile, hasSeenTutorial, markTutorialAsSeen, saveSRSData, saveUserStats, overwriteLocalWithCloud, updateStats, DEFAULT_STATS } from './services/userService';
-import { supabase, syncLocalToCloud, getOpenChallenges, getGlobalSettings, getUserData, checkPendingDuelResults } from './services/supabase';
+import { getUserProfile, getTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, createGuestProfile, hasSeenTutorial, markTutorialAsSeen, UserStats, saveSRSData, saveUserStats, overwriteLocalWithCloud } from './services/userService';
+import { supabase, syncLocalToCloud, getOpenChallenges, getGlobalSettings, getUserData } from './services/supabase';
 import { getWordsForUnit, fetchAllWords, getVocabulary, fetchDynamicContent, getAnnouncements, getUnitAssets } from './services/contentService';
 import { requestNotificationPermission } from './services/notificationService';
 import { playSound } from './services/soundService';
@@ -190,6 +189,9 @@ const App: React.FC = () => {
         setLoadingError(false);
         
         try {
+            // REMOVED THE TIMEOUT RACE CONDITION.
+            // We now wait for promises, but if they fail internally, they return safe defaults.
+            // This prevents the "Application data could not be loaded" error on slow connections or timeouts.
             await Promise.all([
                 fetchAllWords().catch(e => console.warn("Failed to fetch all words, continuing with local/cache", e)),
                 fetchDynamicContent().catch(e => console.warn("Failed to fetch dynamic content", e))
@@ -215,6 +217,8 @@ const App: React.FC = () => {
             setIsAppLoading(false);
         } catch (error) {
             console.error("Initialization error (critical):", error);
+            // Only set loading error if something truly catastrophic happens that prevents app structure from loading
+            // With the try-catch blocks above, this should rarely be reached.
             setLoadingError(true);
             setIsAppLoading(false);
         }
@@ -231,25 +235,13 @@ const App: React.FC = () => {
                      setShowWelcomeScreen(true);
                  }
              } else {
-                 // CRITICAL FIX: Always pull from cloud on login before doing anything else.
                  const userData = await getUserData(user.id);
-                 if (userData) {
-                     // Overwrite local data with fresh cloud data to prevent overwriting cloud with stale/empty local data.
-                     overwriteLocalWithCloud(userData);
-
-                     if (userData.profile.isAdmin) {
-                         setMaintenanceMode(false);
-                     }
-                 } else {
-                    // This case is rare: user exists in auth but not in profiles.
-                    // This is the only time we should PUSH on login.
-                    await syncLocalToCloud(user.id);
+                 if (userData && userData.profile.isAdmin) {
+                     setMaintenanceMode(false);
                  }
-
-                 // Now that local data is synced and correct, we can proceed.
-                 const pendingResults = await checkPendingDuelResults(user.id);
-                 if (pendingResults.length > 0) {
-                     showAlert("Düello Sonuçlandı", `${pendingResults.length} adet düello siz yokken tamamlandı. İstatistikleriniz güncellendi.`, 'success');
+                 
+                 if (userData) {
+                     overwriteLocalWithCloud(userData);
                  }
 
                  checkForDuels();
@@ -415,27 +407,11 @@ const App: React.FC = () => {
         setupChallengeQuiz();
     };
 
-    const handleJoinChallenge = async (challengeData: any, challengeWords?: WordCard[]) => {
+    const handleJoinChallenge = (challengeData: any, challengeWords: WordCard[]) => {
         setActiveModal(null);
-        
-        let wordsToUse = challengeWords || [];
-        if (wordsToUse.length === 0) {
-             setMode(AppMode.LOADING);
-             try {
-                 const unitWords = await getWordsForUnit(challengeData.unitId);
-                 if (unitWords) {
-                     wordsToUse = unitWords;
-                 }
-             } catch (e) {
-                 setMode(AppMode.HOME);
-                 showAlert("Hata", "Düello verisi yüklenemedi.", "error");
-                 return;
-             }
-        }
-
         if (challengeData.matchId) {
-            setWords(wordsToUse); 
-            setAllUnitWords(wordsToUse); 
+            setWords(challengeWords); 
+            setAllUnitWords(challengeWords); 
             setTopicTitle(`Turnuva Maçı: ${challengeData.tournamentName}`); 
             setActiveQuizDifficulty(challengeData.difficulty || 'normal');
             setChallengeState({ 
@@ -447,9 +423,8 @@ const App: React.FC = () => {
             changeMode(AppMode.QUIZ);
             return;
         }
-        
-        setWords(wordsToUse); 
-        setAllUnitWords(wordsToUse); 
+        setWords(challengeWords); 
+        setAllUnitWords(challengeWords); 
         setTopicTitle(`Düello: ${challengeData.creatorName}`); 
         setActiveQuizDifficulty(challengeData.difficulty);
         setChallengeState({ mode: 'join', data: challengeData });
@@ -459,15 +434,7 @@ const App: React.FC = () => {
     const handleOpenProfile = () => { changeMode(AppMode.PROFILE); setTopicTitle('Profilim'); refreshGlobalState(); };
     const handleOpenInfo = () => { changeMode(AppMode.INFO); setTopicTitle('İpuçları'); };
     const handleOpenMarket = () => { setActiveModal('market'); };
-    const handleOpenAnnouncements = async () => { 
-        changeMode(AppMode.ANNOUNCEMENTS); 
-        setTopicTitle('Duyurular'); 
-        const announcements = await getAnnouncements(); 
-        if (announcements.length > 0) { 
-            setLastReadAnnouncementId(announcements[0].id); 
-            setHasUnreadAnnouncements(false); 
-        } 
-    };
+    const handleOpenAnnouncements = () => { changeMode(AppMode.ANNOUNCEMENTS); setTopicTitle('Duyurular'); const announcements = getAnnouncements(); if (announcements.length > 0) { setLastReadAnnouncementId(announcements[0].id); setHasUnreadAnnouncements(false); } };
     const handleOpenSettings = () => { setActiveModal('settings'); };
 
     const handleOpenChallenge = () => {
@@ -547,6 +514,7 @@ const App: React.FC = () => {
             } else {
                 if (isAllInOne && selectedGrade) {
                     const allGradeUnits = getUnitAssets()[selectedGrade];
+                    // Filter units first to ensure index alignment with results
                     const targetUnits = allGradeUnits.filter(u => u.id !== unit.id);
                     const promises = targetUnits.map(u => getWordsForUnit(u.id));
                     
@@ -554,12 +522,14 @@ const App: React.FC = () => {
                     results.forEach((list, index) => {
                         if(list) {
                             const uId = targetUnits[index].id;
+                            // Explicitly cast list to WordCard[] to satisfy TS
                             const typedList = list as WordCard[];
                             const taggedWords = typedList.map(w => ({ ...w, unitId: uId }));
                             unitWords = [...unitWords, ...taggedWords];
                         }
                     });
                 } else { 
+                    // Explicit cast here as well to satisfy TS
                     unitWords = (await getWordsForUnit(unit.id)) as WordCard[];
                 }
                 allDistractors = unitWords;
@@ -651,6 +621,7 @@ const App: React.FC = () => {
     const onSelectUnitHandler = (unit: UnitDef | null) => { setSelectedUnit(unit); };
     const showBackButton = (mode !== AppMode.HOME) || (selectedCategory !== null);
     
+    // ERROR/LOADING SCREEN
     if (loadingError) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-900 text-white">
@@ -725,7 +696,7 @@ const App: React.FC = () => {
             {activeModal === 'grade' && (<GradeSelectionModal onClose={() => { setActiveModal(null); setIsOnboardingGuest(false); }} onSelect={handleGradeSelect} grades={availableGradesForReview} title={isOnboardingGuest ? 'Sınıfını Seç' : undefined} description={isOnboardingGuest ? 'Hangi seviyede İngilizce çalışmak istorsun?' : undefined} />)}
             {pendingQuizConfig && <QuizSetupModal onClose={handleManualBack} onStart={startQuizWithCount} totalWords={pendingQuizConfig.words.length} title={pendingQuizConfig.title} />}
             {celebration?.show && <Celebration message={celebration.message} type={celebration.type} onClose={() => setCelebration(null)} />}
-            {activeModal === 'avatar' && <AvatarModal onClose={() => setActiveModal(null)} userStats={userStats || { flashcardsViewed: 0, quizCorrect: 0, quizWrong: 0, date: '', dailyGoal: 5, xp: 0, level: 1, streak: 0, lastStudyDate: null, badges: [], xpBoostEndTime: 0, lastGoalMetDate: null, viewedWordsToday: [], perfectQuizzes: 0, questsCompleted: 0, totalTimeSpent: 0, duelWins: 0, duelPoints: 0, duelLosses: 0, duelDraws: 0, matchingAllTimeBest: 0, mazeAllTimeBest: 0, wordSearchAllTimeBest: 0, completedUnits: [], completedGrades: [], weekly: { weekId: '', quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, mazeHighScore: 0, wordSearchHighScore: 0, duelPoints: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 }, updatedAt: Date.now() }} onUpdate={() => { setHeaderProfile(getUserProfile()); if (handleProfileUpdate) handleProfileUpdate(); }} />}
+            {activeModal === 'avatar' && <AvatarModal onClose={() => setActiveModal(null)} userStats={userStats || { flashcardsViewed: 0, quizCorrect: 0, quizWrong: 0, date: '', dailyGoal: 5, xp: 0, level: 1, streak: 0, lastStudyDate: null, badges: [], xpBoostEndTime: 0, lastGoalMetDate: null, viewedWordsToday: [], perfectQuizzes: 0, questsCompleted: 0, totalTimeSpent: 0, duelWins: 0, duelPoints: 0, completedUnits: [], completedGrades: [], weekly: { weekId: '', quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, mazeHighScore: 0, wordSearchHighScore: 0 } }} onUpdate={() => { setHeaderProfile(getUserProfile()); if (handleProfileUpdate) handleProfileUpdate(); }} />}
             {viewProfileId && (<UserProfileModal userId={viewProfileId} onClose={() => setViewProfileId(null)} />)}
             <CustomAlert visible={alertState.visible} title={alertState.title} message={alertState.message} type={alertState.type} onClose={() => setAlertState(prev => ({ ...prev, visible: false }))} onConfirm={alertState.onConfirm} />
             <header className="backdrop-blur-xl border-b z-50 shrink-0 transition-colors h-16 header-theme" style={{ backgroundColor: 'rgba(var(--color-bg-card-rgb), 0.8)', borderColor: 'rgba(255,255,255,0.1)' }}>

@@ -1,72 +1,131 @@
 
-import React from 'react';
-import { X, AlertTriangle, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Layers, GraduationCap, FileBox } from 'lucide-react';
+import { UNIT_ASSETS } from '../data/assets';
+import { GradeLevel } from '../types';
 
 interface ResetScopeModalProps {
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (scope: { type: 'all' | 'grade' | 'unit', value?: string }) => void;
   title: string;
 }
 
 const ResetScopeModal: React.FC<ResetScopeModalProps> = ({ onClose, onConfirm, title }) => {
+  const [step, setStep] = useState<'type' | 'grade' | 'unit'>('type');
+  const [selectedType, setSelectedType] = useState<'all' | 'grade' | 'unit'>('all');
+  const [selectedGrade, setSelectedGrade] = useState<string>('');
+  
+  const grades: GradeLevel[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'A1', 'A2', 'B1', 'B2', 'C1'];
+
+  const handleTypeSelect = (type: 'all' | 'grade' | 'unit') => {
+      if (type === 'all') {
+          onConfirm({ type: 'all' });
+      } else {
+          setSelectedType(type);
+          setStep('grade');
+      }
+  };
+
+  const handleGradeSelect = (grade: string) => {
+      if (selectedType === 'grade') {
+          onConfirm({ type: 'grade', value: grade });
+      } else {
+          setSelectedGrade(grade);
+          setStep('unit');
+      }
+  };
+
+  const handleUnitSelect = (unitId: string) => {
+      onConfirm({ type: 'unit', value: unitId });
+  };
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 max-h-[80vh]">
         
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-red-50 dark:bg-red-900/10">
-            <h3 className="font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
-                <AlertTriangle size={20} /> {title}
-            </h3>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 transition-colors">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-bold text-slate-800 dark:text-white truncate pr-4">{title}</h3>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
                 <X size={20} />
             </button>
         </div>
 
-        <div className="p-6">
-            <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-400">
-                    <Trash2 size={32} />
-                </div>
-                <h4 className="text-lg font-black text-slate-800 dark:text-white mb-2">Emin misiniz?</h4>
-                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Bu işlem <strong>geri alınamaz</strong>.
-                </p>
-            </div>
-
-            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-xs space-y-2 mb-6 border border-slate-200 dark:border-slate-700">
-                <p className="font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-2 mb-2">
-                    Silinecek Veriler:
-                </p>
-                <ul className="list-disc pl-4 space-y-1 text-slate-500 dark:text-slate-400">
-                    <li>Tüm XP, Seviye ve Rozetler</li>
-                    <li>Günlük Seri (Streak)</li>
-                    <li>Satın alınan temalar ve çerçeveler</li>
-                    <li>Ezberlenen ve Favori kelimeler</li>
-                    <li>Oyun skorları ve İstatistikler</li>
-                </ul>
-                <p className="font-bold text-green-600 dark:text-green-400 pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
-                    Korunacak Veriler:
-                </p>
-                <ul className="list-disc pl-4 space-y-1 text-slate-500 dark:text-slate-400">
-                    <li>Kullanıcı Adı ve Şifre</li>
-                    <li>Sınıf Seviyesi</li>
-                    <li>Arkadaş Kodu</li>
-                </ul>
-            </div>
-
-            <button 
-                onClick={onConfirm}
-                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold shadow-lg shadow-red-200 dark:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-                <Trash2 size={18} /> Tüm Verileri Sıfırla
-            </button>
+        <div className="p-6 overflow-y-auto custom-scrollbar">
             
-            <button 
-                onClick={onClose}
-                className="w-full mt-3 py-3 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-bold text-sm transition-colors"
-            >
-                İptal Et
-            </button>
+            {step === 'type' && (
+                <div className="space-y-3">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Hangi verileri silmek istersin?</p>
+                    
+                    <button onClick={() => handleTypeSelect('all')} className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left flex items-center gap-4 transition-colors group">
+                        <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                            <Layers size={20} />
+                        </div>
+                        <div>
+                            <div className="font-bold text-slate-800 dark:text-white">Tüm Uygulama</div>
+                            <div className="text-xs text-slate-400">Bütün veriler silinir.</div>
+                        </div>
+                    </button>
+
+                    <button onClick={() => handleTypeSelect('grade')} className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left flex items-center gap-4 transition-colors group">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                            <GraduationCap size={20} />
+                        </div>
+                        <div>
+                            <div className="font-bold text-slate-800 dark:text-white">Belirli Bir Sınıf</div>
+                            <div className="text-xs text-slate-400">Seçilen sınıfa ait tüm veriler.</div>
+                        </div>
+                    </button>
+
+                    <button onClick={() => handleTypeSelect('unit')} className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left flex items-center gap-4 transition-colors group">
+                        <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                            <FileBox size={20} />
+                        </div>
+                        <div>
+                            <div className="font-bold text-slate-800 dark:text-white">Belirli Bir Ünite</div>
+                            <div className="text-xs text-slate-400">Sadece tek bir ünite verisi.</div>
+                        </div>
+                    </button>
+                </div>
+            )}
+
+            {step === 'grade' && (
+                <div className="space-y-2">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Sınıf Seçiniz:</p>
+                    <div className="grid grid-cols-3 gap-2">
+                        {grades.map(g => (
+                            <button 
+                                key={g} 
+                                onClick={() => handleGradeSelect(g)}
+                                className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-800 font-bold text-slate-700 dark:text-slate-300 transition-colors"
+                            >
+                                {g}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {step === 'unit' && (
+                <div className="space-y-2">
+                     <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Ünite Seçiniz ({selectedGrade}. Sınıf):</p>
+                     {UNIT_ASSETS[selectedGrade as GradeLevel]?.length > 0 ? (
+                        <div className="space-y-2">
+                            {UNIT_ASSETS[selectedGrade as GradeLevel].map(u => (
+                                <button
+                                    key={u.id}
+                                    onClick={() => handleUnitSelect(u.id)}
+                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-800 text-left font-medium text-sm text-slate-700 dark:text-slate-300 transition-colors truncate"
+                                >
+                                    {u.unitNo} - {u.title}
+                                </button>
+                            ))}
+                        </div>
+                     ) : (
+                         <div className="text-center text-slate-400 py-4">Bu sınıf için ünite bulunamadı.</div>
+                     )}
+                </div>
+            )}
+
         </div>
 
       </div>

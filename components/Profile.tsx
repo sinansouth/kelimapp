@@ -1,9 +1,8 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Save, Edit2, BarChart2, Trophy, Flame, Star, User, ShoppingBag, Target, CheckCircle, ChevronDown, ChevronUp, LogOut, Trash2, ShieldCheck, Ghost, LogIn, KeyRound, Mail, GraduationCap, Users, Copy, UserPlus, Swords } from 'lucide-react';
-import { getUserProfile, getUserStats, saveUserProfile, getDailyState, UserProfile as IUserProfile } from '../services/userService';
-import { GradeLevel, Badge, Quest, UserStats } from '../types';
+import { getUserProfile, getUserStats, saveUserProfile, getDailyState, UserProfile as IUserProfile, UserStats } from '../services/userService';
+import { GradeLevel, Badge, Quest } from '../types';
 // FIX: Changed to a named import to match the updated export in StatsModal.tsx.
 import { StatsModal } from './StatsModal';
 import AvatarModal from './AvatarModal';
@@ -246,7 +245,7 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
 
       setAddingFriend(true);
       try {
-          const friendName = await addFriend(friendCode.trim().toUpperCase());
+          const friendName = await addFriend(currentUser.id, friendCode.trim().toUpperCase());
           showAlert("Başarılı", `${friendName} arkadaş olarak eklendi!`, "success");
           setFriendCode('');
           fetchFriends(currentUser.id);

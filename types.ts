@@ -61,7 +61,6 @@ export interface BadgeContext {
   grade?: GradeLevel | null;
   unitId?: string;
   action?: string;
-  quizSize?: number;
 }
 
 export interface Badge {
@@ -70,8 +69,7 @@ export interface Badge {
   description: string;
   icon: string;
   image?: string;
-  // Fixed: Use UserStats from this file instead of importing from userService
-  condition: (stats: UserStats, context?: BadgeContext) => boolean;
+  condition: (stats: import('./services/userService').UserStats, context?: BadgeContext) => boolean;
   unlocked: boolean;
 }
 

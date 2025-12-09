@@ -1,27 +1,29 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel, QuizDifficulty, Challenge } from '../types';
-import { CheckCircle, XCircle, ChevronRight, HelpCircle, Trophy, Swords, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Bookmark, Info, Clock, Swords, Copy, Trophy, HelpCircle, Zap, Divide, RotateCcw, Home } from 'lucide-react';
+import { updateStats, handleQuizResult, handleReviewResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress, getUserProfile, saveUserStats } from '../services/userService';
 import { playSound } from '../services/soundService';
-import { updateStats, updateQuestProgress, processDuelResultLocal, getUserProfile } from '../services/userService';
-import { completeChallenge, submitTournamentScore, syncLocalToCloud } from '../services/supabase';
+import { createChallenge, completeChallenge, syncLocalToCloud, submitTournamentScore, forfeitTournamentMatch } from '../services/supabase';
+import { getSmartDistractors } from '../services/contentService';
+import Mascot from './Mascot';
 
 interface QuizProps {
   words: WordCard[];
-  allWords: WordCard[];
+  allWords?: WordCard[];
   onRestart: () => void;
   onBack: () => void;
   onHome: () => void;
   isBookmarkQuiz?: boolean;
   isReviewMode?: boolean;
-  difficulty?: QuizDifficulty;
   onCelebrate?: (message: string, type: 'unit' | 'quiz' | 'goal') => void;
   onBadgeUnlock?: (badge: Badge) => void;
   grade?: GradeLevel | null;
+  difficulty?: QuizDifficulty;
   
-  // Challenge / Duel Props
+  // Challenge Props
   challengeMode?: 'create' | 'join' | 'tournament';
-  challengeData?: Challenge;
+  challengeData?: any;
   unitIdForChallenge?: string;
   challengeType?: 'public' | 'private' | 'friend';
   targetFriendId?: string;
@@ -29,30 +31,33 @@ interface QuizProps {
   tournamentName?: string;
 }
 
-const Quiz: React.FC<QuizProps> = ({ 
-    words, allWords, onRestart, onBack, onHome, difficulty = 'normal', 
-    onCelebrate, onBadgeUnlock, grade, challengeMode, challengeData, tournamentMatchId 
-}) => {
+const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome, isBookmarkQuiz, isReviewMode, onCelebrate, onBadgeUnlock, grade, difficulty = 'normal', challengeMode, challengeData, unitIdForChallenge, challengeType, targetFriendId, tournamentMatchId, tournamentName }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [options, setOptions] = useState<string[]>([]);
-  const [timer, setTimer] = useState(0);
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0); 
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [autoBookmarked, setAutoBookmarked] = useState(false);
+  const [addedToMemorized, setAddedToMemorized] = useState(false);
   
-  // Challenge State
-  const [challengeResult, setChallengeResult] = useState<'win' | 'loss' | 'tie' | null>(null);
-  const [opponentScore, setOpponentScore] = useState<number>(0);
-  
-  const correctCount = useRef(0);
-  const wrongCount = useRef(0);
-  const startTimeRef = useRef(Date.now());
+  // Joker States
+  const [jokersUsed, setJokersUsed] = useState({ fifty: false, double: false, ask: false });
+  const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
+  const [isDoubleChanceActive, setIsDoubleChanceActive] = useState(false);
+  const [doubleChanceUsedForQuestion, setDoubleChanceUsedForQuestion] = useState(false); 
+  const [showTeacherHint, setShowTeacherHint] = useState(false);
 
-  const getDifficultyTime = () => {
-      switch(difficulty) {
+  // Challenge States
+  const [createdChallengeId, setCreatedChallengeId] = useState<string | null>(null);
+  const [challengeResult, setChallengeResult] = useState<'win' | 'loss' | 'tie' | null>(null);
+  
+  // Timer for Total Duration
+  const [totalSeconds, setTotalSeconds] = useState(0);
+  const totalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  const getTimeLimit = (diff: QuizDifficulty) => {
+      switch(diff) {
           case 'relaxed': return 30;
           case 'easy': return 20;
           case 'normal': return 15;
@@ -61,322 +66,538 @@ const Quiz: React.FC<QuizProps> = ({
           default: return 15;
       }
   };
+  
+  const QUESTION_TIME_LIMIT = getTimeLimit(difficulty as QuizDifficulty);
+
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME_LIMIT);
+  
+  const [mascotMood, setMascotMood] = useState<'neutral' | 'happy' | 'sad' | 'thinking'>('thinking');
+  const [mascotMessage, setMascotMessage] = useState<React.ReactNode | undefined>(undefined);
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const questionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const questions = useMemo(() => {
+    if (!words || words.length === 0) return [];
+    const distractorPool = (allWords && allWords.length > 3) ? allWords : words;
+
+    return words.map((word) => {
+      const selectedDistractors = getSmartDistractors(word, distractorPool, 3);
+      
+      const optionsRaw = [word, ...selectedDistractors];
+
+      const options = optionsRaw
+        .map((w) => ({ text: w.turkish, isCorrect: w.english === word.english }))
+        .sort(() => 0.5 - Math.random());
+
+      return {
+        wordObj: word,
+        word: word.english,
+        correctAnswer: word.turkish,
+        options,
+        explanation: word.context
+      };
+    });
+  }, [words, allWords]);
+
+  const getUniqueId = (word: WordCard) => word.unitId ? `${word.unitId}|${word.english}` : word.english;
+
+  // Start total timer
+  useEffect(() => {
+      totalTimerRef.current = setInterval(() => {
+          setTotalSeconds(prev => prev + 1);
+      }, 1000);
+      return () => {
+          if (totalTimerRef.current) clearInterval(totalTimerRef.current);
+      };
+  }, []);
 
   useEffect(() => {
-    generateOptions();
-    setTimer(0);
-    setTimeLeft(getDifficultyTime());
-    setIsTimerActive(true);
-    startTimeRef.current = Date.now();
-  }, [currentQuestionIndex]);
+    if (questions[currentQuestionIndex] && !isAnswered) {
+        const currentQ = questions[currentQuestionIndex];
+        
+        // Simple plain text for mascot, no highlighting
+        setMascotMessage(currentQ.wordObj.exampleEng ? `"${currentQ.wordObj.exampleEng}"` : "");
+        setMascotMood('thinking');
+        
+        setHiddenOptions([]);
+        setIsDoubleChanceActive(false);
+        setDoubleChanceUsedForQuestion(false);
+        setShowTeacherHint(false);
+
+        setTimeLeft(QUESTION_TIME_LIMIT);
+        if (questionTimerRef.current) clearInterval(questionTimerRef.current);
+        
+        questionTimerRef.current = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 1) {
+                    if (questionTimerRef.current) clearInterval(questionTimerRef.current);
+                    handleOptionClick(-1);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    }
+  }, [currentQuestionIndex, questions, isAnswered, QUESTION_TIME_LIMIT]);
 
   useEffect(() => {
-      let interval: any = null;
-      if (isTimerActive) {
-          interval = setInterval(() => {
-              setTimer(prev => prev + 1);
-              setTimeLeft(prev => {
-                  if (prev <= 1) {
-                      handleTimeUp();
-                      return 0;
-                  }
-                  return prev - 1;
-              });
-          }, 1000);
-      }
-      return () => clearInterval(interval);
-  }, [isTimerActive]);
+    return () => { 
+        if (timerRef.current) clearTimeout(timerRef.current);
+        if (questionTimerRef.current) clearInterval(questionTimerRef.current);
+        if (totalTimerRef.current) clearInterval(totalTimerRef.current);
+    };
+  }, []);
 
-  const handleTimeUp = () => {
-      setIsTimerActive(false);
-      handleOptionSelect("TIMEOUT"); // Special value for timeout
+  const handleExit = async () => {
+      // Aborting logic
+      if (challengeMode === 'join' && challengeData) {
+          // If exiting while playing a duel, count as loss (0 points)
+          if (navigator.onLine) {
+              await completeChallenge(challengeData.id, getUserProfile().name, 0);
+          }
+      } else if (challengeMode === 'tournament' && challengeData) {
+          // If exiting tournament match, forfeit
+          if (navigator.onLine && challengeData.tournamentId && challengeData.matchId) {
+              await forfeitTournamentMatch(challengeData.tournamentId, challengeData.matchId);
+          }
+      }
+
+      syncLocalToCloud(); // Sync before leaving
+      onBack();
   };
 
-  const generateOptions = () => {
-    if (!words[currentQuestionIndex]) return;
-    const correct = words[currentQuestionIndex].turkish;
-    const distractors = allWords
-      .filter(w => w.turkish !== correct)
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 3)
-      .map(w => w.turkish);
-    
-    setOptions([...distractors, correct].sort(() => 0.5 - Math.random()));
+  const handleFiftyFifty = () => {
+      if (jokersUsed.fifty || isAnswered) return;
+      
+      const currentQ = questions[currentQuestionIndex];
+      const wrongIndices = currentQ.options
+          .map((opt, idx) => ({ idx, isCorrect: opt.isCorrect }))
+          .filter(opt => !opt.isCorrect)
+          .map(opt => opt.idx);
+      
+      const shuffledWrong = wrongIndices.sort(() => 0.5 - Math.random());
+      const toHide = shuffledWrong.slice(0, 2);
+      
+      setHiddenOptions(toHide);
+      setJokersUsed(prev => ({ ...prev, fifty: true }));
+      playSound('pop');
   };
 
-  const handleOptionSelect = (option: string) => {
-    if (selectedOption !== null) return; // Prevent multiple clicks
-    
-    setIsTimerActive(false);
-    setSelectedOption(option);
-    
-    const currentWord = words[currentQuestionIndex];
-    const isAnswerCorrect = option === currentWord.turkish;
-    
-    setIsCorrect(isAnswerCorrect);
+  const handleAskTeacher = () => {
+      if (jokersUsed.ask || isAnswered) return;
+      
+      setMascotMessage(
+          <span>
+              Psst! Doğru cevap: "{questions[currentQuestionIndex].correctAnswer}"
+          </span>
+      );
+      setMascotMood('happy');
+      setShowTeacherHint(true);
+      setJokersUsed(prev => ({ ...prev, ask: true }));
+      playSound('pop');
+  };
 
-    if (isAnswerCorrect) {
-      setScore(prev => prev + 1);
-      correctCount.current += 1;
-      playSound('correct');
+  const handleDoubleChance = () => {
+      if (jokersUsed.double || isAnswered) return;
       
-      // Update stats immediately for better UX
-      const newBadges = updateStats('quiz_correct', grade, undefined, 1); 
-      updateQuestProgress('finish_quiz', 1); // Progress per question for some quests? No, usually per quiz.
-      updateQuestProgress('correct_answers', 1);
-      
-      if (newBadges.length > 0 && onBadgeUnlock) {
-          newBadges.forEach(b => onBadgeUnlock(b));
-      }
-    } else {
-      wrongCount.current += 1;
-      playSound('wrong');
-      updateStats('quiz_wrong', grade);
+      setIsDoubleChanceActive(true);
+      setJokersUsed(prev => ({ ...prev, double: true }));
+      setMascotMessage("İki hakkın var! Yanlış yaparsan bir şansın daha olacak.");
+      playSound('pop');
+  };
+
+  const handleOptionClick = (index: number) => {
+    if (isAnswered && !isDoubleChanceActive) return;
+
+    if (isDoubleChanceActive && index !== -1) {
+         const isCorrect = questions[currentQuestionIndex].options[index].isCorrect;
+         if (!isCorrect) {
+             setIsDoubleChanceActive(false);
+             setDoubleChanceUsedForQuestion(true);
+             setHiddenOptions(prev => [...prev, index]);
+             playSound('wrong');
+             setMascotMood('sad');
+             setMascotMessage("Yanlış! Bir hakkın daha var.");
+             return;
+         }
     }
 
-    // Auto advance
-    setTimeout(() => {
-      if (currentQuestionIndex < words.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-        setSelectedOption(null);
-        setIsCorrect(null);
-      } else {
-        finishQuiz();
-      }
-    }, 1500);
+    if (questionTimerRef.current) clearInterval(questionTimerRef.current);
+    
+    setIsAnswered(true);
+    setSelectedOption(index);
+
+    const isTimeUp = index === -1;
+    const isCorrect = !isTimeUp && questions[currentQuestionIndex].options[index].isCorrect;
+    const wordId = getUniqueId(questions[currentQuestionIndex].wordObj);
+    
+    const newScore = isCorrect ? score + 1 : score;
+    if (isCorrect) {
+        setScore(newScore);
+    } else {
+        setWrongCount(prev => prev + 1);
+    }
+
+    if (!isTimeUp && navigator.vibrate) navigator.vibrate(isCorrect ? 50 : 200);
+
+    // --- IMMEDIATE STATS UPDATE START ---
+    if (!challengeMode) {
+        if (isCorrect) {
+            const newBadges = updateStats('quiz_correct', grade, wordId, 1);
+            if (newBadges.length > 0 && onBadgeUnlock) newBadges.forEach(b => onBadgeUnlock(b));
+        } else {
+            updateStats('quiz_wrong', grade, wordId, 1);
+        }
+    }
+    // --- IMMEDIATE STATS UPDATE END ---
+
+    if (isCorrect) {
+        playSound('correct');
+        setMascotMood('happy');
+        setMascotMessage('Harika! Doğru bildin.');
+        
+        handleQuizResult(wordId, true); 
+        
+        const memorizedSet = getMemorizedSet();
+        if (!memorizedSet.has(wordId)) {
+             try {
+                 const savedBookmarks = localStorage.getItem('lgs_bookmarks');
+                 if (savedBookmarks) {
+                     const bookmarkSet = new Set(JSON.parse(savedBookmarks));
+                     if (bookmarkSet.has(wordId)) {
+                         bookmarkSet.delete(wordId);
+                         localStorage.setItem('lgs_bookmarks', JSON.stringify([...bookmarkSet]));
+                     }
+                 }
+             } catch (e) {}
+
+             addToMemorized(wordId);
+             setAddedToMemorized(true);
+        }
+
+        if (isReviewMode) {
+            updateStats('review_remember', grade, wordId);
+        }
+        
+        // IMMEDIATE SYNC
+        if (!challengeMode) syncLocalToCloud();
+
+    } else {
+        playSound('wrong');
+        setMascotMood('sad');
+        if (isTimeUp) {
+            setMascotMessage(`Süre doldu! Doğru cevap: ${questions[currentQuestionIndex].correctAnswer}`);
+        } else {
+            setMascotMessage(`Üzgünüm. Doğru cevap: ${questions[currentQuestionIndex].correctAnswer}`);
+        }
+        
+        if (isReviewMode) {
+             handleReviewResult(wordId, false); 
+             updateStats('review_forgot', grade, wordId);
+        } else {
+             handleQuizResult(wordId, false);
+
+            try {
+                const savedBookmarks = localStorage.getItem('lgs_bookmarks');
+                const bookmarkSet = savedBookmarks ? new Set(JSON.parse(savedBookmarks)) : new Set();
+                if (!bookmarkSet.has(wordId)) {
+                    const memorizedSet = getMemorizedSet();
+                    if (memorizedSet.has(wordId)) {
+                        removeFromMemorized(wordId);
+                    }
+                    
+                    bookmarkSet.add(wordId);
+                    localStorage.setItem('lgs_bookmarks', JSON.stringify([...bookmarkSet]));
+                    setAutoBookmarked(true);
+                }
+            } catch (e) {}
+        }
+    }
+
+    const delay = 2500; 
+    timerRef.current = setTimeout(() => {
+        handleNext(newScore);
+    }, delay);
   };
 
-  const finishQuiz = async () => {
-      setShowResult(true);
-      const totalSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
+  const handleNext = async (currentScoreValue?: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    
+    const actualScore = currentScoreValue !== undefined ? currentScoreValue : score;
+
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+      setSelectedOption(null);
+      setIsAnswered(false);
+      setAutoBookmarked(false);
+      setAddedToMemorized(false);
+    } else {
+      // Finish Quiz
+      if (totalTimerRef.current) clearInterval(totalTimerRef.current);
+      playSound('success');
+      setShowResults(true);
       
-      // Check for perfect quiz badge context
-      const context = { quizSize: words.length };
-      // Trigger badge check with custom context
-      // Note: This relies on updateStats running at least once, which it does on answers.
-      // But we might want to check completion badges here.
-      // Actually updateStats is called per answer.
+      const percentage = Math.round((actualScore / questions.length) * 100);
       
-      updateQuestProgress('finish_quiz', 1);
-      if (correctCount.current === words.length) {
-          updateQuestProgress('perfect_quiz', 1);
-      }
-      
-      // Challenge Logic
       if (challengeMode === 'create') {
-          // In create mode, we just finished setting the score.
-          // The actual creation happens in the parent component or we trigger it here.
-          // However, props suggest parent handles it via modal or other logic.
-          // Wait, if mode is create, we are the creator. We need to save this score.
-          // But Quiz component is generic.
-          // Let's assume we just show the score and the parent (App.tsx) handles the "Creation" via specific callbacks if passed.
-          // But here we don't have onCreate callback.
-          // In App.tsx, challenge creation logic was: set words -> open quiz.
-          // We need to persist the challenge to DB here if we are in 'create' mode.
-          // But we need the function.
-          // Let's assume for now we just show result.
-          // Actually, we should probably call a service here if we had the challenge params.
+           if (allWords && unitIdForChallenge) {
+                const wordIndices = words.map(w => allWords!.findIndex(aw => aw.english === w.english && aw.unitId === w.unitId));
+                const profile = getUserProfile();
+                // FIX: Cast difficulty to QuizDifficulty to ensure type safety
+                createChallenge(profile.name, percentage, wordIndices, unitIdForChallenge, difficulty as QuizDifficulty, words.length, challengeType, targetFriendId)
+                    .then((id) => setCreatedChallengeId(id));
+           }
       } else if (challengeMode === 'join' || challengeMode === 'tournament') {
            if (challengeData) {
-                const percentage = Math.round((correctCount.current / words.length) * 100);
-                
-                // Determine result for local user
+                // Update local stats for the winner immediately
                 let resultType = 0;
                 if (percentage > challengeData.creatorScore) {
                     setChallengeResult('win');
-                    resultType = 3;
+                    resultType = 3; // 3 points for win
                 } else if (percentage < challengeData.creatorScore) {
                     setChallengeResult('loss');
-                    resultType = 0;
+                    resultType = 0; // 0 points for loss
                 } else {
                     setChallengeResult('tie');
-                    resultType = 1;
+                    resultType = 1; // 1 point for tie
                 }
                 
-                // Update stats
+                // Update local game stats immediately (Passing grade and resultType)
                 updateStats('duel_result', grade, undefined, resultType);
-                
-                // Sync to cloud
-                if (navigator.onLine) {
-                    try {
-                        const userProfile = getUserProfile();
-                        await completeChallenge(challengeData.id, userProfile.name, percentage);
-                        
-                        if (challengeMode === 'tournament' && tournamentMatchId) {
-                             await submitTournamentScore(challengeData.unitId || '', tournamentMatchId, percentage, totalSeconds); // Note: challengeData structure might differ slightly, checking type defs... Tournament matches are stored in tournament doc.
-                        }
-                    } catch (e) {
-                        console.error("Failed to sync challenge result", e);
-                    }
+
+                // Update server status and record winner
+                await completeChallenge(challengeData.id, getUserProfile().name, percentage);
+
+                if (challengeMode === 'tournament' && tournamentMatchId) {
+                     submitTournamentScore(challengeData.tournamentId || challengeData.id, tournamentMatchId, percentage, totalSeconds);
                 }
-                
-                setOpponentScore(challengeData.creatorScore);
            }
+      } else {
+          updateQuestProgress('finish_quiz', 1);
+          
+          if (actualScore === questions.length) {
+              const newBadges = updateStats('perfect_quiz', grade);
+              if (newBadges.length > 0 && onBadgeUnlock) newBadges.forEach(b => onBadgeUnlock(b));
+              updateQuestProgress('perfect_quiz', 1);
+          }
+          
+          if (onCelebrate) {
+              if (actualScore === questions.length) onCelebrate("Mükemmel! Hepsini bildin.", 'quiz');
+              else if (percentage >= 80) onCelebrate("Harika iş çıkardın!", 'quiz');
+          }
       }
       
-      syncLocalToCloud(); // Sync everything
-      
-      if (onCelebrate && correctCount.current === words.length) {
-          onCelebrate("Mükemmel! Hepsini doğru bildin.", 'quiz');
+      // Sync cloud data when quiz finishes to ensure leaderboard is updated
+      await syncLocalToCloud();
+    }
+  };
+
+  const handleShareChallenge = () => {
+      if (createdChallengeId) {
+          navigator.clipboard.writeText(createdChallengeId);
+          alert("Düello kodu kopyalandı!");
       }
   };
 
-  if (showResult) {
-    const percentage = Math.round((score / words.length) * 100);
-    const isChallenge = !!challengeMode;
-    
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-6 text-center animate-in fade-in zoom-in">
-        
-        {isChallenge ? (
-            <div className="mb-8 relative">
-                <div className={`w-32 h-32 rounded-full flex items-center justify-center border-4 shadow-xl ${challengeResult === 'win' ? 'bg-yellow-100 border-yellow-400 text-yellow-600' : challengeResult === 'loss' ? 'bg-red-100 border-red-400 text-red-600' : 'bg-slate-100 border-slate-400 text-slate-600'}`}>
-                    {challengeResult === 'win' ? <Trophy size={64} /> : challengeResult === 'loss' ? <XCircle size={64} /> : <Swords size={64} />}
-                </div>
-                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-1 rounded-full shadow-md font-black text-lg whitespace-nowrap">
-                    {challengeResult === 'win' ? 'KAZANDIN!' : challengeResult === 'loss' ? 'KAYBETTİN' : 'BERABERE'}
-                </div>
-            </div>
-        ) : (
-            <div className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6 shadow-lg">
-              <CheckCircle size={48} />
-            </div>
-        )}
-
-        <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2">
-            {isChallenge ? (challengeResult === 'win' ? 'Tebrikler!' : 'Güzel Maçtı!') : 'Quiz Tamamlandı!'}
-        </h2>
-        
-        <div className="flex items-center gap-8 mb-8">
-            <div className="text-center">
-                <div className="text-xs font-bold text-slate-400 uppercase">Sen</div>
-                <div className="text-4xl font-black text-indigo-600">{percentage}%</div>
-            </div>
-            {isChallenge && (
-                <>
-                <div className="text-2xl font-black text-slate-300">VS</div>
-                <div className="text-center">
-                    <div className="text-xs font-bold text-slate-400 uppercase">Rakip</div>
-                    <div className="text-4xl font-black text-slate-600">{opponentScore}%</div>
-                </div>
-                </>
-            )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 w-full max-w-xs mb-8">
-          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-2xl border border-green-100 dark:border-green-800">
-            <div className="text-green-600 dark:text-green-400 font-bold text-lg">{correctCount.current}</div>
-            <div className="text-xs text-green-700 dark:text-green-500">Doğru</div>
+  // --- RENDER ---
+  if (showResults) {
+      const percentage = Math.round((score / questions.length) * 100);
+      return (
+          <div className="flex flex-col items-center justify-center h-full p-6 animate-in fade-in zoom-in text-center">
+              {challengeMode === 'create' ? (
+                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-sm w-full">
+                      <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400 mx-auto mb-4">
+                          <Swords size={40} />
+                      </div>
+                      <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Meydan Okuma Hazır!</h2>
+                      <p className="text-slate-500 mb-6">Skorun: <strong className="text-indigo-600">% {percentage}</strong></p>
+                      
+                      {createdChallengeId ? (
+                          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl mb-6">
+                              <p className="text-xs text-slate-400 uppercase font-bold mb-1">Düello Kodu</p>
+                              <div className="text-3xl font-black tracking-widest text-slate-800 dark:text-white select-all">{createdChallengeId}</div>
+                              <button onClick={handleShareChallenge} className="mt-3 text-xs font-bold text-indigo-500 flex items-center justify-center gap-1 w-full py-2 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded-lg">
+                                  <Copy size={14} /> Kodu Kopyala
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="text-sm text-slate-400 mb-6">Düello oluşturuluyor...</div>
+                      )}
+                      
+                      <button onClick={onHome} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">Ana Menüye Dön</button>
+                  </div>
+              ) : challengeMode === 'join' || challengeMode === 'tournament' ? (
+                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-sm w-full">
+                       <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${challengeResult === 'win' ? 'bg-green-100 text-green-600' : challengeResult === 'loss' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                           <Trophy size={40} />
+                       </div>
+                       <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">
+                           {challengeResult === 'win' ? 'Kazandın!' : challengeResult === 'loss' ? 'Kaybettin!' : 'Berabere!'}
+                       </h2>
+                       <div className="flex justify-center gap-8 mb-6">
+                           <div className="text-center">
+                               <div className="text-xs text-slate-400 font-bold mb-1">SEN</div>
+                               <div className="text-3xl font-black text-indigo-600">{percentage}%</div>
+                           </div>
+                           <div className="text-center">
+                               <div className="text-xs text-slate-400 font-bold mb-1">RAKİP</div>
+                               <div className="text-3xl font-black text-slate-600 dark:text-slate-400">{challengeData?.creatorScore}%</div>
+                           </div>
+                       </div>
+                       <button onClick={onHome} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold">Kapat</button>
+                  </div>
+              ) : (
+                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-sm w-full">
+                      <div className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto mb-6">
+                          <CheckCircle size={48} />
+                      </div>
+                      <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2">Tamamlandı!</h2>
+                      <div className="text-5xl font-black text-indigo-600 mb-2">{score} / {questions.length}</div>
+                      <p className="text-slate-500 font-bold mb-8">Doğru Cevap</p>
+                      
+                      <div className="flex flex-col gap-3">
+                          <button onClick={onRestart} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                             <RotateCcw size={20} /> Tekrar Dene
+                          </button>
+                          <button onClick={onHome} className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2">
+                             <Home size={20} /> Ana Menü
+                          </button>
+                      </div>
+                  </div>
+              )}
           </div>
-          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-2xl border border-red-100 dark:border-red-800">
-            <div className="text-red-600 dark:text-red-400 font-bold text-lg">{wrongCount.current}</div>
-            <div className="text-xs text-red-700 dark:text-red-500">Yanlış</div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          {!isChallenge && (
-              <button 
-                onClick={onRestart}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-[0.98]"
-              >
-                Tekrar Dene
-              </button>
-          )}
-          <button 
-            onClick={onBack}
-            className="w-full py-4 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 rounded-2xl font-bold transition-all active:scale-[0.98]"
-          >
-            Tamamla
-          </button>
-        </div>
-      </div>
-    );
+      );
   }
 
-  const currentWord = words[currentQuestionIndex];
-
+  // --- QUIZ UI ---
+  const currentQ = questions[currentQuestionIndex];
+  
   return (
-    <div className="flex flex-col h-full w-full max-w-2xl mx-auto p-4">
-      
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6 shrink-0">
-        <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90">
-                    <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-200 dark:text-slate-800" />
-                    <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-indigo-600 transition-all duration-300" strokeDasharray="113" strokeDashoffset={113 - (113 * (currentQuestionIndex + 1) / words.length)} strokeLinecap="round" />
-                </svg>
-                <span className="absolute text-[10px] font-bold text-slate-600 dark:text-slate-300">{currentQuestionIndex + 1}</span>
-            </div>
-            {challengeMode && (
-                <div className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-600 px-2 py-1 rounded-lg text-xs font-bold">
-                    <Swords size={12} /> Düello
-                </div>
-            )}
-        </div>
+    <div className="flex flex-col h-full max-w-3xl mx-auto p-4 relative">
         
-        <div className={`flex items-center gap-1 font-mono font-bold text-lg px-3 py-1 rounded-lg transition-colors ${timeLeft <= 5 ? 'text-red-500 bg-red-50 dark:bg-red-900/20' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800'}`}>
-            <Clock size={16} /> {timeLeft}s
+        {/* Top Bar */}
+        <div className="flex justify-between items-center mb-6 shrink-0 relative z-20">
+             <div className="flex items-center gap-3">
+                 <div className="relative w-12 h-12 flex items-center justify-center">
+                     <svg className="w-full h-full transform -rotate-90">
+                         <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-200 dark:text-slate-700" />
+                         <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={125.6} strokeDashoffset={125.6 - (125.6 * (timeLeft / QUESTION_TIME_LIMIT))} className={`text-indigo-500 transition-all duration-1000 ease-linear ${timeLeft <= 5 ? 'text-red-500' : ''}`} />
+                     </svg>
+                     <span className={`absolute font-bold text-sm ${timeLeft <= 5 ? 'text-red-500 animate-pulse' : 'text-slate-700 dark:text-slate-200'}`}>{timeLeft}</span>
+                 </div>
+                 <div className="flex flex-col">
+                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Soru</span>
+                     <span className="text-lg font-black text-slate-800 dark:text-white">{currentQuestionIndex + 1} <span className="text-slate-400 text-sm">/ {questions.length}</span></span>
+                 </div>
+             </div>
+
+             <div className="flex gap-2">
+                  <div className="px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-xl font-bold text-sm flex items-center gap-1">
+                      <CheckCircle size={16} /> {score}
+                  </div>
+                  <button onClick={handleExit} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500 transition-colors">
+                      <XCircle size={20} />
+                  </button>
+             </div>
         </div>
-      </div>
 
-      {/* Question Card */}
-      <div className="flex-1 flex flex-col justify-center mb-8 relative">
-         <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-8 text-center relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-             
-             <span className="inline-block px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold uppercase tracking-widest rounded-full mb-4">
-                 İngilizcesi
-             </span>
-             
-             <h2 className="text-3xl sm:text-4xl font-black text-slate-800 dark:text-white mb-2 break-words">
-                 {currentWord.english}
-             </h2>
-             
-             {currentWord.context && (
-                 <p className="text-slate-400 text-sm font-medium italic mt-2">
-                     ({currentWord.context})
-                 </p>
-             )}
-         </div>
-      </div>
+        {/* Question Area */}
+        <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px]">
+             <div className="w-full mb-6 flex justify-center">
+                 <Mascot mood={mascotMood} message={mascotMessage} size={110} />
+             </div>
 
-      {/* Options */}
-      <div className="grid grid-cols-1 gap-3 pb-8 shrink-0">
-        {options.map((option, idx) => {
-          let stateStyles = "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md";
-          
-          if (selectedOption) {
-             if (option === currentWord.turkish) {
-                 stateStyles = "bg-green-500 border-green-600 text-white shadow-lg shadow-green-500/30";
-             } else if (option === selectedOption) {
-                 stateStyles = "bg-red-500 border-red-600 text-white shadow-lg shadow-red-500/30";
-             } else {
-                 stateStyles = "bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-300 opacity-50";
-             }
-          }
+             <div className="w-full text-center mb-8 relative z-10">
+                 <h2 className="text-4xl sm:text-5xl font-black text-slate-800 dark:text-white mb-2 tracking-tight drop-shadow-sm">
+                     {currentQ.word}
+                 </h2>
+                 {currentQ.explanation && (
+                     <div className="inline-block px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                         {currentQ.explanation}
+                     </div>
+                 )}
+                 {/* Feedback Indicators */}
+                 {autoBookmarked && (
+                     <div className="absolute top-0 right-0 transform translate-x-4 -translate-y-4">
+                         <div className="bg-yellow-100 text-yellow-600 p-2 rounded-full shadow-lg animate-bounce">
+                             <Bookmark size={20} className="fill-current" />
+                         </div>
+                     </div>
+                 )}
+                 {addedToMemorized && (
+                     <div className="absolute top-0 right-0 transform translate-x-4 -translate-y-4">
+                         <div className="bg-green-100 text-green-600 p-2 rounded-full shadow-lg animate-bounce">
+                             <CheckCircle size={20} />
+                         </div>
+                     </div>
+                 )}
+             </div>
 
-          return (
-            <button
-              key={idx}
-              onClick={() => handleOptionSelect(option)}
-              disabled={selectedOption !== null}
-              className={`relative p-4 rounded-2xl border-2 font-bold text-lg transition-all duration-200 active:scale-[0.98] flex items-center justify-between group ${stateStyles}`}
-            >
-              <span>{option}</span>
-              {selectedOption === option && (
-                  option === currentWord.turkish 
-                    ? <CheckCircle className="animate-bounce" size={24} /> 
-                    : <XCircle className="animate-shake" size={24} />
-              )}
-              {!selectedOption && (
-                  <div className="w-6 h-6 rounded-full border-2 border-slate-200 dark:border-slate-700 group-hover:border-indigo-400 transition-colors"></div>
-              )}
-            </button>
-          );
-        })}
-      </div>
+             {/* Options */}
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl relative z-10">
+                 {currentQ.options.map((opt, idx) => {
+                     const isSelected = selectedOption === idx;
+                     const isHidden = hiddenOptions.includes(idx);
+                     
+                     let btnClass = "bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-700";
+                     
+                     if (isAnswered) {
+                         if (opt.isCorrect) btnClass = "bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/30 scale-[1.02]";
+                         else if (isSelected) btnClass = "bg-red-500 border-red-500 text-white opacity-50";
+                         else btnClass = "bg-slate-100 dark:bg-slate-800 border-transparent text-slate-400 opacity-50";
+                     }
+
+                     if (isHidden) return <div key={idx} className="h-[72px]"></div>;
+
+                     return (
+                         <button
+                            key={idx}
+                            onClick={() => handleOptionClick(idx)}
+                            disabled={isAnswered && !isDoubleChanceActive}
+                            className={`relative p-5 rounded-2xl font-bold text-lg transition-all duration-200 shadow-sm ${btnClass} ${!isAnswered ? 'active:scale-95' : ''}`}
+                         >
+                             {opt.text}
+                             {isAnswered && opt.isCorrect && <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2" size={24} />}
+                         </button>
+                     );
+                 })}
+             </div>
+        </div>
+
+        {/* Jokers - Hidden in Challenge Mode */}
+        {!challengeMode && (
+            <div className="mt-auto pt-6 pb-2 shrink-0">
+                 <div className="flex justify-center gap-4">
+                     <button 
+                        onClick={handleFiftyFifty} 
+                        disabled={jokersUsed.fifty || isAnswered}
+                        className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.fifty ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 active:scale-95'}`}
+                     >
+                         <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center font-black shadow-sm text-sm">50%</div>
+                         <span className="text-[10px] font-bold uppercase">Yarı Yarıya</span>
+                     </button>
+
+                     <button 
+                        onClick={handleDoubleChance} 
+                        disabled={jokersUsed.double || isAnswered}
+                        className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.double ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400 active:scale-95'}`}
+                     >
+                         <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm"><Zap size={20} className="fill-current" /></div>
+                         <span className="text-[10px] font-bold uppercase">Çift Hak</span>
+                     </button>
+
+                     <button 
+                        onClick={handleAskTeacher} 
+                        disabled={jokersUsed.ask || isAnswered}
+                        className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.ask ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400 active:scale-95'}`}
+                     >
+                         <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm"><HelpCircle size={20} /></div>
+                         <span className="text-[10px] font-bold uppercase">Hocaya Sor</span>
+                     </button>
+                 </div>
+            </div>
+        )}
 
     </div>
   );
