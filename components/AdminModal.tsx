@@ -10,7 +10,6 @@ import { getUnitAssets } from '../services/contentService';
 import { GradeLevel, QuizDifficulty, Tournament, WordCard, Announcement } from '../types';
 
 // Data imports for uploading
-import { ANNOUNCEMENTS as LOCAL_ANNOUNCEMENTS } from '../data/announcements';
 import { APP_TIPS as LOCAL_TIPS } from '../data/tips';
 import { GRAMMAR_CONTENT as LOCAL_GRAMMAR } from '../data/grammarContent';
 import { UNIT_ASSETS as LOCAL_UNIT_ASSETS, AVATARS, FRAMES, BACKGROUNDS, GRADE_DATA, BADGES } from '../data/assets';

@@ -24,12 +24,12 @@ const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIU
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Utility to enforce timeouts on promises
-export const withTimeout = <T>(promise: PromiseLike<T>, ms: number = 7000): Promise<T | null> => {
+export const withTimeout = <T>(promise: PromiseLike<T>, ms: number = 15000): Promise<T | null> => {
     return Promise.race([
         promise,
         new Promise<null>((resolve) => 
             setTimeout(() => {
-                console.warn(`Operation timed out after ${ms}ms`);
+                // console.warn(`Operation timed out after ${ms}ms`);
                 resolve(null); // Reject yerine Resolve(null) yapıyoruz
             }, ms)
         )
@@ -92,7 +92,7 @@ export const getAllGrammar = async () => {
     try {
         const result = await withTimeout(supabase
             .from('grammar')
-            .select('*'), 5000);
+            .select('*')); // Use default timeout
             
         if (!result || (result as any).error) return [];
         return (result as any).data;
@@ -119,7 +119,7 @@ export const getUnitData = async (unitId: string): Promise<WordCard[] | null> =>
                 .eq('id', unitId)
                 .single();
 
-            const result = await withTimeout(query, 5000);
+            const result = await withTimeout(query, 15000); // Increased explicit timeout if called from here, though usually via contentService
 
             if (!result || (result as any).error) return null;
             return (result as any).data?.words as WordCard[];
@@ -936,7 +936,19 @@ export const getChallenge = async (challengeId: string): Promise<Challenge | nul
 
 export const getOpenChallenges = async (currentUid: string): Promise<Challenge[]> => {
     try {
-        const result = await withTimeout(supabase.from('challenges').select('*').eq('status', 'waiting').order('created_at', { ascending: false }).limit(20), 3000);
+        // 24 saatten eski challengelari filtrele
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        
+        const result = await withTimeout(
+            supabase.from('challenges')
+                .select('*')
+                .eq('status', 'waiting')
+                .gt('created_at', oneDayAgo) // Created After 24h ago
+                .order('created_at', { ascending: false })
+                .limit(20), 
+            3000
+        );
+        
         if (!result || (result as any).error) return [];
         const data = (result as any).data;
 
@@ -992,21 +1004,24 @@ export const completeChallenge = async (challengeId: string, opponentName: strin
 
     if (challenge) {
         let winnerId = 'tie';
+        const { data: { user } } = await supabase.auth.getUser();
+        
         if (opponentScore > challenge.creator_score) {
-            const { data: { user } } = await supabase.auth.getUser();
             winnerId = user?.id || 'opponent';
         } else if (opponentScore < challenge.creator_score) {
             winnerId = challenge.creator_id;
         }
 
-        const { data: { user } } = await supabase.auth.getUser();
-
-        await supabase.from('challenges').update({
+        const { error } = await supabase.from('challenges').update({
             status: 'completed',
             opponent_id: user?.id,
             opponent_name: opponentName,
             opponent_score: opponentScore,
             winner_id: winnerId
         }).eq('id', challengeId);
+        
+        if (error) {
+            console.error("Error completing challenge:", error);
+        }
     }
 };

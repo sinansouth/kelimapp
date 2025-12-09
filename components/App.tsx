@@ -435,7 +435,15 @@ const App: React.FC = () => {
     const handleOpenProfile = () => { changeMode(AppMode.PROFILE); setTopicTitle('Profilim'); refreshGlobalState(); };
     const handleOpenInfo = () => { changeMode(AppMode.INFO); setTopicTitle('İpuçları'); };
     const handleOpenMarket = () => { setActiveModal('market'); };
-    const handleOpenAnnouncements = () => { changeMode(AppMode.ANNOUNCEMENTS); setTopicTitle('Duyurular'); const announcements = getAnnouncements(); if (announcements.length > 0) { setLastReadAnnouncementId(announcements[0].id); setHasUnreadAnnouncements(false); } };
+    const handleOpenAnnouncements = async () => { 
+        changeMode(AppMode.ANNOUNCEMENTS); 
+        setTopicTitle('Duyurular'); 
+        const announcements = await getAnnouncements(); 
+        if (announcements.length > 0) { 
+            setLastReadAnnouncementId(announcements[0].id); 
+            setHasUnreadAnnouncements(false); 
+        } 
+    };
     const handleOpenSettings = () => { setActiveModal('settings'); };
 
     const handleOpenChallenge = () => {

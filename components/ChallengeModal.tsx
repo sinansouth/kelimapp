@@ -56,7 +56,7 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
     { id: 'impossible', label: 'İmkansız (5s)', color: 'bg-red-100 text-red-700 border-red-300' },
   ];
 
-  const countOptions = [10, 20, 30];
+  const countOptions = [10, 25, 50];
 
   useEffect(() => {
       const auth = getAuthInstance();

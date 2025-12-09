@@ -1,8 +1,7 @@
 
-import { getUnitData as fetchUnitDataFromSupabase, supabase, withTimeout } from './supabase';
+import { getUnitData as fetchUnitDataFromSupabase, supabase, withTimeout, getGlobalAnnouncements } from './supabase';
 import { WordCard, UnitDef, Announcement, GrammarTopic, Avatar, FrameDef, BackgroundDef, Badge } from '../types';
 import { UNIT_ASSETS, AVATARS, FRAMES, BACKGROUNDS, BADGES } from '../data/assets';
-import { ANNOUNCEMENTS } from '../data/announcements';
 import { getGrammarForUnit as getGrammarData } from '../data/grammarContent';
 
 // This service abstracts the data fetching logic.
@@ -25,7 +24,8 @@ export const fetchAllWords = async (): Promise<Record<string, WordCard[]>> => {
     try {
         // 3. Buluttan çekmeyi dene ama hata olursa önemseme
         // withTimeout artık null dönüyor, hata fırlatmıyor (supabase.ts'deki değişiklikle)
-        const result = await withTimeout(supabase.from('units').select('id, words'), 5000);
+        // Using default timeout from supabase.ts (15000ms)
+        const result = await withTimeout(supabase.from('units').select('id, words'));
         
         // Hata veya timeout durumunda
         if (!result || (result as any).error) {
@@ -68,15 +68,26 @@ export const getWordsForUnit = async (unitId: string): Promise<WordCard[]> => {
     try {
         if (navigator.onLine) {
             console.log(`Cache miss for ${unitId}, fetching from cloud...`);
-            const cloudData = await fetchUnitDataFromSupabase(unitId);
-            if (cloudData && cloudData.length > 0) {
-                const taggedWords = cloudData.map(w => ({ ...w, unitId }));
-                
-                // Update cache incrementally
-                if (!allWordsCache) allWordsCache = {};
-                allWordsCache[unitId] = taggedWords;
-                
-                return taggedWords;
+            const query = supabase
+                .from('units')
+                .select('words')
+                .eq('id', unitId)
+                .single();
+
+            // Using default timeout from supabase.ts (15000ms)
+            const result = await withTimeout(query);
+
+            if (result && !(result as any).error && (result as any).data) {
+                const cloudData = (result as any).data.words as WordCard[];
+                if (cloudData && cloudData.length > 0) {
+                    const taggedWords = cloudData.map(w => ({ ...w, unitId }));
+                    
+                    // Update cache incrementally
+                    if (!allWordsCache) allWordsCache = {};
+                    allWordsCache[unitId] = taggedWords;
+                    
+                    return taggedWords;
+                }
             }
         }
     } catch (e) {
@@ -149,8 +160,8 @@ export const getUnitAssets = (): Record<string, UnitDef[]> => {
     return UNIT_ASSETS;
 };
 
-export const getAnnouncements = (): Announcement[] => {
-    return ANNOUNCEMENTS;
+export const getAnnouncements = async (): Promise<Announcement[]> => {
+    return await getGlobalAnnouncements();
 };
 
 export const fetchDynamicContent = async () => {

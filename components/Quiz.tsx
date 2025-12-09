@@ -337,21 +337,28 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
            }
       } else if (challengeMode === 'join' || challengeMode === 'tournament') {
            if (challengeData) {
-                completeChallenge(challengeData.id, getUserProfile().name, percentage);
+                // Update local stats for the winner immediately
+                let resultType = 0;
+                if (percentage > challengeData.creatorScore) {
+                    setChallengeResult('win');
+                    resultType = 3; // 3 points for win
+                } else if (percentage < challengeData.creatorScore) {
+                    setChallengeResult('loss');
+                    resultType = 0; // 0 points for loss
+                } else {
+                    setChallengeResult('tie');
+                    resultType = 1; // 1 point for tie
+                }
                 
-                if (percentage > challengeData.creatorScore) setChallengeResult('win');
-                else if (percentage < challengeData.creatorScore) setChallengeResult('loss');
-                else setChallengeResult('tie');
+                // Update local game stats immediately
+                updateStats('duel_result', grade, undefined, resultType);
+
+                // Update server status and record winner
+                await completeChallenge(challengeData.id, getUserProfile().name, percentage);
 
                 if (challengeMode === 'tournament' && tournamentMatchId) {
                      submitTournamentScore(challengeData.tournamentId || challengeData.id, tournamentMatchId, percentage, totalSeconds);
                 }
-
-                let resultType = 0;
-                if (percentage > challengeData.creatorScore) resultType = 3;
-                else if (percentage === challengeData.creatorScore) resultType = 1;
-                
-                updateStats('duel_result', grade, undefined, resultType);
            }
       } else {
           updateQuestProgress('finish_quiz', 1);
@@ -545,37 +552,39 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
              </div>
         </div>
 
-        {/* Jokers */}
-        <div className="mt-auto pt-6 pb-2 shrink-0">
-             <div className="flex justify-center gap-4">
-                 <button 
-                    onClick={handleFiftyFifty} 
-                    disabled={jokersUsed.fifty || isAnswered}
-                    className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.fifty ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 active:scale-95'}`}
-                 >
-                     <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center font-black shadow-sm text-sm">50%</div>
-                     <span className="text-[10px] font-bold uppercase">Yarı Yarıya</span>
-                 </button>
+        {/* Jokers - Hidden in Challenge Mode */}
+        {!challengeMode && (
+            <div className="mt-auto pt-6 pb-2 shrink-0">
+                 <div className="flex justify-center gap-4">
+                     <button 
+                        onClick={handleFiftyFifty} 
+                        disabled={jokersUsed.fifty || isAnswered}
+                        className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.fifty ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 active:scale-95'}`}
+                     >
+                         <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center font-black shadow-sm text-sm">50%</div>
+                         <span className="text-[10px] font-bold uppercase">Yarı Yarıya</span>
+                     </button>
 
-                 <button 
-                    onClick={handleDoubleChance} 
-                    disabled={jokersUsed.double || isAnswered}
-                    className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.double ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400 active:scale-95'}`}
-                 >
-                     <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm"><Zap size={20} className="fill-current" /></div>
-                     <span className="text-[10px] font-bold uppercase">Çift Hak</span>
-                 </button>
+                     <button 
+                        onClick={handleDoubleChance} 
+                        disabled={jokersUsed.double || isAnswered}
+                        className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.double ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400 active:scale-95'}`}
+                     >
+                         <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm"><Zap size={20} className="fill-current" /></div>
+                         <span className="text-[10px] font-bold uppercase">Çift Hak</span>
+                     </button>
 
-                 <button 
-                    onClick={handleAskTeacher} 
-                    disabled={jokersUsed.ask || isAnswered}
-                    className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.ask ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400 active:scale-95'}`}
-                 >
-                     <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm"><HelpCircle size={20} /></div>
-                     <span className="text-[10px] font-bold uppercase">Hocaya Sor</span>
-                 </button>
-             </div>
-        </div>
+                     <button 
+                        onClick={handleAskTeacher} 
+                        disabled={jokersUsed.ask || isAnswered}
+                        className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${jokersUsed.ask ? 'opacity-30 grayscale cursor-not-allowed border-slate-200' : 'border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400 active:scale-95'}`}
+                     >
+                         <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm"><HelpCircle size={20} /></div>
+                         <span className="text-[10px] font-bold uppercase">Hocaya Sor</span>
+                     </button>
+                 </div>
+            </div>
+        )}
 
     </div>
   );

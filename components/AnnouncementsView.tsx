@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Bell, Loader2 } from 'lucide-react';
 import { getAnnouncements } from '../services/contentService';
@@ -14,9 +13,12 @@ const AnnouncementsView: React.FC<AnnouncementsViewProps> = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const data = getAnnouncements();
-    setAnnouncements(data);
-    setLoading(false);
+    const fetch = async () => {
+        const data = await getAnnouncements();
+        setAnnouncements(data);
+        setLoading(false);
+    };
+    fetch();
   }, []);
 
   return (
