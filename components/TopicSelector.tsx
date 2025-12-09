@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, Bookmark, Target, RefreshCw, ChevronRight, Clock as ClockIcon,
@@ -9,8 +10,8 @@ import {
 import { getUserStats, getTotalDueCount, getDueCountForGrade, getMemorizedSet, getUserProfile, getRandomWordForGrade } from '../services/userService';
 import { UnitDef, GradeDef, GradeLevel, StudyMode, CategoryType, WordCard } from '../types';
 import { UNIT_ASSETS, GRADE_DATA } from '../data/assets';
-import { getTips } from '../services/contentService';
 import Mascot from './Mascot';
+import { APP_TIPS } from '../data/tips';
 
 interface TopicSelectorProps {
   selectedCategory: CategoryType | null;
@@ -84,17 +85,12 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
     
     init();
     
-    const tips = getTips();
-    if (tips && tips.length > 0) {
-        setTip(tips[Math.floor(Math.random() * tips.length)]);
-        const interval = setInterval(() => {
-            setTip(tips[Math.floor(Math.random() * tips.length)]);
-        }, 10000);
-        return () => clearInterval(interval);
-    } else {
-        setTip("Her gün çalışmak başarıyı getirir!");
-    }
+    setTip(APP_TIPS[Math.floor(Math.random() * APP_TIPS.length)]);
+    const interval = setInterval(() => {
+        setTip(APP_TIPS[Math.floor(Math.random() * APP_TIPS.length)]);
+    }, 10000);
 
+    return () => clearInterval(interval);
   }, [selectedGrade, selectedCategory]);
   
   const getMemorizedCountForUnit = (unitId: string) => {
@@ -375,6 +371,9 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full max-w-4xl pb-8">
           {gradesToShow.map((grade) => {
+             // simplified progress check (0 for now to avoid huge loop)
+             const gradeProgress = 0; 
+             
              const gradeVisual = GRADE_DATA[grade];
 
             return (
@@ -450,6 +449,7 @@ const TopicSelector: React.FC<TopicSelectorProps> = ({
         {units.map((unit) => {
             const memCount = getMemorizedCountForUnit(unit.id);
             const isSpecialUnit = unit.id.endsWith('all');
+            // Simplified progress bar visualization based on memorized count (assuming 20 words avg)
             const approxProgress = Math.min(100, (memCount / 20) * 100);
 
             return (

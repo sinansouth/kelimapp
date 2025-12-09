@@ -1,3 +1,19 @@
+<script type="importmap">
+{
+  "imports": {
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "vite": "https://aistudiocdn.com/vite@^7.2.7",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "@capacitor/core": "https://aistudiocdn.com/@capacitor/core@^8.0.0",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.87.1",
+    "@capacitor/app": "https://aistudiocdn.com/@capacitor/app@^8.0.0"
+  }
+}
+</script>
 
 <!DOCTYPE html>
 <html lang="tr">
@@ -23,7 +39,7 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
+              sans: ['var(--font-theme)', 'Inter', 'sans-serif'],
             },
             animation: {
               'spin-slow': 'spin 3s linear infinite',
@@ -50,11 +66,16 @@
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Merriweather:wght@400;700&family=Courier+Prime:wght@400;700&family=Fredoka:wght@400;600&family=Orbitron:wght@400;700&family=Bangers&family=Playfair+Display:wght@400;700&family=Patrick+Hand&family=Creepster&family=Russo+One&family=Rubik+Burned&display=swap" rel="stylesheet">
+    <!-- Fonts: Inter, Merriweather, Courier Prime, Fredoka, Orbitron, Bangers (Removed), Playfair Display, Patrick Hand, Russo One -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Merriweather:wght@400;700&family=Courier+Prime:wght@400;700&family=Fredoka:wght@400;600&family=Orbitron:wght@400;700&family=Playfair+Display:wght@400;700&family=Patrick+Hand&family=Russo+One&display=swap" rel="stylesheet">
     
     <style>
+      :root {
+        --font-theme: 'Inter', sans-serif;
+      }
+
       body {
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-theme);
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
         overscroll-behavior-y: none;
@@ -207,56 +228,10 @@
       .scrollbar-hide::-webkit-scrollbar { display: none; }
       .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "@vitest/runner/": "https://aistudiocdn.com/@vitest/runner@^4.0.13/",
-    "@vercel/analytics/": "https://aistudiocdn.com/@vercel/analytics@^1.5.0/",
-    "@capacitor/core": "https://aistudiocdn.com/@capacitor/core@latest",
-    "@capacitor/app": "https://aistudiocdn.com/@capacitor/app@latest",
-    "@capacitor/status-bar": "https://aistudiocdn.com/@capacitor/status-bar@latest",
-    "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2",
-    "path": "https://aistudiocdn.com/path@^0.12.7",
-    "vite": "https://aistudiocdn.com/vite@^7.2.7",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 h-[100dvh] w-full overflow-hidden transition-colors duration-300">
-    
-    <!-- Splash Screen -->
-    <div id="splash-screen">
-      <img id="splash-logo" src="https://8upload.com/image/4864223e0a7b82f8/AppLogo.png" alt="KelimApp Logo">
-      <h1 style="color: white; font-weight: 900; font-size: 24px; font-family: 'Inter', sans-serif;">KelimApp</h1>
-    </div>
-
-    <div id="root" class="h-full w-full overflow-hidden"></div>
-    
-    <script>
-      window.addEventListener('load', () => {
-        const splash = document.getElementById('splash-screen');
-        if(splash) {
-          setTimeout(() => {
-            splash.style.opacity = '0';
-            setTimeout(() => {
-              splash.style.display = 'none';
-            }, 500);
-          }, 1500);
-        }
-        
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('./service-worker.js').catch(() => { /* Service worker registration failed */ });
-        }
-      });
-    </script>
-  <script type="module" src="/index.tsx"></script>
-</body>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 
 export interface WordCard {
@@ -153,8 +154,8 @@ export interface Challenge {
   creatorScore: number;
   wordIndices: number[];
   unitId: string;
-  unitName?: string; // Added for display
-  grade?: string; // Added for display 
+  unitName?: string; 
+  grade?: string; 
   difficulty: QuizDifficulty;
   wordCount: number;
   targetFriendId?: string;
@@ -180,14 +181,14 @@ export interface Tournament {
   unitId: string;
   unitName: string;
   status: 'registration' | 'active' | 'completed';
-  registrationStartDate: number; // New: When registration opens
-  registrationEndDate: number; // When registration closes
-  startDate: number; // When matches start
+  registrationStartDate: number; 
+  registrationEndDate: number; 
+  startDate: number; 
   endDate: number;
-  roundDuration: number; // Minutes per round
+  roundDuration: number; 
   participants: string[];
   matches: TournamentMatch[];
-  currentRound: number; // 32, 16, 8, 4, 2
+  currentRound: number; 
   championId?: string;
   maxParticipants: number;
   minLevel: number;
@@ -200,14 +201,14 @@ export interface Tournament {
 
 export interface TournamentMatch {
   id: string;
-  round: number; // 16, 8, 4, 2
+  round: number; 
   player1Id?: string;
   player1Name?: string;
   player2Id?: string;
   player2Name?: string;
 
   score1_leg1?: number;
-  time1_leg1?: number; // Duration in seconds
+  time1_leg1?: number; 
   score2_leg1?: number;
   time2_leg1?: number;
 
@@ -218,7 +219,7 @@ export interface TournamentMatch {
 
   winnerId?: string;
   status: 'waiting' | 'leg1_active' | 'leg2_active' | 'completed';
-  updatedAt?: number; // Track when last played to handle timeouts
+  updatedAt?: number; 
 }
 
 export interface UserStats {
@@ -252,9 +253,9 @@ export interface UserStats {
         wordSearchHighScore: number;
     };
     lastActivity?: { grade: string; unitId: string };
+    updatedAt?: number; // Cloud sync için zaman damgası
 }
 
-// FIX: Added Announcement interface
 export interface Announcement {
   id: string;
   title: string;

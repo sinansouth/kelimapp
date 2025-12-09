@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Bell, Loader2 } from 'lucide-react';
-import { getGlobalAnnouncements } from '../services/supabase';
+import { getAnnouncements } from '../services/contentService';
 import { Announcement } from '../types';
 
 interface AnnouncementsViewProps {
@@ -13,17 +14,9 @@ const AnnouncementsView: React.FC<AnnouncementsViewProps> = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAnnouncements = async () => {
-        try {
-            const data = await getGlobalAnnouncements();
-            setAnnouncements(data);
-        } catch (e) {
-            console.error("Failed to fetch announcements", e);
-        } finally {
-            setLoading(false);
-        }
-    };
-    fetchAnnouncements();
+    const data = getAnnouncements();
+    setAnnouncements(data);
+    setLoading(false);
   }, []);
 
   return (

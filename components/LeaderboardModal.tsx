@@ -1,7 +1,6 @@
 
-
 import React, { useState, useEffect } from 'react';
-import { X, Trophy, Medal, Crown, Star, Target, BookOpen, Swords, Grid3X3, Gamepad2, Search, LogIn, Flame } from 'lucide-react';
+import { X, Trophy, Medal, Crown, Star, Target, BookOpen, Swords, Grid3X3, Gamepad2, Search, LogIn, Flame, WifiOff } from 'lucide-react';
 import { getLeaderboard, LeaderboardEntry, syncLocalToCloud, getAuthInstance } from '../services/supabase';
 import { getAvatars, getFrames, getBackgrounds } from '../services/contentService';
 import { THEME_COLORS } from '../data/assets';
@@ -32,7 +31,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
   const FRAMES = getFrames();
   const BACKGROUNDS = getBackgrounds();
   
-  // Theme of the current user (for the modal shell and their row)
   const myTheme = getTheme(); 
   const modalThemeStyle = THEME_COLORS[myTheme as any] || THEME_COLORS['dark'];
 
@@ -86,7 +84,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
       }
   };
 
-  // Helper to get styles for a SPECIFIC user row based on THEIR theme
   const getUserRowStyle = (userTheme: string) => {
       const themeConfig = THEME_COLORS[userTheme as any] || THEME_COLORS['dark'];
       return {
@@ -119,7 +116,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-md rounded-3xl shadow-2xl border overflow-hidden flex flex-col h-[85vh] animate-in zoom-in-95 duration-200"
            style={{
-               // Modal Shell uses Current User's Theme
                backgroundColor: modalThemeStyle.bgCard, 
                borderColor: modalThemeStyle.border
            }}>
@@ -131,7 +127,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
             </button>
             <h2 className="text-lg font-black text-white mb-3">Lider Tablosu</h2>
             
-            {/* Mode Tabs */}
             <div className="flex justify-center gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
                  <button onClick={() => setMode('xp')} className={`p-2 rounded-lg transition-all ${mode === 'xp' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Trophy size={16} /></button>
                  <button onClick={() => setMode('quiz')} className={`p-2 rounded-lg transition-all ${mode === 'quiz' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white opacity-70 hover:opacity-100'}`}><Target size={16} /></button>
@@ -146,7 +141,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
         </div>
 
         {/* Guest Warning */}
-        {currentUserProfile.isGuest && (
+        {currentUserProfile.isGuest && !isOffline && (
             <div className="bg-orange-100 dark:bg-orange-900/30 p-3 text-center shrink-0 border-b border-orange-200 dark:border-orange-800">
                 <p className="text-xs text-orange-800 dark:text-orange-200 font-bold mb-2">Sıralamaya girmek için hesabını kaydetmelisin.</p>
                 <button 
@@ -158,90 +153,97 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
             </div>
         )}
 
+        {/* Offline Warning */}
+        {isOffline && (
+             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-70" style={{color: modalThemeStyle.textMuted}}>
+                 <WifiOff size={48} className="mb-4" />
+                 <h3 className="font-bold text-lg mb-2">İnternet Bağlantısı Yok</h3>
+                 <p className="text-sm">Liderlik tablosunu görmek için internete bağlanmalısın.</p>
+                 <button onClick={fetchData} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold">Tekrar Dene</button>
+             </div>
+        )}
+
         {/* List */}
-        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar" style={{backgroundColor: modalThemeStyle.bgMain}}>
-            {loading ? (
-                <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div></div>
-            ) : users.length === 0 ? (
-                 <div className="text-center py-10 opacity-60 text-sm" style={{color: modalThemeStyle.textMuted}}>Bu kategoride henüz veri yok.</div>
-            ) : (
-                <div className="space-y-2">
-                    {users.map((user, index) => {
-                         const avatarDef = AVATARS.find(a => a.icon === user.avatar) || AVATARS[0];
-                         const frameDef = FRAMES.find(f => f.id === user.frame) || FRAMES[0];
-                         const bgDef = BACKGROUNDS.find(b => b.id === user.background) || BACKGROUNDS[0];
-                         
-                         // Determine if this row belongs to the current user
-                         const isCurrentUser = currentUserId ? user.uid === currentUserId : user.name === currentUserProfile.name;
-                         
-                         // Apply THEME:
-                         // If it's ME, use my CURRENT local theme (so I see changes instantly)
-                         // If it's OTHERS, use their cloud theme
-                         const rowThemeKey = isCurrentUser ? myTheme : user.theme;
-                         const rowStyle = getUserRowStyle(rowThemeKey);
-                         
-                         return (
-                            <button 
-                                key={user.uid} 
-                                onClick={() => setSelectedUserId(user.uid)}
-                                style={rowStyle} 
-                                className={`w-full text-left p-2.5 rounded-xl border transition-all shadow-sm relative flex items-center gap-3 active:scale-95 hover:brightness-95 ${isCurrentUser ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent' : ''}`}
-                            >
-                                <div className="shrink-0 w-6 flex justify-center">{getRankIcon(index)}</div>
-                                <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
-                                    <div className={`absolute inset-0 w-full h-full rounded-full z-30 pointer-events-none ${frameDef.style}`}></div>
-                                    <div className={`absolute inset-0 w-full h-full rounded-full z-10 ${bgDef.style}`}></div>
-                                    <div className="w-full h-full rounded-full overflow-hidden relative z-20 flex items-center justify-center text-lg bg-transparent">
-                                         {avatarDef.image ? <img src={avatarDef.image} className="w-full h-full object-cover scale-[1.01]" /> : <span>{avatarDef.icon}</span>}
+        {!isOffline && (
+            <div className="flex-1 overflow-y-auto p-3 custom-scrollbar" style={{backgroundColor: modalThemeStyle.bgMain}}>
+                {loading ? (
+                    <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div></div>
+                ) : users.length === 0 ? (
+                    <div className="text-center py-10 opacity-60 text-sm" style={{color: modalThemeStyle.textMuted}}>Bu kategoride henüz veri yok.</div>
+                ) : (
+                    <div className="space-y-2">
+                        {users.map((user, index) => {
+                            const avatarDef = AVATARS.find(a => a.icon === user.avatar) || AVATARS[0];
+                            const frameDef = FRAMES.find(f => f.id === user.frame) || FRAMES[0];
+                            const bgDef = BACKGROUNDS.find(b => b.id === user.background) || BACKGROUNDS[0];
+                            
+                            const isCurrentUser = currentUserId ? user.uid === currentUserId : user.name === currentUserProfile.name;
+                            
+                            const rowThemeKey = isCurrentUser ? myTheme : user.theme;
+                            const rowStyle = getUserRowStyle(rowThemeKey);
+                            
+                            return (
+                                <button 
+                                    key={user.uid} 
+                                    onClick={() => setSelectedUserId(user.uid)}
+                                    style={rowStyle} 
+                                    className={`w-full text-left p-2.5 rounded-xl border transition-all shadow-sm relative flex items-center gap-3 active:scale-95 hover:brightness-95 ${isCurrentUser ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent' : ''}`}
+                                >
+                                    <div className="shrink-0 w-6 flex justify-center">{getRankIcon(index)}</div>
+                                    <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
+                                        <div className={`absolute inset-0 w-full h-full rounded-full z-30 pointer-events-none ${frameDef.style}`}></div>
+                                        <div className={`absolute inset-0 w-full h-full rounded-full z-10 ${bgDef.style}`}></div>
+                                        <div className="w-full h-full rounded-full overflow-hidden relative z-20 flex items-center justify-center text-lg bg-transparent">
+                                            {avatarDef.image ? <img src={avatarDef.image} className="w-full h-full object-cover scale-[1.01]" /> : <span>{avatarDef.icon}</span>}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm truncate" style={{color: rowStyle.color}}>
-                                        {user.name || 'İsimsiz'} {isCurrentUser && '(Sen)'}
-                                    </h4>
-                                    <div className="flex items-center gap-2 text-[9px] opacity-80">
-                                        <span className="flex items-center gap-0.5"><Star size={8} className="fill-current" /> Lvl {user.level}</span>
-                                        <span>•</span>
-                                        <span>{user.grade === 'GENERAL' ? 'Genel' : `${user.grade}. Sınıf`}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-bold text-sm truncate" style={{color: rowStyle.color}}>
+                                            {user.name || 'İsimsiz'} {isCurrentUser && '(Sen)'}
+                                        </h4>
+                                        <div className="flex items-center gap-2 text-[9px] opacity-80">
+                                            <span className="flex items-center gap-0.5"><Star size={8} className="fill-current" /> Lvl {user.level}</span>
+                                            <span>•</span>
+                                            <span>{user.grade === 'GENERAL' ? 'Genel' : `${user.grade}. Sınıf`}</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="text-right flex flex-col items-end">
-                                    {mode === 'quiz' ? (
-                                        <div className="flex flex-col items-end">
-                                            <div className="font-black text-xs flex flex-col items-end" style={{color: rowStyle.color, opacity: 0.9}}>
-                                                <span>{user.value} D</span>
+                                    <div className="text-right flex flex-col items-end">
+                                        {mode === 'quiz' ? (
+                                            <div className="flex flex-col items-end">
+                                                <div className="font-black text-xs flex flex-col items-end" style={{color: rowStyle.color, opacity: 0.9}}>
+                                                    <span>{user.value} D</span>
+                                                </div>
+                                                <div className="text-[8px] opacity-60">Doğru</div>
                                             </div>
-                                            <div className="text-[8px] opacity-60">Doğru</div>
-                                        </div>
-                                    ) : mode === 'duel' ? (
-                                        <div className="flex flex-col items-end">
-                                            <div className="font-black text-sm leading-none" style={{color: rowStyle.color, opacity: 0.9}}>{formatValue(user.duelPoints || 0)} P</div>
-                                            <div className="text-[9px] font-bold text-green-500 mt-0.5">
-                                                {user.duelWins || 0} Zafer
+                                        ) : mode === 'duel' ? (
+                                            <div className="flex flex-col items-end">
+                                                <div className="font-black text-sm leading-none" style={{color: rowStyle.color, opacity: 0.9}}>{formatValue(user.duelPoints || 0)} P</div>
+                                                <div className="text-[9px] font-bold text-green-500 mt-0.5">
+                                                    {user.duelWins || 0} Zafer
+                                                </div>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="font-black text-sm leading-none" style={{color: rowStyle.color, opacity: 0.9}}>{formatValue(user.value)}</div>
-                                            <div className="text-[8px] font-bold uppercase opacity-60">
-                                                {mode === 'xp' ? 'XP' : 'Puan'}
+                                        ) : (
+                                            <>
+                                                <div className="font-black text-sm leading-none" style={{color: rowStyle.color, opacity: 0.9}}>{formatValue(user.value)}</div>
+                                                <div className="text-[8px] font-bold uppercase opacity-60">
+                                                    {mode === 'xp' ? 'XP' : 'Puan'}
+                                                </div>
+                                            </>
+                                        )}
+                                        
+                                        {mode === 'xp' && (user as any).streak > 0 && (
+                                            <div className="flex items-center gap-0.5 text-[9px] font-bold text-orange-500 mt-0.5">
+                                                <Flame size={10} className="fill-current" /> {(user as any).streak}
                                             </div>
-                                        </>
-                                    )}
-                                    
-                                    {/* Show Streak only in XP mode if available */}
-                                    {mode === 'xp' && (user as any).streak > 0 && (
-                                        <div className="flex items-center gap-0.5 text-[9px] font-bold text-orange-500 mt-0.5">
-                                            <Flame size={10} className="fill-current" /> {(user as any).streak}
-                                        </div>
-                                    )}
-                                </div>
-                            </button>
-                         );
-                    })}
-                </div>
-            )}
-        </div>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        )}
 
         {/* Footer */}
         <div className="p-3 border-t shrink-0 text-[10px] text-center" style={{backgroundColor: modalThemeStyle.bgCard, borderColor: modalThemeStyle.border, color: modalThemeStyle.textMuted}}>

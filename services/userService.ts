@@ -1,5 +1,4 @@
 
-
 import { Quest, Badge, GradeLevel, ThemeType } from '../types';
 import { BADGES, UNIT_ASSETS } from '../data/assets';
 import { getVocabulary } from './contentService';
@@ -19,6 +18,7 @@ export interface UserProfile {
     isGuest?: boolean;
     friendCode?: string;
     isAdmin?: boolean;
+    updatedAt?: number; // Cloud sync için
 }
 
 export interface UserStats {
@@ -52,6 +52,7 @@ export interface UserStats {
         wordSearchHighScore: number;
     };
     lastActivity?: { grade: string; unitId: string };
+    updatedAt?: number; // Cloud sync için
 }
 
 export interface AppSettings {
@@ -106,7 +107,8 @@ const DEFAULT_PROFILE: UserProfile = {
     inventory: { streakFreezes: 0 },
     isGuest: false,
     friendCode: '',
-    isAdmin: false
+    isAdmin: false,
+    updatedAt: 0
 };
 
 const getWeekId = () => {
@@ -147,7 +149,8 @@ const DEFAULT_STATS: UserStats = {
         matchingBestTime: 0,
         mazeHighScore: 0,
         wordSearchHighScore: 0,
-    }
+    },
+    updatedAt: 0
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -161,8 +164,8 @@ const KEYS = {
     SETTINGS: 'lgs_app_settings',
     MEMORIZED: 'lgs_memorized',
     BOOKMARKS: 'lgs_bookmarks',
-    SRS: 'lgs_srs_data', // NEW KEY
-    SRS_LEGACY: 'lgs_srs', // OLD KEY
+    SRS: 'lgs_srs_data', 
+    SRS_LEGACY: 'lgs_srs', 
     DAILY: 'lgs_daily_state',
     LAST_UPDATE: 'lgs_last_update_ts',
     VERSION: 'lgs_data_version',
@@ -186,6 +189,9 @@ export const getUserProfile = (): UserProfile => {
 
 export const saveUserProfile = (profile: UserProfile, sync: boolean = false) => {
     if (!profile.friendCode) profile.friendCode = generateFriendCode();
+    // Otomatik timestamp güncelle
+    profile.updatedAt = Date.now();
+    
     localStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
     updateLastUpdatedTimestamp();
 };
@@ -198,11 +204,12 @@ export const createGuestProfile = (grade: string) => {
         grade: grade,
         isGuest: true,
         friendCode: generateFriendCode(),
-        theme: 'dark' // Misafirler için varsayılan tema
+        theme: 'dark',
+        updatedAt: Date.now()
     };
     saveUserProfile(profile);
 
-    const stats = { ...DEFAULT_STATS, date: getTodayDateString() };
+    const stats = { ...DEFAULT_STATS, date: getTodayDateString(), updatedAt: Date.now() };
     saveUserStats(stats);
     
     saveSRSData({});
@@ -241,6 +248,8 @@ export const getUserStats = (): UserStats => {
 };
 
 export const saveUserStats = (stats: UserStats) => {
+    // Otomatik timestamp güncelle
+    stats.updatedAt = Date.now();
     localStorage.setItem(KEYS.STATS, JSON.stringify(stats));
     updateLastUpdatedTimestamp();
 };

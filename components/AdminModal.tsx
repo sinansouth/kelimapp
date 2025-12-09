@@ -1,11 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Zap, Trophy, Unlock, Trash2, ShieldAlert, Search, User, Award, Megaphone, Users, Calendar, Save, Lock, Gift, Settings, Activity, Menu, Clock, CheckCircle, Edit2, Info, Cloud, Power } from 'lucide-react';
-import { adminAddXP, adminSetLevel, adminUnlockAllBadges, adminUnlockAllAvatars, getUserStats, adminResetDailyQuests } from '../services/userService';
+import ReactDOMServer from 'react-dom/server';
+import { X, Zap, Trophy, Unlock, Trash2, ShieldAlert, Search, User, Award, Megaphone, Users, Calendar, Save, Lock, Gift, Settings, Activity, Menu, Clock, CheckCircle, Eye, Target, Edit2, Info, Cloud, Upload, Plus, FileText, Check, Power, Database } from 'lucide-react';
+import { adminAddXP, adminSetLevel, adminUnlockAllItems, adminResetDailyQuests, adminUnlockAllBadges, adminUnlockAllAvatars, getUserStats } from '../services/userService';
 import { playSound } from '../services/soundService';
-import { createTournament, updateTournament, searchUser, adminGiveXP, toggleAdminStatus, createGlobalAnnouncement, getTournaments, deleteTournament, checkTournamentTimeouts, updateAnnouncement, getGlobalSettings, updateGlobalSettings, getGlobalAnnouncements, deleteAnnouncement, updateUnitWords, getUnitData } from '../services/supabase';
+import { createTournament, updateTournament, searchUser, adminGiveXP, toggleAdminStatus, createGlobalAnnouncement, getTournaments, deleteTournament, updateTournamentStatus, checkTournamentTimeouts, saveUnitData, getUnitData, updateUnitWords, syncLocalToCloud, getGlobalAnnouncements, deleteAnnouncement, updateAnnouncement, getGlobalSettings, updateGlobalSettings, upsertSystemContent, upsertGrammar } from '../services/supabase';
 import { getUnitAssets } from '../services/contentService';
-import { GradeLevel, QuizDifficulty, Tournament, WordCard } from '../types';
+// FIX: Import Announcement type from ../types instead of ../data/announcements
+import { GradeLevel, QuizDifficulty, Tournament, WordCard, Announcement } from '../types';
+
+// Data imports for uploading
+import { ANNOUNCEMENTS as LOCAL_ANNOUNCEMENTS } from '../data/announcements';
+import { APP_TIPS as LOCAL_TIPS } from '../data/tips';
+import { GRAMMAR_CONTENT as LOCAL_GRAMMAR } from '../data/grammarContent';
+import { UNIT_ASSETS as LOCAL_UNIT_ASSETS, AVATARS, FRAMES, BACKGROUNDS, GRADE_DATA, BADGES } from '../data/assets';
 
 interface AdminModalProps {
   onClose: () => void;
@@ -13,7 +21,8 @@ interface AdminModalProps {
 }
 
 const AdminModal: React.FC<AdminModalProps> = ({ onClose, onUpdate }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tournaments' | 'users' | 'system' | 'content'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tournaments' | 'users' | 'system' | 'content' | 'database'>('dashboard');
+  const [currentStats, setCurrentStats] = useState(getUserStats());
   
   // Tournament State
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -55,6 +64,10 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, onUpdate }) => {
   // System State
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   
+  // Database Upload State
+  const [isUploadingData, setIsUploadingData] = useState(false);
+  const [showRLSHelp, setShowRLSHelp] = useState(false);
+  
   // Content Editor State
   const [selectedEditorGrade, setSelectedEditorGrade] = useState<GradeLevel>('5');
   const [selectedEditorUnit, setSelectedEditorUnit] = useState<string>('');
@@ -74,6 +87,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, onUpdate }) => {
   }, [activeTab]);
 
   const refresh = () => {
+    setCurrentStats(getUserStats());
     onUpdate();
   };
 
@@ -406,6 +420,9 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, onUpdate }) => {
                  <button onClick={() => { setActiveTab('system'); setIsMobileMenuOpen(false); }} className={`p-3 rounded-lg font-bold flex items-center gap-3 ${activeTab === 'system' ? 'bg-orange-600 text-white' : 'text-slate-400'}`}>
                      <Settings size={20} /> Sistem
                  </button>
+                 <button onClick={() => { setActiveTab('database'); setIsMobileMenuOpen(false); }} className={`p-3 rounded-lg font-bold flex items-center gap-3 ${activeTab === 'database' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}>
+                     <Database size={20} /> Veri Tabanı
+                 </button>
             </div>
         )}
 
@@ -430,6 +447,9 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, onUpdate }) => {
                  </button>
                  <button onClick={() => setActiveTab('system')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'system' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/50' : 'text-slate-400 hover:bg-slate-900'}`}>
                      <Settings size={20} /> Sistem
+                 </button>
+                 <button onClick={() => setActiveTab('database')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'database' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/50' : 'text-slate-400 hover:bg-slate-900'}`}>
+                     <Database size={20} /> Veri Tabanı
                  </button>
              </nav>
              
@@ -478,7 +498,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, onUpdate }) => {
                 </div>
             )}
 
-            {/* TOURNAMENTS TAB */}
+            {/* TOURNAMENTS TAB - (Keeping existing logic) */}
             {activeTab === 'tournaments' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="flex justify-between items-center">
@@ -525,9 +545,10 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, onUpdate }) => {
                             {tournaments.length === 0 && <div className="text-center text-slate-500 py-10">Hiç turnuva yok.</div>}
                         </div>
                     ) : (
-                        // CREATE FORM
+                        // CREATE FORM (Existing Logic)
                         <div className="bg-slate-800 p-6 md:p-8 rounded-3xl border border-slate-700 shadow-xl">
                            <h3 className="font-bold text-indigo-400 mb-6 flex items-center gap-2 text-lg"><Trophy size={24}/> {tId ? 'Düzenle' : 'Yeni Oluştur'}</h3>
+                           {/* ... Form inputs ... */}
                            <div className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div><label className="text-xs font-bold text-slate-400 block mb-2 uppercase">Ad</label><input type="text" value={tName} onChange={(e)=>setTName(e.target.value)} className="w-full p-4 bg-slate-900 border border-slate-600 rounded-2xl text-sm" placeholder="Turnuva Adı" /></div>
@@ -785,6 +806,31 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, onUpdate }) => {
                              <p className="text-xs text-red-400 mb-4 font-medium leading-relaxed">Dikkat: Bu işlem tüm kullanıcıların günlük görev ilerlemelerini sıfırlar.</p>
                              <button onClick={handleResetQuests} className="w-full py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/50 hover:border-red-600 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"><Trash2 size={18} /> Günlük Görevleri Sıfırla</button>
                          </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* DATABASE TAB (Simplified) */}
+            {activeTab === 'database' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <h2 className="text-2xl md:text-3xl font-black mb-6 flex items-center gap-3">
+                        <Database className="text-purple-500" /> Veri Tabanı
+                    </h2>
+                    
+                    <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl">
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="p-3 bg-purple-900/30 text-purple-400 rounded-xl">
+                                <Info size={32} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-white text-lg">Veri Yönetimi</h3>
+                                <p className="text-slate-400 text-sm mt-1 leading-relaxed">
+                                    Veritabanı yönetimi ve senkronizasyon işlemleri otomatik olarak yapılmaktadır.
+                                    <br/>
+                                    Manuel işlem gerekirse lütfen sistem yöneticisi ile iletişime geçin.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

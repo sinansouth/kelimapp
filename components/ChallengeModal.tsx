@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Swords, Copy, ArrowRight, Hash, GraduationCap, BookOpen, Settings, Check, Globe, Lock, Users, UserPlus, Search, User, Clock, History, Trophy, PlayCircle, RefreshCw, Calendar, AlertCircle } from 'lucide-react';
+import { X, Swords, Copy, ArrowRight, Hash, GraduationCap, BookOpen, Settings, Check, Globe, Lock, Users, UserPlus, Search, User, Clock, History, Trophy, PlayCircle, RefreshCw, Calendar, AlertCircle, WifiOff } from 'lucide-react';
 import { playSound } from '../services/soundService';
 import { getChallenge, getOpenChallenges, getFriends, getAuthInstance, getPastChallenges, getTournaments, joinTournament, checkTournamentTimeouts } from '../services/supabase';
 import { WordCard, GradeLevel, UnitDef, QuizDifficulty, Challenge, Tournament, TournamentMatch } from '../types';
@@ -30,6 +30,7 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
   const [historyList, setHistoryList] = useState<Challenge[]>([]);
   const [tournamentList, setTournamentList] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   // Creation States
   const [step, setStep] = useState<number>(1);
@@ -65,6 +66,8 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
   }, []);
 
   useEffect(() => {
+      if (isOffline) return;
+
       if (mode === 'join') fetchOpenChallenges();
       if (mode === 'history') fetchHistory();
       if (mode === 'tournaments') fetchTournaments();
@@ -76,7 +79,7 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
               });
           }
       }
-  }, [mode, step, myUid]);
+  }, [mode, step, myUid, isOffline]);
 
   const fetchOpenChallenges = async () => {
       setLoading(true);
@@ -126,6 +129,10 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
   };
 
   const joinSpecificChallenge = async (cId: string) => {
+      if (!navigator.onLine) {
+          alert("İnternet bağlantısı yok.");
+          return;
+      }
       setLoading(true);
       setError('');
 
@@ -189,6 +196,10 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
   };
 
   const handleCreateSubmit = async () => {
+      if (!navigator.onLine) {
+          alert("İnternet bağlantısı yok.");
+          return;
+      }
       if (selectedGrade && selectedUnit) {
           onCreateChallenge({
               grade: selectedGrade,
@@ -208,6 +219,19 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
 
   const formatDate = (timestamp: number) => {
       return new Date(timestamp).toLocaleDateString();
+  }
+
+  if (isOffline) {
+      return (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col p-8 text-center">
+                <WifiOff size={48} className="text-slate-400 mx-auto mb-4" />
+                <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-white">İnternet Bağlantısı Yok</h3>
+                <p className="text-sm text-slate-500 mb-6">Düello ve turnuva modlarını kullanmak için lütfen internete bağlanın.</p>
+                <button onClick={onClose} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Tamam</button>
+            </div>
+        </div>
+      );
   }
 
   return (
@@ -344,7 +368,6 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
                          tournamentList.map(t => {
                              const isRegistered = t.participants.includes(myUid || '');
                              const now = Date.now();
-                             // Safe date parsing
                              const regStart = t.registrationStartDate || 0;
                              
                              const isNotStartedYet = t.status === 'registration' && now < regStart;

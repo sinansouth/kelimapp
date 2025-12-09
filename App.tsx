@@ -174,6 +174,11 @@ const App: React.FC = () => {
         root.style.setProperty('--color-text-main', currentThemeColors.textMain);
         root.style.setProperty('--color-text-muted', currentThemeColors.textMuted);
         root.style.setProperty('--color-border', currentThemeColors.border);
+        
+        // Apply font family
+        if (currentThemeColors.fontFamily) {
+            root.style.setProperty('--font-theme', currentThemeColors.fontFamily);
+        }
 
         root.style.setProperty('--color-bg-card-rgb', hexToRgb(currentThemeColors.bgCard));
         root.style.setProperty('--color-primary-rgb', hexToRgb(currentThemeColors.primary));
@@ -184,17 +189,12 @@ const App: React.FC = () => {
         setLoadingError(false);
         
         try {
-            // Add a timeout to fetch operations
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout')), 15000)
-            );
-
-            await Promise.race([
-                Promise.all([
-                    fetchAllWords().catch(e => console.warn("Failed to fetch all words, will retry per unit", e)),
-                    fetchDynamicContent().catch(e => console.warn("Failed to fetch dynamic content", e))
-                ]),
-                timeoutPromise
+            // REMOVED THE TIMEOUT RACE CONDITION.
+            // We now wait for promises, but if they fail internally, they return safe defaults.
+            // This prevents the "Application data could not be loaded" error on slow connections or timeouts.
+            await Promise.all([
+                fetchAllWords().catch(e => console.warn("Failed to fetch all words, continuing with local/cache", e)),
+                fetchDynamicContent().catch(e => console.warn("Failed to fetch dynamic content", e))
             ]);
 
             const currentSettings = getAppSettings();
@@ -216,7 +216,9 @@ const App: React.FC = () => {
 
             setIsAppLoading(false);
         } catch (error) {
-            console.error("Initialization error:", error);
+            console.error("Initialization error (critical):", error);
+            // Only set loading error if something truly catastrophic happens that prevents app structure from loading
+            // With the try-catch blocks above, this should rarely be reached.
             setLoadingError(true);
             setIsAppLoading(false);
         }
