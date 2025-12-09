@@ -4,6 +4,7 @@ import { WordCard, Badge, GradeLevel } from '../types';
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Bookmark, CheckCircle, XCircle, ThumbsUp, Play, Pause, Loader2 } from 'lucide-react';
 import { updateStats, getMemorizedSet, addToMemorized, removeFromMemorized, addToBookmarks, removeFromBookmarks, handleReviewResult, registerSRSInteraction, updateQuestProgress } from '../services/userService';
 import { playSound } from '../services/soundService';
+import { updateCumulativeStats } from '../services/supabase';
 
 interface FlashcardDeckProps {
   words: WordCard[];
@@ -98,6 +99,25 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
   }, [shuffledDeck, filterMode, bookmarks, memorized]);
 
   const currentWord = activeDeck.length > 0 ? activeDeck[currentIndex] : null;
+  
+  const handleCardView = () => {
+    if (currentWord) {
+      const wordId = getUniqueId(currentWord);
+      
+      // Call RPC to update weekly/lifetime stats
+      updateCumulativeStats('card_view', 1);
+
+      // Call local service to update XP, quests, badges, etc.
+      const newBadges = updateStats('xp', grade, wordId, 3); // 3 XP per card view
+      updateQuestProgress('view_cards', 1);
+      
+      registerSRSInteraction(wordId);
+      
+      if (newBadges.length > 0 && onBadgeUnlock) {
+        newBadges.forEach(b => onBadgeUnlock(b));
+      }
+    }
+  };
 
   // Auto Play Logic
   useEffect(() => {
@@ -117,18 +137,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
             // Flip card
             playSound('flip');
             setIsFlipped(true);
-            
-            // RECORD STATS IN AUTO PLAY
-            if (currentWord) {
-                const wordId = getUniqueId(currentWord);
-                const newBadges = updateStats('card_view', grade, wordId);
-                updateQuestProgress('view_cards', 1);
-                registerSRSInteraction(wordId);
-                if (newBadges.length > 0 && onBadgeUnlock) {
-                    newBadges.forEach(b => onBadgeUnlock(b));
-                }
-            }
-
+            handleCardView();
         } else {
             // Next card
             if (currentIndex < activeDeck.length - 1) {
@@ -215,7 +224,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
         newMemorized.add(uniqueId);
         addToMemorized(uniqueId);
         
-        const newBadges = updateStats('memorized', grade, uniqueId);
+        const newBadges = updateStats('xp', grade, uniqueId, 10);
         if (newBadges.length > 0 && onBadgeUnlock) {
              newBadges.forEach(b => onBadgeUnlock(b));
         }
@@ -282,10 +291,10 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
               addToMemorized(wordId);
               setMemorized(prev => new Set(prev).add(wordId));
           }
-          updateStats('review_remember', grade, wordId);
+          updateStats('xp', grade, wordId, 10);
           triggerFeedback('success', 'Harika! Sonraki Kutuya Geçti (+10 XP)');
       } else {
-          updateStats('review_forgot', grade, wordId);
+          updateStats('xp', grade, wordId, 2);
           triggerFeedback('remove-memorized', 'Kutu 1\'e Döndü (+2 XP)');
       }
 
@@ -351,15 +360,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
     
     playSound('flip');
     if (!isFlipped) {
-      if (currentWord) {
-          const wordId = getUniqueId(currentWord);
-          const newBadges = updateStats('card_view', grade, wordId);
-          updateQuestProgress('view_cards', 1);
-          registerSRSInteraction(wordId);
-          if (newBadges.length > 0 && onBadgeUnlock) {
-              newBadges.forEach(b => onBadgeUnlock(b));
-          }
-      }
+      handleCardView();
     }
     setIsFlipped(!isFlipped);
   };

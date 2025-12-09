@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { X, Trophy, Flame, Clock, ShieldCheck, Gamepad2, ChevronDown, ChevronUp, Target, Swords } from 'lucide-react';
 import { getPublicUserProfile } from '../services/supabase';
@@ -182,23 +183,25 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) 
                         <div className="space-y-2">
                             <div className="flex justify-between items-center p-3 rounded-xl border" style={{ backgroundColor: secondaryBg, borderColor: borderColor }}>
                                 <div className="flex items-center gap-2 text-xs font-bold">
+                                    <Swords size={14} className="text-orange-500" />
+                                    Düello
+                                </div>
+                                <div className="flex gap-1 sm:gap-2">
+                                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-0.5 rounded" title="Puan">{userData.duelPoints || 0} P</span>
+                                    <span className="text-[10px] font-black text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded" title="Galibiyet">{userData.duelWins || 0} G</span>
+                                    <span className="text-[10px] font-black text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 rounded" title="Beraberlik">{userData.duelDraws || 0} B</span>
+                                    <span className="text-[10px] font-black text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded" title="Mağlubiyet">{userData.duelLosses || 0} M</span>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-center p-3 rounded-xl border" style={{ backgroundColor: secondaryBg, borderColor: borderColor }}>
+                                <div className="flex items-center gap-2 text-xs font-bold">
                                     <Target size={14} className="text-violet-500" />
                                     Test (Quiz)
                                 </div>
                                 <div className="flex gap-2">
                                     <span className="text-[10px] font-black text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">{userData.quizCorrect || 0} D</span>
                                     <span className="text-[10px] font-black text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded">{userData.quizWrong || 0} Y</span>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-between items-center p-3 rounded-xl border" style={{ backgroundColor: secondaryBg, borderColor: borderColor }}>
-                                <div className="flex items-center gap-2 text-xs font-bold">
-                                    <Swords size={14} className="text-orange-500" />
-                                    Düello
-                                </div>
-                                <div className="flex gap-2">
-                                    <span className="text-[10px] font-black text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 rounded">{userData.duelPoints || 0} P</span>
-                                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-0.5 rounded">{userData.duelWins || 0} W</span>
                                 </div>
                             </div>
 

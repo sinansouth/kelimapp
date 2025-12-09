@@ -1,9 +1,10 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel, QuizDifficulty, Challenge } from '../types';
 import { CheckCircle, XCircle, Bookmark, Info, Clock, Swords, Copy, Trophy, HelpCircle, Zap, Divide, RotateCcw, Home } from 'lucide-react';
 import { updateStats, handleQuizResult, handleReviewResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress, getUserProfile, saveUserStats } from '../services/userService';
 import { playSound } from '../services/soundService';
-import { createChallenge, completeChallenge, syncLocalToCloud, submitTournamentScore, forfeitTournamentMatch } from '../services/supabase';
+import { createChallenge, completeChallenge, syncLocalToCloud, submitTournamentScore, forfeitTournamentMatch, updateCumulativeStats } from '../services/supabase';
 import { getSmartDistractors } from '../services/contentService';
 import Mascot from './Mascot';
 
@@ -240,16 +241,17 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
 
     if (!isTimeUp && navigator.vibrate) navigator.vibrate(isCorrect ? 50 : 200);
 
-    // --- IMMEDIATE STATS UPDATE START ---
+    // Update stats on server and locally
     if (!challengeMode) {
         if (isCorrect) {
-            const newBadges = updateStats('quiz_correct', grade, wordId, 1);
+            updateCumulativeStats('quiz_correct', 1);
+            const newBadges = updateStats('xp', grade, wordId, 20);
             if (newBadges.length > 0 && onBadgeUnlock) newBadges.forEach(b => onBadgeUnlock(b));
         } else {
-            updateStats('quiz_wrong', grade, wordId, 1);
+            updateCumulativeStats('quiz_wrong', 1);
+            updateStats('xp', grade, wordId, 1);
         }
     }
-    // --- IMMEDIATE STATS UPDATE END ---
 
     if (isCorrect) {
         playSound('correct');
@@ -276,12 +278,9 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
         }
 
         if (isReviewMode) {
-            updateStats('review_remember', grade, wordId);
+            updateStats('xp', grade, wordId, 10);
         }
         
-        // IMMEDIATE SYNC
-        if (!challengeMode) syncLocalToCloud();
-
     } else {
         playSound('wrong');
         setMascotMood('sad');
@@ -293,7 +292,7 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
         
         if (isReviewMode) {
              handleReviewResult(wordId, false); 
-             updateStats('review_forgot', grade, wordId);
+             updateStats('xp', grade, wordId, 2);
         } else {
              handleQuizResult(wordId, false);
 

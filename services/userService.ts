@@ -132,18 +132,17 @@ const DEFAULT_PROFILE: UserProfile = {
     updatedAt: 0
 };
 
-// Calculates Week ID based on Turkey Time (UTC+3)
-// New week starts on Monday 00:00 (which is Sunday 23:59+1min)
-const getWeekId = () => {
-    const d = getTurkeyTime();
-    d.setHours(0, 0, 0, 0);
-    // Adjust to nearest Thursday: current date + 4 - current day number
-    // Sunday is 0, Monday is 1...
-    const dayNum = d.getDay() || 7; // Make Sunday 7
-    d.setDate(d.getDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-    return `${d.getFullYear()}-W${weekNo}`;
+// Calculates Week ID based on Turkey Time (UTC+3) - ISO 8601 standard
+// New week starts on Monday.
+export const getWeekId = () => {
+    const date = getTurkeyTime();
+    date.setHours(0, 0, 0, 0);
+    // Thursday in current week decides the year.
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    // January 4 is always in week 1.
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    // Adjust to Thursday in week 1 and count number of weeks from date to week1.
+    return `${date.getFullYear()}-W${(1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)).toString().padStart(2, '0')}`;
 };
 
 const DEFAULT_WEEKLY_STATS = {
@@ -510,7 +509,7 @@ export const getSRSStatus = () => {
 // --- Stats Updates ---
 
 export const updateStats = (
-    action: 'card_view' | 'quiz_correct' | 'quiz_wrong' | 'memorized' | 'review_remember' | 'review_forgot' | 'perfect_quiz' | 'duel_result' | 'xp',
+    action: 'xp' | 'perfect_quiz',
     grade?: GradeLevel | null,
     unitId?: string,
     amount: number = 1
@@ -519,12 +518,11 @@ export const updateStats = (
     const todayStr = getTodayDateString();
 
     const currentLastStudyDate = stats.lastStudyDate;
-    const currentTodayDate = todayStr;
 
-    if (currentLastStudyDate !== currentTodayDate) {
+    if (currentLastStudyDate !== todayStr) {
         if (currentLastStudyDate) {
             const last = new Date(currentLastStudyDate);
-            const now = new Date(currentTodayDate);
+            const now = new Date(todayStr);
             last.setHours(0, 0, 0, 0);
             now.setHours(0, 0, 0, 0);
             const diffTime = now.getTime() - last.getTime();
@@ -551,67 +549,9 @@ export const updateStats = (
     const multiplier = (stats.xpBoostEndTime > Date.now()) ? 2 : 1;
 
     switch (action) {
-        case 'card_view':
-            stats.flashcardsViewed += amount;
-            if (typeof unitId === 'string' && !stats.viewedWordsToday.includes(unitId)) {
-                stats.viewedWordsToday.push(unitId);
-            }
-            stats.weekly.cardsViewed += amount;
-            xpGain = 3 * amount;
-            break;
-        case 'quiz_correct':
-            stats.quizCorrect += amount;
-            stats.weekly.quizCorrect += amount;
-            xpGain = 20 * amount;
-            // Update quests
-            updateQuestProgress('correct_answers', amount);
-            break;
-        case 'quiz_wrong':
-            stats.quizWrong += amount;
-            stats.weekly.quizWrong += amount;
-            xpGain = 1 * amount;
-            break;
-        case 'memorized':
-            xpGain = 10 * amount;
-            break;
-        case 'review_remember':
-            xpGain = 10 * amount;
-            break;
-        case 'review_forgot':
-            xpGain = 2 * amount;
-            break;
         case 'perfect_quiz':
             stats.perfectQuizzes++;
             xpGain = 100;
-            break;
-        case 'duel_result':
-            // amount here signifies the result type: 3=Win, 1=Tie, 0=Loss
-            // Lifetime Stats
-            if (amount === 3) { // Win
-                stats.duelWins = (stats.duelWins || 0) + 1;
-                stats.duelPoints = (stats.duelPoints || 0) + 3;
-                
-                // Weekly Stats
-                stats.weekly.duelWins = (stats.weekly.duelWins || 0) + 1;
-                stats.weekly.duelPoints = (stats.weekly.duelPoints || 0) + 3;
-                
-                xpGain = 100;
-                updateQuestProgress('win_duel', 1);
-            } else if (amount === 1) { // Tie
-                stats.duelDraws = (stats.duelDraws || 0) + 1;
-                stats.duelPoints = (stats.duelPoints || 0) + 1;
-                
-                // Weekly Stats
-                stats.weekly.duelDraws = (stats.weekly.duelDraws || 0) + 1;
-                stats.weekly.duelPoints = (stats.weekly.duelPoints || 0) + 1;
-                
-                xpGain = 30;
-            } else { // Loss
-                stats.duelLosses = (stats.duelLosses || 0) + 1;
-                stats.weekly.duelLosses = (stats.weekly.duelLosses || 0) + 1;
-                xpGain = 10;
-            }
-            updateQuestProgress('play_duel', 1);
             break;
         case 'xp':
             xpGain = amount;
@@ -644,22 +584,6 @@ export const updateStats = (
     return unlockedBadges;
 };
 
-export const updateGameStats = (game: 'matching' | 'maze' | 'wordSearch', score: number) => {
-    const stats = getUserStats();
-    if (game === 'matching') {
-        if (score > (stats.weekly.matchingBestTime || 0)) stats.weekly.matchingBestTime = score;
-        if (score > (stats.matchingAllTimeBest || 0)) stats.matchingAllTimeBest = score;
-    } else if (game === 'maze') {
-        if (score > (stats.weekly.mazeHighScore || 0)) stats.weekly.mazeHighScore = score;
-        if (score > (stats.mazeAllTimeBest || 0)) stats.mazeAllTimeBest = score;
-    } else if (game === 'wordSearch') {
-        if (score > (stats.weekly.wordSearchHighScore || 0)) stats.weekly.wordSearchHighScore = score;
-        if (score > (stats.wordSearchAllTimeBest || 0)) stats.wordSearchAllTimeBest = score;
-    }
-
-    saveUserStats(stats);
-};
-
 export const updateTimeSpent = (minutes: number): Badge[] => {
     const stats = getUserStats();
     stats.totalTimeSpent += minutes;
@@ -680,6 +604,31 @@ export const updateTimeSpent = (minutes: number): Badge[] => {
 
     if (unlockedBadges.length > 0) saveUserStats(stats);
     return unlockedBadges;
+};
+
+// FIX: Add the missing `updateGameStats` function.
+export const updateGameStats = (
+    game: 'matching' | 'maze' | 'wordSearch',
+    score: number
+) => {
+    const stats = getUserStats();
+
+    switch (game) {
+        case 'matching':
+            stats.weekly.matchingBestTime = Math.max(stats.weekly.matchingBestTime || 0, score);
+            stats.matchingAllTimeBest = Math.max(stats.matchingAllTimeBest || 0, score);
+            break;
+        case 'maze':
+            stats.weekly.mazeHighScore = Math.max(stats.weekly.mazeHighScore || 0, score);
+            stats.mazeAllTimeBest = Math.max(stats.mazeAllTimeBest || 0, score);
+            break;
+        case 'wordSearch':
+            stats.weekly.wordSearchHighScore = Math.max(stats.weekly.wordSearchHighScore || 0, score);
+            stats.wordSearchAllTimeBest = Math.max(stats.wordSearchAllTimeBest || 0, score);
+            break;
+    }
+
+    saveUserStats(stats);
 };
 
 export const getDailyState = () => {

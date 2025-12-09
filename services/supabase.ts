@@ -46,6 +46,20 @@ export const getCurrentUser = async () => {
     return data.user;
 };
 
+// FIX: Add and export the missing `updateCumulativeStats` function.
+// --- CUMULATIVE STATS (for weekly/all-time leaderboards) ---
+export const updateCumulativeStats = async (stat_name: string, increment_value: number) => {
+    try {
+        const { error } = await supabase.rpc('update_cumulative_stats', { 
+            p_stat_name: stat_name, 
+            p_increment_value: increment_value 
+        });
+        if (error) console.error(`Error updating cumulative stat ${stat_name}:`, error);
+    } catch (e) {
+        console.error(`RPC call failed for update_cumulative_stats:`, e);
+    }
+};
+
 export interface LeaderboardEntry {
     uid: string;
     name: string;

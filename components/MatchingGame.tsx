@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
 import { Shuffle, RotateCcw, CheckCircle, HelpCircle, Grid3X3 } from 'lucide-react';
 import { playSound } from '../services/soundService';
+// FIX: Import `updateGameStats` to handle game-specific statistics.
 import { updateStats, updateQuestProgress, updateGameStats } from '../services/userService';
 import { getSmartDistractors } from '../services/contentService'; 
 import { syncLocalToCloud } from '../services/supabase';
@@ -110,7 +111,8 @@ const MatchingGame: React.FC<MatchingGameProps> = ({ words, onFinish, onBack, on
           playSound('correct');
           
           // --- IMMEDIATE XP UPDATE START ---
-          const newBadges = updateStats('quiz_correct', grade, undefined, 1); 
+          // FIX: Changed action from 'quiz_correct' to 'xp' and set the correct XP amount.
+          const newBadges = updateStats('xp', grade, undefined, 5); 
           updateQuestProgress('play_matching', 1);
           updateQuestProgress('earn_xp', 5); // Eşleşme başına 5 XP
           if (newBadges.length > 0 && onBadgeUnlock) newBadges.forEach(b => onBadgeUnlock(b));

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
 import { CheckCircle, RotateCcw, ArrowRight, HelpCircle, Search, Grid3X3, Home, Play } from 'lucide-react';
 import { playSound } from '../services/soundService';
+// FIX: Import `updateGameStats` to handle game-specific statistics.
 import { updateStats, updateQuestProgress, updateGameStats } from '../services/userService';
 import { syncLocalToCloud } from '../services/supabase';
 
@@ -252,7 +253,8 @@ const WordSearchGame: React.FC<WordSearchGameProps> = ({ words, onFinish, onBack
             setScore(prev => prev + points);
 
             // --- IMMEDIATE XP UPDATE START ---
-            updateStats('quiz_correct', grade, undefined, 1);
+            // FIX: Changed action from 'quiz_correct' to 'xp' and set the correct XP amount.
+            updateStats('xp', grade, undefined, points);
             updateQuestProgress('earn_xp', points);
             updateQuestProgress('play_word_search', points);
             
