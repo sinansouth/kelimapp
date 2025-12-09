@@ -653,43 +653,19 @@ export const sendFeedback = async (type: 'bug' | 'suggestion', message: string, 
 
 export const getLeaderboard = async (grade: string, mode: 'xp' | 'quiz' | 'flashcard' | 'matching' | 'maze' | 'wordSearch' | 'duel'): Promise<LeaderboardEntry[]> => {
     try {
-        let query = supabase.from('profiles').select('*');
-        const result = await withTimeout(query.limit(100), 5000);
-        if (!result || (result as any).error) return [];
-        const data = (result as any).data;
-        if (!data) return [];
-        const entries: LeaderboardEntry[] = data.map((d: any) => {
-            const stats = d.stats || {};
-            const weekly = stats.weekly || {};
-            let val = 0;
-            if (mode === 'xp') val = stats.xp || 0;
-            else if (mode === 'quiz') val = weekly.quizCorrect || 0;
-            else if (mode === 'flashcard') val = weekly.cardsViewed || 0;
-            else if (mode === 'matching') val = weekly.matchingBestTime || 0;
-            else if (mode === 'maze') val = weekly.mazeHighScore || 0;
-            else if (mode === 'wordSearch') val = weekly.wordSearchHighScore || 0;
-            else if (mode === 'duel') val = weekly.duelPoints || 0; 
-            return {
-                uid: d.id,
-                name: d.username,
-                grade: d.grade,
-                xp: stats.xp || 0,
-                level: stats.level || 1,
-                streak: stats.streak || 0,
-                avatar: d.avatar,
-                frame: d.inventory?.equipped_frame || 'frame_none',
-                background: d.inventory?.equipped_background || 'bg_default',
-                theme: d.theme || 'dark',
-                value: val,
-                quizWrong: weekly.quizWrong,
-                duelWins: weekly.duelWins || 0,
-                duelLosses: weekly.duelLosses || 0,
-                duelDraws: weekly.duelDraws || 0,
-                duelPoints: weekly.duelPoints || 0
-            };
-        });
-        return entries.sort((a, b) => b.value - a.value).slice(0, 50);
+        const { data, error } = await withTimeout(supabase.rpc('get_leaderboard', {
+            p_mode: mode,
+            p_limit: 50
+        }), 8000);
+
+        if (error) {
+            console.error('Error fetching leaderboard via RPC:', error);
+            return [];
+        }
+
+        return (data as LeaderboardEntry[]) || [];
     } catch (e) {
+        console.error('Exception in getLeaderboard:', e);
         return [];
     }
 };

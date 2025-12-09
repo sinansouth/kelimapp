@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge } from './types';
+import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge, UserStats } from './types';
 import TopicSelector from './components/TopicSelector';
 import { THEME_COLORS, UI_ICONS, UNIT_ASSETS } from './data/assets';
 import FlashcardDeck from './components/FlashcardDeck';
@@ -28,7 +28,7 @@ import UserProfileModal from './components/UserProfileModal';
 import WelcomeScreen from './components/WelcomeScreen';
 import CustomAlert, { AlertType } from './components/CustomAlert';
 import { ChevronLeft, Zap, Swords, Trophy, AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
-import { getUserProfile, getTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, createGuestProfile, hasSeenTutorial, markTutorialAsSeen, UserStats, saveSRSData, saveUserStats, overwriteLocalWithCloud, updateStats, DEFAULT_STATS } from './services/userService';
+import { getUserProfile, getTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, createGuestProfile, hasSeenTutorial, markTutorialAsSeen, saveSRSData, saveUserStats, overwriteLocalWithCloud, updateStats, DEFAULT_STATS } from './services/userService';
 import { supabase, syncLocalToCloud, getOpenChallenges, getGlobalSettings, getUserData, checkPendingDuelResults } from './services/supabase';
 import { getWordsForUnit, fetchAllWords, getVocabulary, fetchDynamicContent, getAnnouncements, getUnitAssets } from './services/contentService';
 import { requestNotificationPermission } from './services/notificationService';
@@ -725,7 +725,7 @@ const App: React.FC = () => {
             {activeModal === 'grade' && (<GradeSelectionModal onClose={() => { setActiveModal(null); setIsOnboardingGuest(false); }} onSelect={handleGradeSelect} grades={availableGradesForReview} title={isOnboardingGuest ? 'Sınıfını Seç' : undefined} description={isOnboardingGuest ? 'Hangi seviyede İngilizce çalışmak istorsun?' : undefined} />)}
             {pendingQuizConfig && <QuizSetupModal onClose={handleManualBack} onStart={startQuizWithCount} totalWords={pendingQuizConfig.words.length} title={pendingQuizConfig.title} />}
             {celebration?.show && <Celebration message={celebration.message} type={celebration.type} onClose={() => setCelebration(null)} />}
-            {activeModal === 'avatar' && <AvatarModal onClose={() => setActiveModal(null)} userStats={userStats || DEFAULT_STATS} onUpdate={() => { setHeaderProfile(getUserProfile()); if (handleProfileUpdate) handleProfileUpdate(); }} />}
+            {activeModal === 'avatar' && <AvatarModal onClose={() => setActiveModal(null)} userStats={userStats || { flashcardsViewed: 0, quizCorrect: 0, quizWrong: 0, date: '', dailyGoal: 5, xp: 0, level: 1, streak: 0, lastStudyDate: null, badges: [], xpBoostEndTime: 0, lastGoalMetDate: null, viewedWordsToday: [], perfectQuizzes: 0, questsCompleted: 0, totalTimeSpent: 0, duelWins: 0, duelPoints: 0, duelLosses: 0, duelDraws: 0, matchingAllTimeBest: 0, mazeAllTimeBest: 0, wordSearchAllTimeBest: 0, completedUnits: [], completedGrades: [], weekly: { weekId: '', quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, mazeHighScore: 0, wordSearchHighScore: 0, duelPoints: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 }, updatedAt: Date.now() }} onUpdate={() => { setHeaderProfile(getUserProfile()); if (handleProfileUpdate) handleProfileUpdate(); }} />}
             {viewProfileId && (<UserProfileModal userId={viewProfileId} onClose={() => setViewProfileId(null)} />)}
             <CustomAlert visible={alertState.visible} title={alertState.title} message={alertState.message} type={alertState.type} onClose={() => setAlertState(prev => ({ ...prev, visible: false }))} onConfirm={alertState.onConfirm} />
             <header className="backdrop-blur-xl border-b z-50 shrink-0 transition-colors h-16 header-theme" style={{ backgroundColor: 'rgba(var(--color-bg-card-rgb), 0.8)', borderColor: 'rgba(255,255,255,0.1)' }}>
