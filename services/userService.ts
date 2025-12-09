@@ -38,21 +38,33 @@ export interface UserStats {
     perfectQuizzes: number;
     questsCompleted: number;
     totalTimeSpent: number;
+    
+    // Lifetime Stats
     duelWins: number;
+    duelLosses: number;
+    duelDraws: number;
     duelPoints: number;
+
     completedUnits: string[];
     completedGrades: string[];
+    
+    // Weekly Stats
     weekly: {
         weekId: string;
         quizCorrect: number;
         quizWrong: number;
         cardsViewed: number;
-        matchingBestTime: number;
+        matchingBestTime: number; // Actually Score
         mazeHighScore: number;
         wordSearchHighScore: number;
+        
+        duelPoints: number;
+        duelWins: number;
+        duelLosses: number;
+        duelDraws: number;
     };
     lastActivity?: { grade: string; unitId: string };
-    updatedAt?: number; // Cloud sync için
+    updatedAt?: number;
 }
 
 export interface AppSettings {
@@ -68,11 +80,15 @@ export interface SRSData {
 // --- TIME UTILITIES ---
 
 export const getTurkeyTime = (): Date => {
+    // Current time in local
     const now = new Date();
-    return now;
+    // Convert to UTC
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    // Add 3 hours for Turkey (UTC+3)
+    return new Date(utc + (3600000 * 3));
 };
 
-// Returns YYYY-MM-DD based on local device time
+// Returns YYYY-MM-DD based on local device time (For Streak)
 export const getTodayDateString = (): string => {
     const d = new Date();
     const year = d.getFullYear();
@@ -82,7 +98,7 @@ export const getTodayDateString = (): string => {
 };
 
 export const getTurkeyTimestamp = (): number => {
-    return Date.now();
+    return getTurkeyTime().getTime();
 };
 
 const generateFriendCode = (): string => {
@@ -111,13 +127,32 @@ const DEFAULT_PROFILE: UserProfile = {
     updatedAt: 0
 };
 
+// Calculates Week ID based on Turkey Time (UTC+3)
+// New week starts on Monday 00:00 (which is Sunday 23:59+1min)
 const getWeekId = () => {
-    const d = new Date();
+    const d = getTurkeyTime();
     d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-    const yearStart = new Date(d.getFullYear(), 0, 1);
+    // Adjust to nearest Thursday: current date + 4 - current day number
+    // Sunday is 0, Monday is 1...
+    const dayNum = d.getDay() || 7; // Make Sunday 7
+    d.setDate(d.getDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getFullYear(), 0, 1));
     const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return `${d.getFullYear()}-W${weekNo}`;
+};
+
+const DEFAULT_WEEKLY_STATS = {
+    weekId: getWeekId(),
+    quizCorrect: 0,
+    quizWrong: 0,
+    cardsViewed: 0,
+    matchingBestTime: 0,
+    mazeHighScore: 0,
+    wordSearchHighScore: 0,
+    duelPoints: 0,
+    duelWins: 0,
+    duelLosses: 0,
+    duelDraws: 0
 };
 
 const DEFAULT_STATS: UserStats = {
@@ -138,18 +173,12 @@ const DEFAULT_STATS: UserStats = {
     questsCompleted: 0,
     totalTimeSpent: 0,
     duelWins: 0,
+    duelLosses: 0,
+    duelDraws: 0,
     duelPoints: 0,
     completedUnits: [],
     completedGrades: [],
-    weekly: {
-        weekId: getWeekId(),
-        quizCorrect: 0,
-        quizWrong: 0,
-        cardsViewed: 0,
-        matchingBestTime: 0,
-        mazeHighScore: 0,
-        wordSearchHighScore: 0,
-    },
+    weekly: DEFAULT_WEEKLY_STATS,
     updatedAt: 0
 };
 
@@ -234,16 +263,20 @@ export const getUserStats = (): UserStats => {
             stats.viewedWordsToday = [];
         }
 
+        // Weekly Reset Logic based on Turkey Time
         const currentWeek = getWeekId();
         if (stats.weekly?.weekId !== currentWeek) {
+            // New week, reset weekly stats
             stats.weekly = {
-                weekId: currentWeek,
-                quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, mazeHighScore: 0, wordSearchHighScore: 0
+                ...DEFAULT_WEEKLY_STATS,
+                weekId: currentWeek
             };
+        } else {
+            // Ensure any missing fields are present in existing week
+            stats.weekly = { ...DEFAULT_WEEKLY_STATS, ...stats.weekly };
         }
 
-        const mergedWeekly = { ...DEFAULT_STATS.weekly, ...stats.weekly };
-        return { ...DEFAULT_STATS, ...stats, weekly: mergedWeekly };
+        return { ...DEFAULT_STATS, ...stats };
     } catch { return DEFAULT_STATS; }
 };
 
@@ -522,6 +555,8 @@ export const updateStats = (
             stats.quizCorrect += amount;
             stats.weekly.quizCorrect += amount;
             xpGain = 20 * amount;
+            // Update quests
+            updateQuestProgress('correct_answers', amount);
             break;
         case 'quiz_wrong':
             stats.quizWrong += amount;
@@ -542,15 +577,30 @@ export const updateStats = (
             xpGain = 100;
             break;
         case 'duel_result':
-            if (amount === 3) {
+            // amount here signifies the result type: 3=Win, 1=Tie, 0=Loss
+            // Lifetime Stats
+            if (amount === 3) { // Win
                 stats.duelWins = (stats.duelWins || 0) + 1;
                 stats.duelPoints = (stats.duelPoints || 0) + 3;
+                
+                // Weekly Stats
+                stats.weekly.duelWins = (stats.weekly.duelWins || 0) + 1;
+                stats.weekly.duelPoints = (stats.weekly.duelPoints || 0) + 3;
+                
                 xpGain = 100;
                 updateQuestProgress('win_duel', 1);
-            } else if (amount === 1) {
+            } else if (amount === 1) { // Tie
+                stats.duelDraws = (stats.duelDraws || 0) + 1;
                 stats.duelPoints = (stats.duelPoints || 0) + 1;
+                
+                // Weekly Stats
+                stats.weekly.duelDraws = (stats.weekly.duelDraws || 0) + 1;
+                stats.weekly.duelPoints = (stats.weekly.duelPoints || 0) + 1;
+                
                 xpGain = 30;
-            } else {
+            } else { // Loss
+                stats.duelLosses = (stats.duelLosses || 0) + 1;
+                stats.weekly.duelLosses = (stats.weekly.duelLosses || 0) + 1;
                 xpGain = 10;
             }
             updateQuestProgress('play_duel', 1);
@@ -603,6 +653,9 @@ export const updateTimeSpent = (minutes: number): Badge[] => {
     const stats = getUserStats();
     stats.totalTimeSpent += minutes;
     saveUserStats(stats);
+    
+    // Update Daily Quest
+    updateQuestProgress('study_time', minutes);
 
     const unlockedBadges: Badge[] = [];
     BADGES.forEach(badge => {
@@ -642,46 +695,66 @@ export const getDailyState = () => {
 };
 
 const generateDailyQuests = (): Quest[] => {
-    const allTypes: Quest['type'][] = [
-        'view_cards',
-        'finish_quiz',
-        'perfect_quiz',
-        'earn_xp',
-        'play_matching',
-        'play_maze',
-        'play_word_search',
-        'play_duel',
-        'win_duel',
+    const easyQuests: { type: Quest['type'], target: number, reward: number, desc: string }[] = [
+        { type: 'view_cards', target: 10, reward: 100, desc: '10 Kelime Kartı İncele' },
+        { type: 'earn_xp', target: 100, reward: 100, desc: '100 XP Kazan' },
+        { type: 'study_time', target: 10, reward: 100, desc: '10 Dakika Çalış' }
     ];
-    const pickedTypes = allTypes.sort(() => 0.5 - Math.random()).slice(0, 3);
 
-    return pickedTypes.map((type, i) => {
-        let target = 0;
-        let reward = 0;
-        let desc = '';
+    const mediumQuests: { type: Quest['type'], target: number, reward: number, desc: string }[] = [
+        { type: 'finish_quiz', target: 2, reward: 150, desc: '2 Test Bitir' },
+        { type: 'correct_answers', target: 20, reward: 150, desc: '20 Doğru Cevap Ver' },
+        { type: 'play_matching', target: 1, reward: 120, desc: 'Eşleştirme Oyunu Oyna' },
+        { type: 'play_word_search', target: 100, reward: 120, desc: 'Bulmacada 100 Puan Al' }
+    ];
 
-        switch (type) {
-            case 'view_cards': target = 20; reward = 100; desc = '20 Kelime Kartı İncele'; break;
-            case 'finish_quiz': target = 2; reward = 150; desc = '2 Test Bitir'; break;
-            case 'perfect_quiz': target = 1; reward = 250; desc = '1 Testi Hatasız Bitir'; break;
-            case 'earn_xp': target = 500; reward = 150; desc = '500 XP Kazan'; break;
-            case 'play_matching': target = 1; reward = 100; desc = 'Eşleştirme Oyunu Oyna'; break;
-            case 'play_maze': target = 1; reward = 100; desc = 'Labirent Oyununu Oyna'; break;
-            case 'play_word_search': target = 100; reward = 120; desc = 'Bulmacada 100 Puan Al'; break;
-            case 'play_duel': target = 1; reward = 100; desc = 'Bir Düello Yap'; break;
-            case 'win_duel': target = 1; reward = 200; desc = 'Bir Düello Kazan'; break;
-        }
+    const hardQuests: { type: Quest['type'], target: number, reward: number, desc: string }[] = [
+        { type: 'perfect_quiz', target: 1, reward: 250, desc: '1 Testi Hatasız Bitir' },
+        { type: 'win_duel', target: 1, reward: 300, desc: 'Bir Düello Kazan' },
+        { type: 'play_maze', target: 1, reward: 200, desc: 'Labirent Oyunu Oyna' },
+        { type: 'study_time', target: 30, reward: 300, desc: '30 Dakika Çalış' },
+        { type: 'earn_xp', target: 500, reward: 300, desc: '500 XP Kazan' }
+    ];
 
-        return {
-            id: `q_${Date.now()}_${i}`,
-            description: desc,
-            target,
-            current: 0,
-            rewardXP: reward,
-            isCompleted: false,
-            type
-        };
+    const selectedQuests: Quest[] = [];
+
+    // 1 Easy
+    const easy = easyQuests[Math.floor(Math.random() * easyQuests.length)];
+    selectedQuests.push({
+        id: `q_easy_${Date.now()}`,
+        description: easy.desc,
+        target: easy.target,
+        current: 0,
+        rewardXP: easy.reward,
+        isCompleted: false,
+        type: easy.type
     });
+
+    // 1 Medium
+    const medium = mediumQuests[Math.floor(Math.random() * mediumQuests.length)];
+    selectedQuests.push({
+        id: `q_med_${Date.now()}`,
+        description: medium.desc,
+        target: medium.target,
+        current: 0,
+        rewardXP: medium.reward,
+        isCompleted: false,
+        type: medium.type
+    });
+
+    // 1 Hard
+    const hard = hardQuests[Math.floor(Math.random() * hardQuests.length)];
+    selectedQuests.push({
+        id: `q_hard_${Date.now()}`,
+        description: hard.desc,
+        target: hard.target,
+        current: 0,
+        rewardXP: hard.reward,
+        isCompleted: false,
+        type: hard.type
+    });
+
+    return selectedQuests;
 };
 
 export const updateQuestProgress = (type: string, amount: number) => {
@@ -691,6 +764,7 @@ export const updateQuestProgress = (type: string, amount: number) => {
     daily.quests.forEach((q: Quest) => {
         if (!q.isCompleted && q.type === type) {
             q.current += amount;
+            // Cap current at target for visual consistency
             if (q.current >= q.target) {
                 q.current = q.target;
                 q.isCompleted = true;

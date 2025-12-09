@@ -4,7 +4,7 @@ import { WordCard, Badge, GradeLevel, QuizDifficulty, Challenge } from '../types
 import { CheckCircle, XCircle, Bookmark, Info, Clock, Swords, Copy, Trophy, HelpCircle, Zap, Divide, RotateCcw, Home } from 'lucide-react';
 import { updateStats, handleQuizResult, handleReviewResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress, getUserProfile, saveUserStats } from '../services/userService';
 import { playSound } from '../services/soundService';
-import { createChallenge, completeChallenge, syncLocalToCloud, submitTournamentScore } from '../services/supabase';
+import { createChallenge, completeChallenge, syncLocalToCloud, submitTournamentScore, forfeitTournamentMatch } from '../services/supabase';
 import { getSmartDistractors } from '../services/contentService';
 import Mascot from './Mascot';
 
@@ -149,7 +149,20 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
     };
   }, []);
 
-  const handleExit = () => {
+  const handleExit = async () => {
+      // Aborting logic
+      if (challengeMode === 'join' && challengeData) {
+          // If exiting while playing a duel, count as loss (0 points)
+          if (navigator.onLine) {
+              await completeChallenge(challengeData.id, getUserProfile().name, 0);
+          }
+      } else if (challengeMode === 'tournament' && challengeData) {
+          // If exiting tournament match, forfeit
+          if (navigator.onLine && challengeData.tournamentId && challengeData.matchId) {
+              await forfeitTournamentMatch(challengeData.tournamentId, challengeData.matchId);
+          }
+      }
+
       syncLocalToCloud(); // Sync before leaving
       onBack();
   };
@@ -350,7 +363,7 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                     resultType = 1; // 1 point for tie
                 }
                 
-                // Update local game stats immediately
+                // Update local game stats immediately (Passing grade and resultType)
                 updateStats('duel_result', grade, undefined, resultType);
 
                 // Update server status and record winner

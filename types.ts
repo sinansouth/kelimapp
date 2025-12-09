@@ -137,7 +137,7 @@ export interface Quest {
   current: number;
   rewardXP: number;
   isCompleted: boolean;
-  type: 'view_cards' | 'finish_quiz' | 'perfect_quiz' | 'earn_xp' | 'play_matching' | 'play_maze' | 'play_word_search' | 'play_duel' | 'win_duel';
+  type: 'view_cards' | 'finish_quiz' | 'perfect_quiz' | 'earn_xp' | 'play_matching' | 'play_maze' | 'play_word_search' | 'play_duel' | 'win_duel' | 'study_time' | 'correct_answers';
 }
 
 export interface DailyState {
@@ -239,21 +239,34 @@ export interface UserStats {
     perfectQuizzes: number;
     questsCompleted: number;
     totalTimeSpent: number;
+    
+    // Lifetime Duel Stats
     duelWins: number;
-    duelPoints: number;
+    duelLosses: number;
+    duelDraws: number;
+    duelPoints: number; // Lifetime total points
+
     completedUnits: string[];
     completedGrades: string[];
+    
+    // Weekly Competitive Stats (Resets every Sunday night)
     weekly: {
         weekId: string;
         quizCorrect: number;
         quizWrong: number;
         cardsViewed: number;
-        matchingBestTime: number;
+        matchingBestTime: number; // Represents Score now
         mazeHighScore: number;
         wordSearchHighScore: number;
+        
+        // Weekly Duel Stats
+        duelPoints: number;
+        duelWins: number;
+        duelLosses: number;
+        duelDraws: number;
     };
     lastActivity?: { grade: string; unitId: string };
-    updatedAt?: number; // Cloud sync için zaman damgası
+    updatedAt?: number; // Cloud sync timestamp
 }
 
 export interface Announcement {

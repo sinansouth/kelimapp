@@ -99,13 +99,13 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
 
   const getModeLabel = () => {
       switch(mode) {
-          case 'xp': return 'Toplam Puan & Seri';
-          case 'quiz': return 'Test Çözme (Doğru Sayısı)';
-          case 'flashcard': return 'Kelime Çalışma (Kart)';
-          case 'matching': return 'Eşleştirme (En İyi Puan)';
-          case 'maze': return 'Labirent (En Yüksek Puan)';
-          case 'wordSearch': return 'Kelime Bulmaca (En Yüksek Puan)';
-          case 'duel': return 'Düello Puanı';
+          case 'xp': return 'Toplam Puan & Seri (Genel)';
+          case 'quiz': return 'Haftalık: Test Doğrusu';
+          case 'flashcard': return 'Haftalık: Kelime Çalışma';
+          case 'matching': return 'Haftalık: Eşleştirme Skoru';
+          case 'maze': return 'Haftalık: Labirent Skoru';
+          case 'wordSearch': return 'Haftalık: Bulmaca Skoru';
+          case 'duel': return 'Haftalık: Düello Puanı';
       }
   }
 
@@ -217,9 +217,11 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
                                             </div>
                                         ) : mode === 'duel' ? (
                                             <div className="flex flex-col items-end">
-                                                <div className="font-black text-sm leading-none" style={{color: rowStyle.color, opacity: 0.9}}>{formatValue(user.duelPoints || 0)} P</div>
-                                                <div className="text-[9px] font-bold text-green-500 mt-0.5">
-                                                    {user.duelWins || 0} Zafer
+                                                <div className="font-black text-sm leading-none" style={{color: rowStyle.color, opacity: 0.9}}>{formatValue(user.value)} P</div>
+                                                <div className="text-[8px] font-bold mt-0.5 flex gap-1">
+                                                    <span className="text-green-500">{user.duelWins || 0}G</span>
+                                                    <span className="text-yellow-500 opacity-80">{user.duelDraws || 0}B</span>
+                                                    <span className="text-red-500 opacity-80">{user.duelLosses || 0}M</span>
                                                 </div>
                                             </div>
                                         ) : (
@@ -247,7 +249,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
 
         {/* Footer */}
         <div className="p-3 border-t shrink-0 text-[10px] text-center" style={{backgroundColor: modalThemeStyle.bgCard, borderColor: modalThemeStyle.border, color: modalThemeStyle.textMuted}}>
-             Oyun skorları Pazar 23:59'da sıfırlanır. (Toplam Puan ve Seri hariç)
+             Oyun ve Düello skorları her Pazar 23:59'da (TR Saati) sıfırlanır.
         </div>
       </div>
     </div>

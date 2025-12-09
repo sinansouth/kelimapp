@@ -1,9 +1,6 @@
 
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Edit2, BarChart2, Trophy, Flame, Star, User, ShoppingBag, Target, CheckCircle, ChevronDown, ChevronUp, LogOut, Trash2, ShieldCheck, Ghost, LogIn, KeyRound, Mail, GraduationCap, Users, Copy, UserPlus } from 'lucide-react';
+import { Save, Edit2, BarChart2, Trophy, Flame, Star, User, ShoppingBag, Target, CheckCircle, ChevronDown, ChevronUp, LogOut, Trash2, ShieldCheck, Ghost, LogIn, KeyRound, Mail, GraduationCap, Users, Copy, UserPlus, Swords } from 'lucide-react';
 import { getUserProfile, getUserStats, saveUserProfile, getDailyState, UserProfile as IUserProfile, UserStats } from '../services/userService';
 import { GradeLevel, Badge, Quest } from '../types';
 // FIX: Changed to a named import to match the updated export in StatsModal.tsx.
@@ -389,6 +386,28 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
                         <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Rozet</span>
                     </div>
                  </div>
+
+                 {/* Detailed Game Stats Including Draws/Losses */}
+                 <div className="w-full mb-6 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/50">
+                     <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                         <span className="text-xs font-bold flex items-center gap-2"><Swords size={14} className="text-orange-500"/> Düello İstatistikleri</span>
+                         <span className="text-[10px] font-black text-indigo-500">{stats?.duelPoints || 0} Puan</span>
+                     </div>
+                     <div className="flex justify-around text-center">
+                         <div>
+                             <div className="text-xs font-black text-green-500">{stats?.duelWins || 0}</div>
+                             <div className="text-[9px] text-slate-400 font-bold">Galibiyet</div>
+                         </div>
+                         <div>
+                             <div className="text-xs font-black text-yellow-500">{stats?.duelDraws || 0}</div>
+                             <div className="text-[9px] text-slate-400 font-bold">Beraberlik</div>
+                         </div>
+                         <div>
+                             <div className="text-xs font-black text-red-500">{stats?.duelLosses || 0}</div>
+                             <div className="text-[9px] text-slate-400 font-bold">Mağlubiyet</div>
+                         </div>
+                     </div>
+                 </div>
                  
                  <button onClick={() => setShowStatsModal(true)} className="w-full mb-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700">
                      <BarChart2 size={16} /> Detaylı İstatistikler
@@ -501,7 +520,6 @@ const Profile: React.FC<ProfileProps> = ({ onBack, onProfileUpdate, onOpenMarket
                                             onClick={() => setTooltipBadgeId(tooltipBadgeId === badge.id ? null : badge.id)}
                                         >
                                             <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xl shadow-sm hover:scale-110 transition-transform cursor-pointer hover:border-yellow-300 dark:hover:border-yellow-500 overflow-hidden">
-                                                {/* FIX: Check if badge.icon is a string before calling startsWith to avoid runtime errors. */}
                                                 {badge.image ? (
                                                     <img src={badge.image} alt={badge.name} className="w-full h-full object-cover" />
                                                 ) : (

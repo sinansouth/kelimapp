@@ -61,6 +61,8 @@ export interface LeaderboardEntry {
     value: number;
     quizWrong?: number;
     duelWins?: number;
+    duelLosses?: number;
+    duelDraws?: number;
     duelPoints?: number;
 }
 
@@ -335,9 +337,6 @@ export const syncLocalToCloud = async (userId?: string) => {
         if (localProfile.isGuest) return;
 
         // 2. Buluttaki verileri al (Timestamp kontrolü için)
-        // Sadece stats ve srs verilerinin updatedAt'ine bakacağız
-        // Eğer bulut verisi daha yeniyse, yereli ezeriz.
-        // Eğer yerel veri daha yeniyse, bulutu ezeriz.
         
         let cloudData: any = null;
         try {
@@ -357,8 +356,6 @@ export const syncLocalToCloud = async (userId?: string) => {
         // 3. Karşılaştırma ve Karar Verme
         const localTimestamp = Math.max(localProfile.updatedAt || 0, localStats.updatedAt || 0);
         
-        // Cloud timestamp could be ISO string or undefined if older version
-        // We track updatedAt in the JSON columns too, let's prefer that
         let cloudTimestamp = 0;
         if (cloudData) {
              const statsTs = cloudData.stats?.updatedAt || 0;
@@ -391,7 +388,6 @@ export const syncLocalToCloud = async (userId?: string) => {
         }
 
         // Eğer yerel daha yeniyse veya eşitse -> Buluta Yükle
-        // (Eşitlik durumunda da yüklemek güvenlidir, idempotent)
         console.log("Local is newer or equal. Pushing data...", localTimestamp, ">=", cloudTimestamp);
 
         const inventoryData = {
@@ -673,22 +669,69 @@ export const submitTournamentScore = async (tournamentId: string, matchId: strin
 
         if (match.score1_leg1 !== undefined && match.score2_leg1 !== undefined) {
             match.status = 'completed';
+            // Tie-break with time
             if (match.score1_leg1 > match.score2_leg1) match.winnerId = match.player1Id;
             else if (match.score2_leg1 > match.score1_leg1) match.winnerId = match.player2Id;
-            else match.winnerId = (match.time1_leg1 || 0) <= (match.time2_leg1 || 0) ? match.player1Id : match.player2Id;
+            else {
+                // Scores are equal, use time
+                const t1 = match.time1_leg1 || 9999;
+                const t2 = match.time2_leg1 || 9999;
+                match.winnerId = t1 <= t2 ? match.player1Id : match.player2Id;
+            }
 
             await supabase.from('tournaments').update({ championId: match.winnerId }).eq('id', tournamentId);
             if (match.winnerId) adminGiveXP(match.winnerId, tournament.rewards.firstPlace);
         }
     } else {
-        // Simplified Logic for normal rounds
-        if (isPlayer1) match.score1_leg1 = score;
-        else match.score2_leg1 = score;
+        // Normal Rounds (Leg 1 & Leg 2 concept handled in TournamentTree, but simplistic storage here)
+        if (isPlayer1) { match.score1_leg1 = score; match.time1_leg1 = timeTaken; }
+        else { match.score2_leg1 = score; match.time2_leg1 = timeTaken; }
 
         if (match.score1_leg1 !== undefined && match.score2_leg1 !== undefined) {
             match.status = 'completed';
-            match.winnerId = match.score1_leg1 >= match.score2_leg1 ? match.player1Id : match.player2Id;
+            
+            if (match.score1_leg1 > match.score2_leg1) match.winnerId = match.player1Id;
+            else if (match.score2_leg1 > match.score1_leg1) match.winnerId = match.player2Id;
+            else {
+                 // Scores equal, use time
+                 const t1 = match.time1_leg1 || 9999;
+                 const t2 = match.time2_leg1 || 9999;
+                 match.winnerId = t1 <= t2 ? match.player1Id : match.player2Id;
+            }
         }
+    }
+
+    matches[matchIndex] = match;
+    await supabase.from('tournaments').update({ matches }).eq('id', tournamentId);
+};
+
+export const forfeitTournamentMatch = async (tournamentId: string, matchId: string) => {
+    const { data: tournament } = await supabase.from('tournaments').select('*').eq('id', tournamentId).single();
+    if (!tournament) return;
+
+    const matches = tournament.matches || [];
+    const matchIndex = matches.findIndex((m: any) => m.id === matchId);
+    if (matchIndex === -1) return;
+
+    const match = matches[matchIndex];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // The user calling this function is the one forfeiting
+    const isPlayer1 = match.player1Id === user.id;
+    const winnerId = isPlayer1 ? match.player2Id : match.player1Id;
+
+    if (!winnerId) return; // Should not happen in tournament
+
+    match.status = 'completed';
+    match.winnerId = winnerId;
+    
+    // Give forfeiting player 0 score, winner gets pass
+    if (isPlayer1) { match.score1_leg1 = 0; } else { match.score2_leg1 = 0; }
+
+    if (match.round === 2) {
+        await supabase.from('tournaments').update({ championId: winnerId }).eq('id', tournamentId);
+        adminGiveXP(winnerId, tournament.rewards.firstPlace);
     }
 
     matches[matchIndex] = match;
@@ -731,7 +774,7 @@ export const getLeaderboard = async (grade: string, mode: 'xp' | 'quiz' | 'flash
             else if (mode === 'matching') val = weekly.matchingBestTime || 0;
             else if (mode === 'maze') val = weekly.mazeHighScore || 0;
             else if (mode === 'wordSearch') val = weekly.wordSearchHighScore || 0;
-            else if (mode === 'duel') val = stats.duelPoints || 0;
+            else if (mode === 'duel') val = weekly.duelPoints || 0; // Use weekly duel points
 
             return {
                 uid: d.id,
@@ -746,8 +789,10 @@ export const getLeaderboard = async (grade: string, mode: 'xp' | 'quiz' | 'flash
                 theme: d.theme || 'dark',
                 value: val,
                 quizWrong: weekly.quizWrong,
-                duelWins: stats.duelWins || 0,
-                duelPoints: stats.duelPoints || 0
+                duelWins: weekly.duelWins || 0, // Weekly wins
+                duelLosses: weekly.duelLosses || 0,
+                duelDraws: weekly.duelDraws || 0,
+                duelPoints: weekly.duelPoints || 0
             };
         });
 
@@ -788,8 +833,13 @@ export const getPublicUserProfile = async (uid: string) => {
             totalTimeSpent: stats.totalTimeSpent || 0,
             quizCorrect: weekly.quizCorrect || 0,
             quizWrong: weekly.quizWrong || 0,
+            
+            // Lifetime Duel stats for profile
             duelPoints: stats.duelPoints || 0,
             duelWins: stats.duelWins || 0,
+            duelLosses: stats.duelLosses || 0,
+            duelDraws: stats.duelDraws || 0,
+            
             matchingBestTime: weekly.matchingBestTime || 0,
             mazeHighScore: weekly.mazeHighScore || 0,
             wordSearchHighScore: weekly.wordSearchHighScore || 0
@@ -811,6 +861,7 @@ export const addFriend = async (currentUid: string, friendCode: string) => {
     if (error || !friendData) throw new Error("Kullanıcı bulunamadı.");
     if (friendData.id === currentUid) throw new Error("Kendini ekleyemezsin.");
 
+    // 1. Seni arkadaş listeme ekle
     const { data: myProfile } = await supabase.from('profiles').select('friends').eq('id', currentUid).single();
     let myFriends: string[] = myProfile?.friends || [];
     if (!myFriends.includes(friendData.id)) {
@@ -818,6 +869,7 @@ export const addFriend = async (currentUid: string, friendCode: string) => {
         await supabase.from('profiles').update({ friends: myFriends }).eq('id', currentUid);
     }
 
+    // 2. Beni senin arkadaş listene ekle (KARŞILIKLI EKLEME)
     const { data: theirProfile } = await supabase.from('profiles').select('friends').eq('id', friendData.id).single();
     let theirFriends: string[] = theirProfile?.friends || [];
     if (!theirFriends.includes(currentUid)) {
