@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import { Lightbulb, BookOpen, Trophy, ShoppingBag, Target, ShieldCheck, Sparkles, Gamepad2, Grid3X3, Search, ArrowRight, User, Swords, Palette, Layout, Users, Calendar, Zap, Repeat, GraduationCap, Medal, Crown, Brain, ListChecks } from 'lucide-react';
 import { XP_GAINS } from '../services/userService';
@@ -79,7 +81,7 @@ const InfoView: React.FC<InfoViewProps> = ({ onBack }) => {
                                         <div>
                                             <h4 className="font-bold text-sm text-slate-800 dark:text-white">Test Çöz</h4>
                                             <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
-                                                Test modunda bilgini pekiştir. Her doğru cevapla zorluğa göre <strong>10-30 XP</strong> arası kazan.
+                                                Test modunda bilgini pekiştir. Her doğru cevapla zorluğa göre <strong>{XP_GAINS.quiz_correct.normal} XP</strong> (Normal mod) kazan. Hatasız bitirirsen <strong>+{XP_GAINS.perfect_quiz_bonus} XP</strong> bonus alırsın!
                                             </p>
                                         </div>
                                     </div>
@@ -129,7 +131,7 @@ const InfoView: React.FC<InfoViewProps> = ({ onBack }) => {
                                 <div>
                                     <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-1">Test (Quiz)</h4>
                                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2">
-                                        Klasik test modu. Kelimelerin anlamlarını seçeneklerden seç. 5 farklı zorluk seviyesi var.
+                                        Klasik test modu. 5 farklı zorluk seviyesi var. Hatasız bitirmek ekstra ödül verir.
                                     </p>
                                     <span className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/10 py-0.5 px-2 rounded">
                                         Doğru: {XP_GAINS.quiz_correct.normal} XP (Ortalama)
@@ -147,7 +149,7 @@ const InfoView: React.FC<InfoViewProps> = ({ onBack }) => {
                                         Arkadaşlarına veya herkese açık rakiplere meydan oku! En yüksek puanı alan kazanır.
                                     </p>
                                     <span className="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/10 py-0.5 px-2 rounded">
-                                        Zafer: 50 XP +3 Puan
+                                        Zafer: {XP_GAINS.duel_win} XP, Beraberlik: {XP_GAINS.duel_tie} XP
                                     </span>
                                 </div>
                             </div>
@@ -226,15 +228,6 @@ const InfoView: React.FC<InfoViewProps> = ({ onBack }) => {
                                 </h4>
                                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2">
                                     Farklı kategorilerde yarış ve en iyiler arasına gir. Haftalık sıralamalar her Pazar gecesi sıfırlanır ve yeni bir yarış başlar!
-                                </p>
-                            </div>
-
-                            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <h4 className="flex items-center gap-2 text-slate-800 dark:text-white font-bold text-sm mb-2">
-                                    <Crown size={16} className="text-purple-500" /> Turnuvalar
-                                </h4>
-                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    Büyük yarışmalara katıl, eleme turlarını geç ve şampiyon ol! Şampiyonlar büyük XP ödülleri kazanır.
                                 </p>
                             </div>
 

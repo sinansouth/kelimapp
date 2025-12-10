@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { X, ShoppingBag, Star, Palette, Sun, Moon, Droplets, Sunset, TreePine, Crown, Candy, Image, Gamepad2, Coffee, Rocket, Heart, Leaf, CloudSnow, MessageCircle, Flame, Lock, Zap, Shield } from 'lucide-react';
 import { getUserStats, getUserProfile, buyTheme, buyFrame, buyBackground, buyItem, getTheme, saveTheme, equipFrame, equipBackground } from '../services/userService';
@@ -53,28 +54,29 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
       });
   };
 
+  // Re-balanced prices for Themes based on new XP economy
   const rawThemes: MarketItem[] = [
     { id: 'theme_light', name: 'Aydınlık', description: 'Klasik beyaz.', cost: 0, type: 'theme', value: 'light', icon: <Sun size={20} />, previewColor: '#ffffff', unlockLevel: 1 },
     { id: 'theme_dark', name: 'Karanlık', description: 'Klasik koyu.', cost: 0, type: 'theme', value: 'dark', icon: <Moon size={20} />, previewColor: '#0f172a', unlockLevel: 1 },
     { id: 'theme_ocean', name: 'Okyanus', description: 'Mavi tonları.', cost: 1000, type: 'theme', value: 'ocean', icon: <Droplets size={20} />, previewColor: '#0c4a6e', unlockLevel: 2 },
-    { id: 'theme_sunset', name: 'Gün Batımı', description: 'Sıcak turuncu.', cost: 1000, type: 'theme', value: 'sunset', icon: <Sunset size={20} />, previewColor: '#431407', unlockLevel: 3 },
-    { id: 'theme_forest', name: 'Orman', description: 'Doğal yeşil.', cost: 1500, type: 'theme', value: 'forest', icon: <TreePine size={20} />, previewColor: '#052e16', unlockLevel: 4 },
-    { id: 'theme_lavender', name: 'Lavanta', description: 'Yumuşak mor.', cost: 2000, type: 'theme', value: 'lavender', icon: <Heart size={20} />, previewColor: '#2e1065', unlockLevel: 5 },
-    { id: 'theme_coffee', name: 'Kahve', description: 'Kahverengi.', cost: 2000, type: 'theme', value: 'coffee', icon: <Coffee size={20} />, previewColor: '#3e2723', unlockLevel: 6 },
-    { id: 'theme_candy', name: 'Şeker', description: 'Tatlı pembe.', cost: 3500, type: 'theme', value: 'candy', icon: <Candy size={20} />, previewColor: '#831843', unlockLevel: 7 },
-    { id: 'theme_nature_soft', name: 'Yumuşak Doğa', description: 'Rahatlatıcı yeşil.', cost: 3000, type: 'theme', value: 'nature_soft', icon: <Leaf size={20} />, previewColor: '#f0fdf4', unlockLevel: 8 },
-    { id: 'theme_midnight', name: 'Gece', description: 'Derin mavi.', cost: 2500, type: 'theme', value: 'midnight', icon: <Moon className="fill-current" size={20} />, previewColor: '#020617', unlockLevel: 9 },
-    { id: 'theme_neon', name: 'Neon', description: 'Canlı siyah.', cost: 3000, type: 'theme', value: 'neon', icon: <Zap size={20} />, previewColor: '#000000', unlockLevel: 10 },
-    { id: 'theme_ice', name: 'Buzul', description: 'Soğuk camgöbeği.', cost: 4500, type: 'theme', value: 'ice', icon: <CloudSnow size={20} />, previewColor: '#083344', unlockLevel: 11 },
-    { id: 'theme_retro', name: 'Retro', description: 'Eski kağıt.', cost: 4000, type: 'theme', value: 'retro', icon: <Image size={20} />, previewColor: '#fdf6e3', unlockLevel: 12 },
-    { id: 'theme_cyberpunk', name: 'Siber', description: 'Fütüristik sarı.', cost: 5000, type: 'theme', value: 'cyberpunk', icon: <Gamepad2 size={20} />, previewColor: '#18181b', unlockLevel: 14 },
-    { id: 'theme_volcano', name: 'Volkan', description: 'Koyu kırmızı.', cost: 5500, type: 'theme', value: 'volcano', icon: <Flame size={20} />, previewColor: '#1a0505', unlockLevel: 16 },
-    { id: 'theme_galaxy', name: 'Galaksi', description: 'Mor uzay.', cost: 8000, type: 'theme', value: 'galaxy', icon: <Rocket size={20} />, previewColor: '#2e1065', unlockLevel: 18 },
-    { id: 'theme_comic', name: 'Çizgi Roman', description: 'Canlı renkler.', cost: 6500, type: 'theme', value: 'comic', icon: <MessageCircle size={20} />, previewColor: '#ffffff', unlockLevel: 20 },
-    { id: 'theme_royal', name: 'Kraliyet', description: 'Altın ve mor.', cost: 7500, type: 'theme', value: 'royal', icon: <Crown size={20} />, previewColor: '#312e81', unlockLevel: 25 },
-    { id: 'theme_matrix', name: 'Matrix', description: 'Yeşil kod.', cost: 6000, type: 'theme', value: 'matrix', icon: <div className="text-green-500 font-mono font-bold text-xs">101</div>, previewColor: '#001100', unlockLevel: 30 },
-    { id: 'theme_gamer', name: 'Gamer', description: 'RGB siyah.', cost: 9000, type: 'theme', value: 'gamer', icon: <Gamepad2 size={20} className="text-red-500" />, previewColor: '#000000', unlockLevel: 35 },
-    { id: 'theme_luxury', name: 'Lüks', description: 'Zengin altın.', cost: 10000, type: 'theme', value: 'luxury', icon: <Crown size={20} className="text-yellow-500" />, previewColor: '#1a1a1a', unlockLevel: 40 },
+    { id: 'theme_sunset', name: 'Gün Batımı', description: 'Sıcak turuncu.', cost: 1500, type: 'theme', value: 'sunset', icon: <Sunset size={20} />, previewColor: '#431407', unlockLevel: 4 },
+    { id: 'theme_forest', name: 'Orman', description: 'Doğal yeşil.', cost: 2000, type: 'theme', value: 'forest', icon: <TreePine size={20} />, previewColor: '#052e16', unlockLevel: 5 },
+    { id: 'theme_lavender', name: 'Lavanta', description: 'Yumuşak mor.', cost: 2500, type: 'theme', value: 'lavender', icon: <Heart size={20} />, previewColor: '#2e1065', unlockLevel: 7 },
+    { id: 'theme_coffee', name: 'Kahve', description: 'Kahverengi.', cost: 3000, type: 'theme', value: 'coffee', icon: <Coffee size={20} />, previewColor: '#3e2723', unlockLevel: 8 },
+    { id: 'theme_candy', name: 'Şeker', description: 'Tatlı pembe.', cost: 3500, type: 'theme', value: 'candy', icon: <Candy size={20} />, previewColor: '#831843', unlockLevel: 10 },
+    { id: 'theme_nature_soft', name: 'Yumuşak Doğa', description: 'Rahatlatıcı yeşil.', cost: 4000, type: 'theme', value: 'nature_soft', icon: <Leaf size={20} />, previewColor: '#f0fdf4', unlockLevel: 12 },
+    { id: 'theme_midnight', name: 'Gece', description: 'Derin mavi.', cost: 4500, type: 'theme', value: 'midnight', icon: <Moon className="fill-current" size={20} />, previewColor: '#020617', unlockLevel: 15 },
+    { id: 'theme_neon', name: 'Neon', description: 'Canlı siyah.', cost: 5000, type: 'theme', value: 'neon', icon: <Zap size={20} />, previewColor: '#000000', unlockLevel: 18 },
+    { id: 'theme_ice', name: 'Buzul', description: 'Soğuk camgöbeği.', cost: 5500, type: 'theme', value: 'ice', icon: <CloudSnow size={20} />, previewColor: '#083344', unlockLevel: 20 },
+    { id: 'theme_retro', name: 'Retro', description: 'Eski kağıt.', cost: 6000, type: 'theme', value: 'retro', icon: <Image size={20} />, previewColor: '#fdf6e3', unlockLevel: 22 },
+    { id: 'theme_cyberpunk', name: 'Siber', description: 'Fütüristik sarı.', cost: 7000, type: 'theme', value: 'cyberpunk', icon: <Gamepad2 size={20} />, previewColor: '#18181b', unlockLevel: 25 },
+    { id: 'theme_volcano', name: 'Volkan', description: 'Koyu kırmızı.', cost: 7500, type: 'theme', value: 'volcano', icon: <Flame size={20} />, previewColor: '#1a0505', unlockLevel: 30 },
+    { id: 'theme_galaxy', name: 'Galaksi', description: 'Mor uzay.', cost: 8500, type: 'theme', value: 'galaxy', icon: <Rocket size={20} />, previewColor: '#2e1065', unlockLevel: 35 },
+    { id: 'theme_comic', name: 'Çizgi Roman', description: 'Canlı renkler.', cost: 8000, type: 'theme', value: 'comic', icon: <MessageCircle size={20} />, previewColor: '#ffffff', unlockLevel: 40 },
+    { id: 'theme_royal', name: 'Kraliyet', description: 'Altın ve mor.', cost: 10000, type: 'theme', value: 'royal', icon: <Crown size={20} />, previewColor: '#312e81', unlockLevel: 45 },
+    { id: 'theme_matrix', name: 'Matrix', description: 'Yeşil kod.', cost: 9000, type: 'theme', value: 'matrix', icon: <div className="text-green-500 font-mono font-bold text-xs">101</div>, previewColor: '#001100', unlockLevel: 50 },
+    { id: 'theme_gamer', name: 'Gamer', description: 'RGB siyah.', cost: 12000, type: 'theme', value: 'gamer', icon: <Gamepad2 size={20} className="text-red-500" />, previewColor: '#000000', unlockLevel: 60 },
+    { id: 'theme_luxury', name: 'Lüks', description: 'Zengin altın.', cost: 20000, type: 'theme', value: 'luxury', icon: <Crown size={20} className="text-yellow-500" />, previewColor: '#1a1a1a', unlockLevel: 75 },
   ];
 
   const rawFrames: MarketItem[] = FRAMES.map(f => ({
@@ -106,7 +108,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
           id: 'streak_freeze', 
           name: 'Seri Dondurucu', 
           description: 'Bir gün girmeyi unutursan serin bozulmaz.', 
-          cost: 750, 
+          cost: 2500, // Updated Price
           type: 'powerup' as any, 
           value: 'streak_freeze', 
           icon: <Shield size={24} className="text-blue-500" />, 
@@ -116,7 +118,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
           id: 'xp_boost', 
           name: '2x XP (30 Dk)', 
           description: '30 dakika boyunca iki kat puan kazan.', 
-          cost: 500, 
+          cost: 1000, // Updated Price
           type: 'powerup' as any, 
           value: 'xp_boost', 
           icon: <Zap size={24} className="text-yellow-500" />, 
@@ -238,7 +240,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
 
     if (item.type === 'frame') {
         return (
-            <div className="w-full h-16 rounded-lg mb-2 bg-slate-100 dark:bg-slate-800 flex items-center justify-center relative">
+            <div className="w-full h-16 rounded-lg mb-2 flex items-center justify-center relative" style={{backgroundColor: 'var(--color-bg-main)'}}>
                 <div className={`w-10 h-10 rounded-full bg-gray-300 ${item.value} ${isLocked ? 'opacity-50' : ''}`}></div>
                  {isLocked && (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -251,7 +253,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
     
     if (item.type === 'background') {
         return (
-            <div className="w-full h-16 rounded-lg mb-2 bg-slate-100 dark:bg-slate-800 flex items-center justify-center relative">
+            <div className="w-full h-16 rounded-lg mb-2 flex items-center justify-center relative" style={{backgroundColor: 'var(--color-bg-main)'}}>
                  <div className={`w-10 h-10 rounded-full ${item.value} ${isLocked ? 'opacity-50' : ''}`}></div>
                  {isLocked && (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -263,7 +265,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
     }
 
     return (
-        <div className="w-full h-16 rounded-lg mb-2 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+        <div className="w-full h-16 rounded-lg mb-2 flex items-center justify-center text-slate-400" style={{backgroundColor: 'var(--color-bg-main)'}}>
             {item.icon}
         </div>
     )
@@ -296,7 +298,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
              </div>
         </div>
 
-        {/* Tabs Logic same as before ... */}
+        {/* Tabs */}
         <div className="flex border-b px-2 gap-2 shrink-0 overflow-x-auto no-scrollbar" style={{borderColor: 'var(--color-border)'}}>
             <button 
                 onClick={() => setActiveTab('themes')}
@@ -393,7 +395,7 @@ const MarketModal: React.FC<MarketModalProps> = ({ onClose, onThemeChange }) => 
                                         Kullan
                                     </div>
                                 ) : isLevelLocked ? (
-                                     <div className="w-full py-1.5 rounded-lg text-center text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center gap-1">
+                                     <div className="w-full py-1.5 rounded-lg text-center text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1" style={{backgroundColor: 'var(--color-bg-main)'}}>
                                          <Lock size={10} /> Kilitli
                                      </div>
                                 ) : (

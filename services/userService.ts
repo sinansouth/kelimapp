@@ -1,3 +1,4 @@
+
 import { Quest, Badge, GradeLevel, ThemeType } from '../types';
 import { BADGES, UNIT_ASSETS } from '../data/assets';
 import { getVocabulary } from './contentService';
@@ -81,23 +82,52 @@ export interface SRSData {
     nextReview: number;
 }
 
-// --- XP & Leveling Configuration ---
+// --- XP & Leveling Configuration (OPTIMIZED & BALANCED) ---
 export const XP_GAINS = {
-  flashcard_view: 2,
-  flashcard_memorize: 10,
-  quiz_correct: { relaxed: 10, easy: 15, normal: 20, hard: 25, impossible: 30 },
-  perfect_quiz_bonus: 100,
-  matching_pair: 5,
-  maze_level: 50,
-  wordsearch_word: { easy: 10, medium: 15, hard: 20 },
-  daily_quest_easy: 100,
-  daily_quest_medium: 150,
-  daily_quest_hard: 250,
-  daily_quest_completion_bonus: 150,
+  flashcard_view: 2,         // Kart inceleme (Düşük tutuldu, spam engellemek için)
+  flashcard_memorize: 15,    // Ezberleme (Öğrenmeyi teşvik için artırıldı)
+  
+  // Quiz difficulties
+  quiz_correct: { 
+      relaxed: 10, 
+      easy: 12, 
+      normal: 15, 
+      hard: 20, 
+      impossible: 30 
+  },
+  
+  perfect_quiz_bonus: 100,   // Hatasız bitirme bonusu
+  
+  // Games
+  matching_pair: 8,          // Eşleşme başına
+  maze_level: 50,            // Bölüm geçme
+  wordsearch_word: { 
+      easy: 10, 
+      medium: 15, 
+      hard: 25 
+  },
+  
+  // Quests
+  daily_quest_easy: 150,
+  daily_quest_medium: 300,
+  daily_quest_hard: 500,
+  daily_quest_completion_bonus: 150, // 3 görevi de bitirme bonusu
+  
+  // Duel (Database triggers these, but keeping here for reference)
+  duel_win: 50,
+  duel_tie: 25,
+  duel_loss: 10
 };
 
-export const getXPForLevel = (level: number): number => Math.floor(Math.pow(level - 1, 2) * 100);
-export const getLevelForXP = (xp: number): number => Math.floor(Math.sqrt(xp / 100)) + 1;
+// Level Formula: Quadratic curve. 
+// XP = 100 * (Level^2)
+// Level = Sqrt(XP / 100)
+// Lvl 1 = 100 XP
+// Lvl 10 = 10,000 XP
+// Lvl 50 = 250,000 XP
+export const getXPForLevel = (level: number): number => Math.floor(Math.pow(level, 2) * 100);
+
+export const getLevelForXP = (xp: number): number => Math.floor(Math.sqrt(Math.max(0, xp) / 100));
 
 
 // --- TIME UTILITIES ---
@@ -144,7 +174,7 @@ const DEFAULT_PROFILE: UserProfile = {
     purchasedFrames: ['frame_none'],
     purchasedBackgrounds: ['bg_default'],
     inventory: { streakFreezes: 0 },
-    isGuest: true, // FIX: Default to guest to prevent limbo "Online" state
+    isGuest: true,
     friendCode: '',
     isAdmin: false,
     updatedAt: 0
@@ -526,6 +556,30 @@ export const getSRSStatus = () => {
 
 // --- Stats Updates ---
 
+export const updateGameStats = (
+    game: 'matching' | 'maze' | 'wordSearch',
+    score: number
+) => {
+    const stats = getUserStats();
+
+    switch (game) {
+        case 'matching':
+            stats.weekly.matchingBestTime = Math.max(stats.weekly.matchingBestTime || 0, score);
+            stats.matchingAllTimeBest = Math.max(stats.matchingAllTimeBest || 0, score);
+            break;
+        case 'maze':
+            stats.weekly.mazeHighScore = Math.max(stats.weekly.mazeHighScore || 0, score);
+            stats.mazeAllTimeBest = Math.max(stats.mazeAllTimeBest || 0, score);
+            break;
+        case 'wordSearch':
+            stats.weekly.wordSearchHighScore = Math.max(stats.weekly.wordSearchHighScore || 0, score);
+            stats.wordSearchAllTimeBest = Math.max(stats.wordSearchAllTimeBest || 0, score);
+            break;
+    }
+
+    saveUserStats(stats);
+};
+
 export const updateStats = (
     xpToAdd: number,
     context?: { grade?: GradeLevel | null, unitId?: string, action?: string, quizSize?: number }
@@ -614,31 +668,6 @@ export const updateTimeSpent = (minutes: number): Badge[] => {
     return unlockedBadges;
 };
 
-// FIX: Add the missing `updateGameStats` function.
-export const updateGameStats = (
-    game: 'matching' | 'maze' | 'wordSearch',
-    score: number
-) => {
-    const stats = getUserStats();
-
-    switch (game) {
-        case 'matching':
-            stats.weekly.matchingBestTime = Math.max(stats.weekly.matchingBestTime || 0, score);
-            stats.matchingAllTimeBest = Math.max(stats.matchingAllTimeBest || 0, score);
-            break;
-        case 'maze':
-            stats.weekly.mazeHighScore = Math.max(stats.weekly.mazeHighScore || 0, score);
-            stats.mazeAllTimeBest = Math.max(stats.mazeAllTimeBest || 0, score);
-            break;
-        case 'wordSearch':
-            stats.weekly.wordSearchHighScore = Math.max(stats.weekly.wordSearchHighScore || 0, score);
-            stats.wordSearchAllTimeBest = Math.max(stats.wordSearchAllTimeBest || 0, score);
-            break;
-    }
-
-    saveUserStats(stats);
-};
-
 export const getDailyState = () => {
     try {
         const stored = localStorage.getItem(KEYS.DAILY);
@@ -665,13 +694,13 @@ export const getDailyState = () => {
 const generateDailyQuests = (): Quest[] => {
     const easyQuests: { type: Quest['type'], target: number, reward: number, desc: string }[] = [
         { type: 'view_cards', target: 20, reward: XP_GAINS.daily_quest_easy, desc: '20 Kelime Kartı İncele' },
-        { type: 'earn_xp', target: 150, reward: XP_GAINS.daily_quest_easy, desc: '150 XP Kazan' },
+        { type: 'earn_xp', target: 200, reward: XP_GAINS.daily_quest_easy, desc: '200 XP Kazan' },
         { type: 'study_time', target: 10, reward: XP_GAINS.daily_quest_easy, desc: '10 Dakika Çalış' }
     ];
 
     const mediumQuests: { type: Quest['type'], target: number, reward: number, desc: string }[] = [
         { type: 'finish_quiz', target: 2, reward: XP_GAINS.daily_quest_medium, desc: '2 Test Bitir' },
-        { type: 'correct_answers', target: 25, reward: XP_GAINS.daily_quest_medium, desc: '25 Doğru Cevap Ver' },
+        { type: 'correct_answers', target: 30, reward: XP_GAINS.daily_quest_medium, desc: '30 Doğru Cevap Ver' },
         { type: 'play_matching', target: 1, reward: XP_GAINS.daily_quest_medium, desc: 'Eşleştirme Oyunu Oyna' },
     ];
 
@@ -741,6 +770,7 @@ export const updateQuestProgress = (type: string, amount: number) => {
 
     let questsCompletedAfter = daily.quests.filter((q: Quest) => q.isCompleted).length;
 
+    // BONUS FOR COMPLETING ALL QUESTS (Updated logic)
     if (questsCompletedAfter === 3 && questsCompletedBefore < 3) {
         updateStats(XP_GAINS.daily_quest_completion_bonus);
     }
@@ -805,7 +835,8 @@ export const buyItem = (itemId: 'streak_freeze' | 'xp_boost', cost: number): boo
             profile.inventory.streakFreezes = (profile.inventory.streakFreezes || 0) + 1;
             saveUserProfile(profile);
         } else if (itemId === 'xp_boost') {
-            stats.xpBoostEndTime = Date.now() + (30 * 60 * 1000); // 30 minutes
+            // Set for 30 minutes from now (UPDATED)
+            stats.xpBoostEndTime = Date.now() + (30 * 60 * 1000); 
         }
 
         saveUserStats(stats);
@@ -861,7 +892,7 @@ export const getRandomWordForGrade = async (grade: GradeLevel | string | null): 
     const vocabulary = await getVocabulary();
     if (Object.keys(vocabulary).length === 0) return null;
 
-    const units = UNIT_ASSETS[grade];
+    const units = UNIT_ASSETS[grade as GradeLevel];
     if (!units || units.length === 0) return null;
 
     const validUnits = units.filter(u => vocabulary[u.id] && vocabulary[u.id].length > 0);
@@ -916,14 +947,11 @@ export const markTutorialAsSeen = () => {
 export const clearLocalUserData = () => {
     localStorage.removeItem(KEYS.PROFILE);
     localStorage.removeItem(KEYS.STATS);
-    // Keep settings so theme isn't lost on logout
-    // localStorage.removeItem(KEYS.SETTINGS);
     localStorage.removeItem(KEYS.MEMORIZED);
     localStorage.removeItem(KEYS.BOOKMARKS);
     localStorage.removeItem(KEYS.SRS);
     localStorage.removeItem(KEYS.SRS_LEGACY);
     
-    // Set default theme for guest
     const settings = getAppSettings();
     settings.theme = 'dark';
     saveAppSettings(settings);

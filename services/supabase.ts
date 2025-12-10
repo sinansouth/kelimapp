@@ -48,24 +48,38 @@ export const getCurrentUser = async () => {
 
 // --- CUMULATIVE STATS (for weekly/all-time leaderboards) ---
 export const updateCumulativeStats = async (action_type: 'quiz_correct' | 'quiz_wrong' | 'card_view', amount: number) => {
+    // Check if user is logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
     try {
         const { error } = await supabase.rpc('update_cumulative_stats', { 
             p_action_type: action_type, 
             p_amount: amount 
         });
-        if (error) console.error(`Error updating cumulative stat ${action_type}:`, error);
+        
+        if (error) {
+            console.error(`Error updating cumulative stat ${action_type}:`, error.message || error);
+        }
     } catch (e) {
         console.error(`RPC call failed for update_cumulative_stats:`, e);
     }
 };
 
 export const updateGameScore = async (game_type: 'matching' | 'maze' | 'wordSearch', new_score: number) => {
+    // Check if user is logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
     try {
         const { error } = await supabase.rpc('update_game_score', { 
             p_game_type: game_type, 
             p_new_score: new_score 
         });
-        if (error) console.error(`Error updating game score for ${game_type}:`, error);
+        
+        if (error) {
+            console.error(`Error updating game score for ${game_type}:`, error.message || error);
+        }
     } catch (e) {
         console.error(`RPC call failed for update_game_score:`, e);
     }
@@ -576,7 +590,17 @@ export const toggleAdminStatus = async (uid: string, status: boolean) => {
     await supabase.from('profiles').update({ role: status ? 'admin' : 'user' }).eq('id', uid);
 };
 
-// --- FEEDBACK SYSTEM (ADMIN) ---
+// --- FEEDBACK SYSTEM ---
+
+export const sendFeedback = async (type: string, message: string, contact: string) => {
+    const { error } = await supabase.from('feedback').insert({
+        type,
+        message,
+        contact,
+        created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+};
 
 export const getAllFeedback = async () => {
     try {
@@ -657,6 +681,308 @@ export const updateGlobalSettings = async (key: string, value: any) => {
     if (error) throw error;
 };
 
+// --- CHALLENGES ---
+
+export const getChallenge = async (id: string) => {
+    try {
+        const { data, error } = await supabase
+            .from('challenges')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
+        if (error) throw error;
+        return transformChallengeData(data);
+    } catch (e) {
+        console.error("Error fetching challenge:", e);
+        return null;
+    }
+};
+
+export const getOpenChallenges = async (userId: string) => {
+    try {
+        const { data, error } = await supabase
+            .from('challenges')
+            .select('*')
+            .eq('status', 'waiting')
+            .or(`type.eq.public,and(type.eq.friend,target_friend_id.eq.${userId})`)
+            .neq('creator_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return (data || []).map(transformChallengeData);
+    } catch (e) {
+        console.error("Error fetching open challenges:", e);
+        return [];
+    }
+};
+
+export const getPastChallenges = async (userId: string) => {
+    try {
+        const { data, error } = await supabase
+            .from('challenges')
+            .select('*')
+            .or(`creator_id.eq.${userId},opponent_id.eq.${userId}`)
+            .eq('status', 'completed')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) throw error;
+        return (data || []).map(transformChallengeData);
+    } catch (e) {
+        console.error("Error fetching past challenges:", e);
+        return [];
+    }
+};
+
+export const createChallenge = async (
+    creatorName: string, 
+    creatorScore: number, 
+    wordIndices: number[], 
+    unitId: string, 
+    difficulty: string, 
+    wordCount: number, 
+    type: string, 
+    targetFriendId?: string
+) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const payload: any = {
+        creator_id: user.id,
+        creator_name: creatorName,
+        creator_score: creatorScore,
+        word_indices: wordIndices,
+        unit_id: unitId,
+        difficulty,
+        word_count: wordCount,
+        type,
+        status: 'waiting',
+        created_at: new Date().toISOString()
+    };
+
+    if (targetFriendId) {
+        payload.target_friend_id = targetFriendId;
+    }
+
+    const { data, error } = await supabase
+        .from('challenges')
+        .insert(payload)
+        .select('id')
+        .single();
+
+    if (error) throw error;
+    return data.id;
+};
+
+export const completeChallenge = async (challengeId: string, playerName: string, score: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const { data: challenge, error: fetchError } = await supabase
+        .from('challenges')
+        .select('*')
+        .eq('id', challengeId)
+        .single();
+        
+    if (fetchError || !challenge) throw new Error("Challenge not found");
+    if (challenge.status !== 'waiting') throw new Error("Challenge already completed");
+
+    let winnerId = 'tie';
+    if (challenge.creator_score > score) winnerId = challenge.creator_id;
+    else if (score > challenge.creator_score) winnerId = user.id;
+
+    const updateData = {
+        opponent_id: user.id,
+        opponent_name: playerName,
+        opponent_score: score,
+        winner_id: winnerId,
+        status: 'completed'
+    };
+
+    const { error } = await supabase
+        .from('challenges')
+        .update(updateData)
+        .eq('id', challengeId);
+
+    if (error) throw error;
+};
+
+const transformChallengeData = (data: any): Challenge => {
+    return {
+        id: data.id,
+        type: data.type,
+        creatorId: data.creator_id,
+        creatorName: data.creator_name,
+        creatorScore: data.creator_score,
+        wordIndices: data.word_indices,
+        unitId: data.unit_id,
+        unitName: data.unit_name, 
+        difficulty: data.difficulty,
+        wordCount: data.word_count,
+        targetFriendId: data.target_friend_id,
+        opponentId: data.opponent_id,
+        opponentName: data.opponent_name,
+        opponentScore: data.opponent_score,
+        status: data.status,
+        winnerId: data.winner_id,
+        createdAt: new Date(data.created_at).getTime()
+    };
+};
+
+// --- LEADERBOARD ---
+
+export const getLeaderboard = async (grade: string, mode: string): Promise<LeaderboardEntry[]> => {
+    try {
+        const { data, error } = await supabase.from('profiles').select('id, username, grade, avatar, stats, inventory, theme');
+        
+        if (error) throw error;
+
+        let entries = (data || []).map((user: any) => {
+            const stats = user.stats || {};
+            const weekly = stats.weekly || {};
+            let value = 0;
+            
+            if (mode === 'xp') value = stats.xp || 0;
+            else if (mode === 'quiz') value = weekly.quizCorrect || 0;
+            else if (mode === 'flashcard') value = weekly.cardsViewed || 0;
+            else if (mode === 'matching') value = weekly.matchingBestTime || 0;
+            else if (mode === 'maze') value = weekly.mazeHighScore || 0;
+            else if (mode === 'wordSearch') value = weekly.wordSearchHighScore || 0;
+            else if (mode === 'duel') value = weekly.duelPoints || 0;
+
+            return {
+                uid: user.id,
+                name: user.username,
+                grade: user.grade,
+                xp: stats.xp || 0,
+                level: stats.level || 1,
+                streak: stats.streak || 0,
+                avatar: user.avatar,
+                frame: user.inventory?.equipped_frame || 'frame_none',
+                background: user.inventory?.equipped_background || 'bg_default',
+                theme: user.theme || 'dark',
+                value: value,
+                duelWins: weekly.duelWins || 0,
+                duelLosses: weekly.duelLosses || 0,
+                duelDraws: weekly.duelDraws || 0,
+                duelPoints: weekly.duelPoints || 0
+            } as LeaderboardEntry;
+        });
+
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 50);
+    } catch (e) {
+        console.error("Leaderboard fetch error:", e);
+        return [];
+    }
+};
+
+// --- FRIENDS ---
+
+export const getFriends = async (userId: string): Promise<LeaderboardEntry[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('friends')
+            .select('friend_id, profiles!friend_id(id, username, grade, avatar, stats, inventory, theme)')
+            .eq('user_id', userId);
+
+        if (error) throw error;
+
+        return (data || []).map((f: any) => {
+            const p = f.profiles;
+            return {
+                uid: p.id,
+                name: p.username,
+                grade: p.grade,
+                xp: p.stats?.xp || 0,
+                level: p.stats?.level || 1,
+                streak: p.stats?.streak || 0,
+                avatar: p.avatar,
+                frame: p.inventory?.equipped_frame || 'frame_none',
+                background: p.inventory?.equipped_background || 'bg_default',
+                theme: p.theme || 'dark',
+                value: p.stats?.xp || 0
+            } as LeaderboardEntry;
+        });
+    } catch (e) {
+        console.error("Error fetching friends:", e);
+        return [];
+    }
+};
+
+export const addFriend = async (userId: string, friendCode: string) => {
+    const { data: friend, error: searchError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .eq('friend_code', friendCode)
+        .single();
+
+    if (searchError || !friend) throw new Error("Kullanıcı bulunamadı.");
+    if (friend.id === userId) throw new Error("Kendini ekleyemezsin.");
+
+    const { data: existing } = await supabase
+        .from('friends')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('friend_id', friend.id)
+        .single();
+
+    if (existing) throw new Error("Zaten arkadaşsınız.");
+
+    const { error: insertError } = await supabase
+        .from('friends')
+        .insert([{ user_id: userId, friend_id: friend.id }]);
+
+    if (insertError) throw insertError;
+    return friend.username;
+};
+
+// --- PUBLIC PROFILE ---
+
+export const getPublicUserProfile = async (userId: string) => {
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, grade, avatar, stats, inventory, theme')
+            .eq('id', userId)
+            .single();
+
+        if (error || !data) return null;
+
+        const stats = data.stats || {};
+        const inventory = data.inventory || {};
+        const weekly = stats.weekly || {};
+
+        return {
+            uid: data.id,
+            name: data.username,
+            grade: data.grade,
+            avatar: data.avatar,
+            level: stats.level || 1,
+            xp: stats.xp || 0,
+            streak: stats.streak || 0,
+            totalTimeSpent: stats.totalTimeSpent || 0,
+            frame: inventory.equipped_frame || 'frame_none',
+            background: inventory.equipped_background || 'bg_default',
+            theme: data.theme || 'dark',
+            badges: stats.badges || [],
+            duelWins: weekly.duelWins || stats.duelWins || 0,
+            duelLosses: weekly.duelLosses || stats.duelLosses || 0,
+            duelDraws: weekly.duelDraws || stats.duelDraws || 0,
+            duelPoints: weekly.duelPoints || stats.duelPoints || 0,
+            quizCorrect: stats.quizCorrect || 0,
+            quizWrong: stats.quizWrong || 0,
+            matchingBestTime: weekly.matchingBestTime || stats.matchingAllTimeBest || 0,
+            mazeHighScore: weekly.mazeHighScore || stats.mazeAllTimeBest || 0,
+            wordSearchHighScore: weekly.wordSearchHighScore || stats.wordSearchAllTimeBest || 0
+        };
+    } catch (e) {
+        console.error("Error fetching public profile:", e);
+        return null;
+    }
+};
+
 // --- TOURNAMENTS ---
 
 export const getTournaments = async (): Promise<Tournament[]> => {
@@ -721,267 +1047,4 @@ export const submitTournamentScore = async (tournamentId: string, matchId: strin
 export const forfeitTournamentMatch = async (tournamentId: string, matchId: string) => {
     // This is more complex and would need a dedicated RPC function. For now, we submit a score of -1.
     await submitTournamentScore(tournamentId, matchId, -1, 9999);
-};
-
-
-// --- FEEDBACK ---
-
-export const sendFeedback = async (type: 'bug' | 'suggestion', message: string, contact: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from('feedback').insert({
-        type,
-        message,
-        contact,
-        user_id: user?.id || 'anonymous'
-    });
-};
-
-// --- LEADERBOARD ---
-
-export const getLeaderboard = async (grade: string, mode: 'xp' | 'quiz' | 'flashcard' | 'matching' | 'maze' | 'wordSearch' | 'duel'): Promise<LeaderboardEntry[]> => {
-    const { data, error } = await supabase.rpc('get_leaderboard', { p_mode: mode, p_limit: 50 });
-    if (error) {
-        console.error("Leaderboard RPC error:", error);
-        return [];
-    }
-    return data || [];
-};
-
-// --- PUBLIC PROFILE FETCHING ---
-
-export const getPublicUserProfile = async (uid: string) => {
-    try {
-        const result = await withTimeout(supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', uid)
-            .single(), 4000);
-
-        if (!result || (result as any).error) return null;
-        const data = (result as any).data;
-
-        const stats = data.stats || {};
-        const weekly = stats.weekly || {};
-
-        return {
-            uid: data.id,
-            name: data.username,
-            grade: data.grade,
-            xp: stats.xp || 0,
-            level: stats.level || 1,
-            streak: stats.streak || 0,
-            avatar: data.avatar,
-            frame: data.inventory?.equipped_frame || 'frame_none',
-            background: data.inventory?.equipped_background || 'bg_default',
-            theme: data.theme || 'dark',
-            badges: stats.badges || [],
-            totalTimeSpent: stats.totalTimeSpent || 0,
-            quizCorrect: stats.quizCorrect || 0, // Lifetime
-            quizWrong: stats.quizWrong || 0,
-            
-            // Lifetime Duel stats for profile
-            duelPoints: stats.duelPoints || 0,
-            duelWins: stats.duelWins || 0,
-            duelLosses: stats.duelLosses || 0,
-            duelDraws: stats.duelDraws || 0,
-            
-            // Lifetime Game High Scores (use root level if available, fallback to weekly if not yet migrated)
-            matchingBestTime: stats.matchingAllTimeBest || weekly.matchingBestTime || 0,
-            mazeHighScore: stats.mazeAllTimeBest || weekly.mazeHighScore || 0,
-            wordSearchHighScore: stats.wordSearchAllTimeBest || weekly.wordSearchHighScore || 0
-        };
-    } catch (e) {
-        return null;
-    }
-};
-
-// --- FRIEND SYSTEM ---
-
-export const addFriend = async (currentUid: string, friendCode: string) => {
-    const { data, error } = await supabase.rpc('add_friend_secure', { p_friend_code: friendCode });
-    if (error) throw new Error(error.message);
-    return data;
-};
-
-export const getFriends = async (uid: string): Promise<LeaderboardEntry[]> => {
-    const result = await withTimeout(supabase.from('profiles').select('friends').eq('id', uid).single(), 4000);
-    const data = (result as any)?.data;
-    
-    if (!data || !data.friends || data.friends.length === 0) return [];
-
-    const friendIds = data.friends;
-    const friendsResult = await withTimeout(supabase.from('profiles').select('*').in('id', friendIds), 5000);
-    const friendsData = (friendsResult as any)?.data;
-
-    if (!friendsData) return [];
-
-    return friendsData.map((d: any) => ({
-        uid: d.id,
-        name: d.username,
-        grade: d.grade,
-        xp: d.stats?.xp || 0,
-        level: d.stats?.level || 1,
-        streak: d.stats?.streak || 0,
-        avatar: d.avatar,
-        frame: d.inventory?.equipped_frame,
-        background: d.inventory?.equipped_background,
-        theme: d.theme || 'dark',
-        value: d.stats?.xp || 0
-    }));
-};
-
-// --- CHALLENGE SYSTEM ---
-
-const generateShortId = (length: number = 6): string => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-};
-
-export const createChallenge = async (
-    creatorName: string,
-    creatorScore: number,
-    wordIndices: number[],
-    unitId: string,
-    difficulty: QuizDifficulty,
-    wordCount: number,
-    type: 'public' | 'private' | 'friend' = 'private',
-    targetFriendId?: string
-): Promise<string> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("User not logged in");
-
-    const challengeId = generateShortId();
-
-    const profile = getUserProfile();
-    const unitDef = Object.values(UNIT_ASSETS).flat().find(u => u.id === unitId);
-
-    const challengeData = {
-        id: challengeId,
-        creator_id: user.id,
-        creator_name: creatorName,
-        creator_score: creatorScore,
-        status: 'waiting',
-        data: {
-            wordIndices,
-            unitId,
-            unitName: unitDef?.title || 'Bilinmeyen Ünite',
-            grade: profile.grade,
-            difficulty,
-            wordCount,
-            type,
-            targetFriendId,
-        }
-    };
-
-    const { error } = await supabase.from('challenges').insert(challengeData);
-    
-    if (error) {
-        if (error.code === '23505') { 
-            return createChallenge(creatorName, creatorScore, wordIndices, unitId, difficulty, wordCount, type, targetFriendId);
-        }
-        throw error;
-    }
-    
-    return challengeId;
-};
-
-export const getChallenge = async (challengeId: string): Promise<Challenge | null> => {
-    try {
-        const result = await withTimeout(supabase.from('challenges').select('*').eq('id', challengeId).single(), 3000);
-        if (!result || (result as any).error) return null;
-        const data = (result as any).data;
-
-        return {
-            id: data.id,
-            creatorId: data.creator_id,
-            creatorName: data.creator_name,
-            creatorScore: data.creator_score,
-            status: data.status,
-            createdAt: new Date(data.created_at).getTime(),
-            ...data.data
-        } as Challenge;
-    } catch (e) {
-        return null;
-    }
-};
-
-export const getOpenChallenges = async (currentUid: string): Promise<Challenge[]> => {
-    try {
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        
-        const result = await withTimeout(
-            supabase.from('challenges')
-                .select('*')
-                .eq('status', 'waiting')
-                .gt('created_at', oneDayAgo)
-                .order('created_at', { ascending: false })
-                .limit(20), 
-            3000
-        );
-        
-        if (!result || (result as any).error) return [];
-        const data = (result as any).data;
-
-        return data.map((d: any) => ({
-            id: d.id,
-            creatorId: d.creator_id,
-            creatorName: d.creator_name,
-            creatorScore: d.creator_score,
-            status: d.status,
-            createdAt: new Date(d.created_at).getTime(),
-            ...d.data
-        })).filter((c: Challenge) =>
-            c.creatorId !== currentUid &&
-            (c.type === 'public' || (c.type === 'friend' && c.targetFriendId === currentUid))
-        );
-    } catch (e) {
-        return [];
-    }
-};
-
-export const getPastChallenges = async (currentUid: string): Promise<Challenge[]> => {
-    try {
-        const result = await withTimeout(supabase.from('challenges')
-            .select('*')
-            .or(`creator_id.eq.${currentUid},opponent_id.eq.${currentUid}`)
-            .eq('status', 'completed')
-            .order('created_at', { ascending: false })
-            .limit(20), 5000);
-
-        if (!result || (result as any).error) return [];
-        const data = (result as any).data;
-
-        return data.map((d: any) => ({
-            id: d.id,
-            creatorId: d.creator_id,
-            creatorName: d.creator_name,
-            creatorScore: d.creator_score,
-            opponentId: d.opponent_id,
-            opponentName: d.opponent_name,
-            opponentScore: d.opponent_score,
-            winnerId: d.winner_id,
-            status: d.status,
-            createdAt: new Date(d.created_at).getTime(),
-            ...d.data
-        })) as Challenge[];
-    } catch (e) {
-        return [];
-    }
-};
-
-export const completeChallenge = async (challengeId: string, opponentName: string, opponentScore: number) => {
-    const { error } = await supabase.rpc('finish_duel', {
-        p_challenge_id: challengeId,
-        p_opponent_name: opponentName,
-        p_opponent_score: opponentScore
-    });
-
-    if (error) {
-        console.error("Error completing challenge via RPC:", error);
-        throw error;
-    }
 };

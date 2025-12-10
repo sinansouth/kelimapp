@@ -90,6 +90,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
           backgroundColor: themeConfig.bgCard,
           color: themeConfig.textMain,
           borderColor: themeConfig.border,
+          fontFamily: themeConfig.fontFamily // Apply specific font
       };
   };
 
@@ -117,7 +118,8 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
       <div className="w-full max-w-md rounded-3xl shadow-2xl border overflow-hidden flex flex-col h-[85vh] animate-in zoom-in-95 duration-200"
            style={{
                backgroundColor: modalThemeStyle.bgCard, 
-               borderColor: modalThemeStyle.border
+               borderColor: modalThemeStyle.border,
+               fontFamily: modalThemeStyle.fontFamily
            }}>
         
         {/* Header */}
@@ -179,6 +181,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, currentUse
                             
                             const isCurrentUser = currentUserId ? user.uid === currentUserId : user.name === currentUserProfile.name;
                             
+                            // Determine row style: use user's theme if available
                             const rowThemeKey = isCurrentUser ? myTheme : user.theme;
                             const rowStyle = getUserRowStyle(rowThemeKey);
                             

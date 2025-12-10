@@ -25,12 +25,16 @@
               sans: ['var(--font-theme)', 'Inter', 'sans-serif'],
             },
             animation: {
-              'spin-slow': 'spin 3s linear infinite',
+              'spin-slow': 'spin 4s linear infinite',
               'bounce-subtle': 'bounce 2s infinite',
               'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'shimmer': 'shimmer 2s linear infinite',
               'border-spin': 'border-spin 4s linear infinite',
-              'rainbow': 'rainbow 3s linear infinite',
+              'rainbow': 'rainbow 2s linear infinite',
+              'neon-pulse': 'neon-pulse 2s ease-in-out infinite alternate',
+              'glowing': 'glowing 10s linear infinite',
+              'fire': 'fire 0.5s ease-in-out infinite alternate',
+              'glitch': 'glitch 1s linear infinite',
             },
             keyframes: {
               shimmer: {
@@ -41,15 +45,33 @@
                 '100%': { transform: 'rotate(360deg)' }
               },
               rainbow: {
-                '0%': { filter: 'hue-rotate(0deg)' },
-                '100%': { filter: 'hue-rotate(360deg)' }
+                '0%': { backgroundPosition: '0% 50%' },
+                '100%': { backgroundPosition: '100% 50%' }
+              },
+              'neon-pulse': {
+                '0%, 100%': { boxShadow: '0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--color-primary), 0 0 30px var(--color-primary)' },
+                '50%': { boxShadow: '0 0 2px #fff, 0 0 5px #fff, 0 0 10px var(--color-primary), 0 0 15px var(--color-primary)' }
+              },
+              glowing: {
+                 '0%': { backgroundPosition: '0 0' },
+                 '50%': { backgroundPosition: '400% 0' },
+                 '100%': { backgroundPosition: '0 0' }
+              },
+              fire: {
+                 '0%': { boxShadow: '0 -5px 10px rgba(255, 69, 0, 0.5), 0 -10px 20px rgba(255, 0, 0, 0.3)' },
+                 '100%': { boxShadow: '0 -10px 20px rgba(255, 140, 0, 0.8), 0 -20px 40px rgba(255, 69, 0, 0.6)' }
+              },
+              glitch: {
+                '2%, 64%': { transform: 'translate(2px,0) skew(0deg)' },
+                '4%, 60%': { transform: 'translate(-2px,0) skew(0deg)' },
+                '62%': { transform: 'translate(0,0) skew(5deg)' }
               }
             }
           }
         }
       }
     </script>
-    <!-- Fonts: Inter, Merriweather, Courier Prime, Fredoka, Orbitron, Bangers (Removed), Playfair Display, Patrick Hand, Russo One -->
+    <!-- Fonts: Inter, Merriweather, Courier Prime, Fredoka, Orbitron, Playfair Display, Patrick Hand, Russo One -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Merriweather:wght@400;700&family=Courier+Prime:wght@400;700&family=Fredoka:wght@400;600&family=Orbitron:wght@400;700&family=Playfair+Display:wght@400;700&family=Patrick+Hand&family=Russo+One&display=swap" rel="stylesheet">
     
     <style>
@@ -65,97 +87,81 @@
         user-select: none;
       }
       
-      /* --- Advanced Animations for Frames/Backgrounds --- */
+      /* --- Enhanced Frames CSS (CSS Mask Technique) --- */
+      
+      /* Rainbow Frame */
       .frame-rainbow {
-        border-radius: 9999px;
-        padding: 4px;
-        background: conic-gradient(red, orange, yellow, green, blue, indigo, violet, red);
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
-        animation: rainbow-spin 4s linear infinite;
-      }
-      @keyframes rainbow-spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+        position: relative;
+        z-index: 0;
+        border-radius: 50%;
+        /* Creates the spinning gradient */
+        background: conic-gradient(red, orange, yellow, lime, cyan, blue, magenta, red);
+        animation: spin-slow 4s linear infinite;
+        
+        /* This masks the center to make it transparent, showing the avatar */
+        -webkit-mask: radial-gradient(transparent 64%, black 65%);
+        mask: radial-gradient(transparent 64%, black 65%);
+        
+        /* Ensure it takes up space */
+        width: 100%;
+        height: 100%;
       }
 
+      /* RGB Gamer Frame */
       .frame-rgb {
-          border-radius: 9999px;
-          padding: 4px;
-          background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
-          background-size: 400%;
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          animation: glowing 10s linear infinite;
-      }
-      @keyframes glowing {
-          0% { background-position: 0 0; }
-          50% { background-position: 400% 0; }
-          100% { background-position: 0 0; }
+        position: relative;
+        border-radius: 50%;
+        background: conic-gradient(#ff0000, #00ff00, #0000ff, #ff0000);
+        animation: spin-slow 2s linear infinite;
+        
+        /* Masking center */
+        -webkit-mask: radial-gradient(transparent 62%, black 63%);
+        mask: radial-gradient(transparent 62%, black 63%);
+        
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.5); /* Glow effect is handled by parent or container mostly */
+        width: 100%;
+        height: 100%;
       }
 
+      /* Fire Frame */
       .frame-fire {
-          box-shadow: 0 0 10px #f00, 0 0 20px #f00, 0 0 30px #f00, 0 0 40px #ff00de;
-          animation: fire-pulse 1.5s infinite alternate;
-      }
-      @keyframes fire-pulse {
-          from { box-shadow: 0 0 5px #ff4500, 0 0 10px #ff4500; }
-          to { box-shadow: 0 0 15px #ff8c00, 0 0 25px #ff8c00; }
+          border: 4px solid #ff4500;
+          box-shadow: 0 0 10px #f00, 0 0 20px #f00;
+          animation: fire 0.8s infinite alternate;
       }
       
+      /* Neon Frame */
       .frame-neon {
-          box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #0ff, 0 0 30px #0ff, 0 0 40px #0ff;
-          animation: neon-flicker 2s infinite alternate;
-      }
-      @keyframes neon-flicker {
-          0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
-          20%, 24%, 55% { opacity: 0.9; }
+          border: 3px solid #fff;
+          animation: neon-pulse 1.5s infinite alternate;
+          box-shadow: 0 0 10px var(--color-primary);
       }
       
+      /* Ghost Frame */
       .frame-ghost {
         opacity: 0.7;
         box-shadow: 0 0 15px rgba(255,255,255,0.5);
-        animation: float-ghost 3s ease-in-out infinite;
-      }
-      @keyframes float-ghost {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
+        animation: float 3s ease-in-out infinite;
+        border: 2px solid rgba(255,255,255,0.3);
       }
 
+      /* Lightning Frame */
       .frame-lightning {
           border: 3px solid #fbbf24;
-          box-shadow: 0 0 10px #fbbf24;
-          animation: lightning-flash 2s infinite;
-      }
-      @keyframes lightning-flash {
-          0%, 90%, 100% { box-shadow: 0 0 10px #fbbf24; border-color: #fbbf24; }
-          92%, 96% { box-shadow: 0 0 25px #fff, 0 0 40px #fbbf24; border-color: #fff; }
+          box-shadow: 0 0 15px #fbbf24;
+          animation: pulse-fast 0.5s infinite;
       }
 
-      @keyframes border-spin {
-        100% { transform: rotate(360deg); }
+      /* Glitch Frame */
+      .frame-glitch {
+        border: 2px solid #00ff00;
+        box-shadow: 2px 2px 0px #ff0000;
+        animation: glitch 2s infinite;
       }
       
       @keyframes float {
         0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
-      .animate-float {
-        animation: float 3s ease-in-out infinite;
-      }
-
-      @keyframes glitch {
-        0% { transform: translate(0); }
-        20% { transform: translate(-2px, 2px); }
-        40% { transform: translate(-2px, -2px); }
-        60% { transform: translate(2px, 2px); }
-        80% { transform: translate(2px, -2px); }
-        100% { transform: translate(0); }
-      }
-      .animate-glitch:hover {
-        animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+        50% { transform: translateY(-5px); }
       }
 
       /* Splash Screen */

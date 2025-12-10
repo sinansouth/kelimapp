@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
 import { Ghost, Bot, CheckCircle, XCircle, ArrowRight, MapPin, ChevronUp, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, RotateCcw } from 'lucide-react';
@@ -512,7 +514,7 @@ const MazeGame: React.FC<MazeGameProps> = ({ words, onFinish, onBack, onCelebrat
       const newScore = score + 50;
       setScore(newScore);
 
-      // --- IMMEDIATE XP UPDATE START ---
+      // --- IMMEDIATE XP UPDATE START (Centralized Value) ---
       const xpGained = XP_GAINS.maze_level;
       updateStats(xpGained, { grade });
       updateQuestProgress('earn_xp', xpGained);

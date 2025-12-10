@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
 import { CheckCircle, RotateCcw, ArrowRight, HelpCircle, Search, Grid3X3, Home, Play } from 'lucide-react';
@@ -251,7 +253,7 @@ const WordSearchGame: React.FC<WordSearchGameProps> = ({ words, onFinish, onBack
             const points = getSettings(difficulty).multiplier;
             setScore(prev => prev + points);
 
-            // --- IMMEDIATE XP UPDATE START ---
+            // --- IMMEDIATE XP UPDATE START (Centralized Value) ---
             const xpGained = XP_GAINS.wordsearch_word[difficulty];
             updateStats(xpGained, { grade });
             updateQuestProgress('earn_xp', xpGained);
@@ -286,7 +288,6 @@ const WordSearchGame: React.FC<WordSearchGameProps> = ({ words, onFinish, onBack
         }, 1000);
     };
     
-    // FIX: Fix 'Cannot find name' error by defining highlightedCells.
     const highlightedCells = new Set<string>();
     if (selection.start && selection.end) {
         const cells = getCellsBetween(selection.start, selection.end);

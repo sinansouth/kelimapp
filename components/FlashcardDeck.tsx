@@ -1,3 +1,6 @@
+
+
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Bookmark, CheckCircle, XCircle, ThumbsUp, Play, Pause, Loader2 } from 'lucide-react';
@@ -106,7 +109,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
       // Call RPC to update weekly/lifetime stats
       updateCumulativeStats('card_view', 1);
 
-      // Call local service to update XP, quests, badges, etc.
+      // Call local service to update XP using centralized XP_GAINS
       const newBadges = updateStats(XP_GAINS.flashcard_view, { grade, unitId: wordId });
       updateQuestProgress('view_cards', 1);
       
@@ -223,6 +226,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
         newMemorized.add(uniqueId);
         addToMemorized(uniqueId);
         
+        // Use centralized XP_GAINS
         const newBadges = updateStats(XP_GAINS.flashcard_memorize, { grade, unitId: uniqueId });
         if (newBadges.length > 0 && onBadgeUnlock) {
              newBadges.forEach(b => onBadgeUnlock(b));
@@ -290,9 +294,11 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
               addToMemorized(wordId);
               setMemorized(prev => new Set(prev).add(wordId));
           }
+          // Use centralized XP_GAINS
           updateStats(XP_GAINS.flashcard_memorize, { grade, unitId: wordId });
           triggerFeedback('success', `Harika! Sonraki Kutuya Geçti (+${XP_GAINS.flashcard_memorize} XP)`);
       } else {
+          // Use centralized XP_GAINS
           updateStats(XP_GAINS.flashcard_view, { grade, unitId: wordId });
           triggerFeedback('remove-memorized', `Kutu 1'e Döndü (+${XP_GAINS.flashcard_view} XP)`);
       }
@@ -454,13 +460,17 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
     <div className="flex flex-col items-center w-full max-w-3xl lg:max-w-4xl mx-auto h-full px-4 py-2">
       
       <div className="w-full flex justify-between items-center mb-4 shrink-0">
-        <div className="font-bold text-xs uppercase tracking-wider text-slate-400">
+        <div className="font-bold text-xs uppercase tracking-wider" style={{color: 'var(--color-text-muted)'}}>
              {currentIndex + 1} / {activeDeck.length}
         </div>
         <div className="flex items-center gap-2">
            <button 
              onClick={toggleAutoPlay}
-             className={`p-2.5 rounded-xl transition-all active:scale-95 flex items-center gap-1 ${isAutoPlay ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+             className={`p-2.5 rounded-xl transition-all active:scale-95 flex items-center gap-1`}
+             style={{
+                 backgroundColor: isAutoPlay ? 'rgba(var(--color-primary-rgb), 0.1)' : 'transparent',
+                 color: isAutoPlay ? 'var(--color-primary)' : 'var(--color-text-muted)'
+             }}
              title="Otomatik Oynat"
            >
               {isAutoPlay ? <Pause size={20} className="fill-current" /> : <Play size={20} className="fill-current" />}
@@ -470,23 +480,31 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
             <>
               <button
                 onClick={() => setFilter('bookmarks')}
-                className={`p-2.5 rounded-xl transition-all active:scale-95 ${filterMode === 'bookmarks' ? 'bg-yellow-100 text-yellow-700' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`p-2.5 rounded-xl transition-all active:scale-95`}
+                style={{
+                    backgroundColor: filterMode === 'bookmarks' ? 'rgba(234, 179, 8, 0.1)' : 'transparent',
+                    color: filterMode === 'bookmarks' ? '#eab308' : 'var(--color-text-muted)'
+                }}
               >
                 <Bookmark size={20} className={filterMode === 'bookmarks' ? 'fill-current' : ''} />
               </button>
               <button
                 onClick={() => setFilter('memorized')}
-                className={`p-2.5 rounded-xl transition-all active:scale-95 ${filterMode === 'memorized' ? 'bg-green-100 text-green-700' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`p-2.5 rounded-xl transition-all active:scale-95`}
+                style={{
+                    backgroundColor: filterMode === 'memorized' ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
+                    color: filterMode === 'memorized' ? '#22c55e' : 'var(--color-text-muted)'
+                }}
               >
                 <CheckCircle size={20} className={filterMode === 'memorized' ? 'fill-current' : ''} />
               </button>
-              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+              <div className="w-px h-6 mx-1" style={{backgroundColor: 'var(--color-border)'}}></div>
             </>
           )}
-          <button onClick={handleShuffle} disabled={filterMode !== 'all'} className={`p-2.5 rounded-full transition-all active:scale-95 ${isShuffled ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+          <button onClick={handleShuffle} disabled={filterMode !== 'all'} className={`p-2.5 rounded-full transition-all active:scale-95`} style={{color: isShuffled ? 'var(--color-primary)' : 'var(--color-text-muted)'}}>
             <Shuffle size={20} />
           </button>
-          <button onClick={handleRestart} className="p-2.5 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95">
+          <button onClick={handleRestart} className="p-2.5 rounded-full transition-all active:scale-95" style={{color: 'var(--color-text-muted)'}}>
             <RotateCcw size={20} />
           </button>
         </div>
@@ -502,7 +520,7 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
       >
          {feedback?.visible && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none">
-                  <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl rounded-3xl p-8 border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-200 flex flex-col items-center gap-4 text-center max-w-[80%]">
+                  <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl rounded-3xl p-8 border animate-in fade-in zoom-in duration-200 flex flex-col items-center gap-4 text-center max-w-[80%]" style={{borderColor: 'var(--color-border)'}}>
                       {feedback.type === 'success' && <CheckCircle className="text-green-500 w-12 h-12" />}
                       {feedback.type === 'remove-memorized' && <XCircle className="text-slate-500 w-12 h-12" />}
                       {feedback.type === 'bookmark' && <Bookmark className="text-yellow-500 w-12 h-12 fill-current" />}
@@ -519,25 +537,36 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
             style={{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           
-          <div className="absolute inset-0 backface-hidden bg-white dark:bg-slate-900 rounded-3xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-800 p-8 transition-colors overflow-hidden">
+          {/* FRONT CARD */}
+          <div 
+            className="absolute inset-0 backface-hidden rounded-3xl flex flex-col items-center justify-center border p-8 transition-colors overflow-hidden"
+            style={{backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)'}}
+          >
              <div className="flex-grow flex flex-col items-center justify-center text-center px-4 w-full">
-                 <h2 className="text-4xl sm:text-5xl font-black text-slate-800 dark:text-white break-words leading-tight max-w-full">{currentWord.english}</h2>
-                 <p className="mt-6 text-lg text-slate-500 dark:text-slate-400 italic font-medium max-w-md">
+                 <h2 className="text-4xl sm:text-5xl font-black break-words leading-tight max-w-full" style={{color: 'var(--color-text-main)'}}>{currentWord.english}</h2>
+                 <p className="mt-6 text-lg italic font-medium max-w-md" style={{color: 'var(--color-text-muted)'}}>
                     "{currentWord.exampleEng}"
                  </p>
              </div>
-             <div className="text-xs text-slate-300 dark:text-slate-600 font-bold uppercase tracking-widest mt-auto shrink-0">
+             <div className="text-xs font-bold uppercase tracking-widest mt-auto shrink-0" style={{color: 'var(--color-text-muted)', opacity: 0.7}}>
                  {isAutoPlay ? 'Otomatik Oynatılıyor...' : 'Çevirmek için Dokun'}
              </div>
           </div>
 
-          <div className="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-indigo-600 to-indigo-700 dark:from-indigo-900 dark:to-slate-900 text-white rounded-3xl flex flex-col items-center justify-center p-8 text-center border border-indigo-500 dark:border-slate-700 overflow-hidden">
+          {/* BACK CARD */}
+          <div 
+            className="absolute inset-0 backface-hidden rotate-y-180 text-white rounded-3xl flex flex-col items-center justify-center p-8 text-center border overflow-hidden"
+            style={{
+                backgroundColor: 'var(--color-primary)', 
+                borderColor: 'rgba(255,255,255,0.2)'
+            }}
+          >
             <div className="flex-grow flex flex-col items-center justify-center w-full overflow-y-auto no-scrollbar relative z-10">
-              <h3 className="text-3xl sm:text-4xl font-bold mb-4 break-words max-w-full">{currentWord.turkish}</h3>
-              <p className="text-indigo-200 text-sm italic mb-6 pb-3 border-b border-white/20">{currentWord.context}</p>
+              <h3 className="text-3xl sm:text-4xl font-bold mb-4 break-words max-w-full text-white">{currentWord.turkish}</h3>
+              <p className="text-sm italic mb-6 pb-3 border-b border-white/20 text-white/80">{currentWord.context}</p>
               <div className="bg-white/10 rounded-2xl p-5 w-full backdrop-blur-sm">
                 <p className="text-lg font-medium mb-2">"{currentWord.exampleEng}"</p>
-                <p className="text-indigo-200 text-sm font-medium">{currentWord.exampleTr}</p>
+                <p className="text-sm font-medium text-white/80">{currentWord.exampleTr}</p>
               </div>
             </div>
           </div>
@@ -550,7 +579,16 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
                 <button 
                     onClick={(e) => toggleBookmark(e, currentWord)}
                     disabled={isProcessing}
-                    className={`flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 border-2 disabled:opacity-70 ${isBookmarked ? 'bg-yellow-50 border-yellow-200 text-yellow-600 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-400' : 'bg-white border-slate-100 text-slate-400 dark:bg-slate-900 dark:border-slate-800'}`}
+                    className={`flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 border-2 disabled:opacity-70`}
+                    style={isBookmarked ? {
+                        backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                        borderColor: '#fde047',
+                        color: '#eab308'
+                    } : {
+                        backgroundColor: 'var(--color-bg-card)',
+                        borderColor: 'var(--color-border)',
+                        color: 'var(--color-text-muted)'
+                    }}
                 >
                     <Bookmark size={24} className={isBookmarked ? 'fill-current' : ''} />
                     <span className="text-sm font-bold hidden sm:inline">{isBookmarked ? 'Favori' : 'Favorilere Ekle'}</span>
@@ -558,7 +596,16 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
                 <button 
                     onClick={(e) => toggleMemorize(e, currentWord)}
                     disabled={isProcessing}
-                    className={`flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 border-2 disabled:opacity-70 ${isMemorized ? 'bg-green-50 border-green-200 text-green-600 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400' : 'bg-white border-slate-100 text-slate-400 dark:bg-slate-900 dark:border-slate-800'}`}
+                    className={`flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 border-2 disabled:opacity-70`}
+                    style={isMemorized ? {
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        borderColor: '#86efac',
+                        color: '#22c55e'
+                    } : {
+                        backgroundColor: 'var(--color-bg-card)',
+                        borderColor: 'var(--color-border)',
+                        color: 'var(--color-text-muted)'
+                    }}
                 >
                     <CheckCircle size={24} />
                     <span className="text-sm font-bold hidden sm:inline">{isMemorized ? 'Ezberlendi' : 'Ezberle'}</span>
@@ -568,14 +615,20 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
                 <button 
                   onClick={(e) => { e.stopPropagation(); handlePrev(); }} 
                   disabled={currentIndex === 0 || isProcessing} 
-                  className="h-14 w-16 rounded-2xl flex items-center justify-center bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 text-slate-400 disabled:opacity-30 active:scale-95 transition-all hover:border-indigo-200"
+                  className="h-14 w-16 rounded-2xl flex items-center justify-center border-2 disabled:opacity-30 active:scale-95 transition-all"
+                  style={{
+                      backgroundColor: 'var(--color-bg-card)',
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text-muted)'
+                  }}
                 >
                     <ChevronLeft size={28} />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsProcessing(true); setIsAutoPlay(false); handleNext(); }} 
                   disabled={isProcessing}
-                  className="flex-grow h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 flex items-center justify-center gap-2 transition-all text-lg"
+                  className="flex-grow h-14 rounded-2xl text-white font-bold shadow-lg active:scale-95 flex items-center justify-center gap-2 transition-all text-lg"
+                  style={{backgroundColor: 'var(--color-primary)'}}
                 >
                     {currentIndex === activeDeck.length - 1 ? 'Bitir' : 'Sonraki'} <ChevronRight size={24} />
                 </button>
@@ -587,14 +640,16 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ words: initialWords, onFi
              <button 
                 onClick={(e) => handleRate(e, false)} 
                 disabled={isProcessing}
-                className="flex-1 bg-white dark:bg-slate-900 border-2 border-rose-100 dark:border-rose-900 text-rose-600 dark:text-rose-400 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                className="flex-1 border-2 border-rose-100 dark:border-rose-900 text-rose-600 dark:text-rose-400 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                style={{backgroundColor: 'var(--color-bg-card)'}}
              >
                 <XCircle size={24} /> Hatırlamadım
              </button>
              <button 
                 onClick={(e) => handleRate(e, true)} 
                 disabled={isProcessing}
-                className="flex-1 bg-white dark:bg-slate-900 border-2 border-green-100 dark:border-green-900 text-green-600 dark:text-green-400 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                className="flex-1 border-2 border-green-100 dark:border-green-900 text-green-600 dark:text-green-400 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                style={{backgroundColor: 'var(--color-bg-card)'}}
              >
                 <ThumbsUp size={24} /> Hatırladım
              </button>

@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel } from '../types';
 import { Shuffle, RotateCcw, CheckCircle, HelpCircle, Grid3X3 } from 'lucide-react';
@@ -56,7 +58,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({ words, onFinish, onBack, on
   }, [isTimerRunning]);
 
   const handleExit = () => {
-       syncLocalToCloud(); // Sync score if exit
+       syncLocalToCloud(); // Sync if exit
        onBack();
   };
 
@@ -109,7 +111,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({ words, onFinish, onBack, on
       if (card1.wordId === card2.wordId) {
           playSound('correct');
           
-          // --- IMMEDIATE XP UPDATE START ---
+          // --- IMMEDIATE XP UPDATE START (Centralized Value) ---
           const xpGained = XP_GAINS.matching_pair;
           const newBadges = updateStats(xpGained, { grade }); 
           updateQuestProgress('play_matching', 1);
