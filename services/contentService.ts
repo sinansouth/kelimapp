@@ -1,5 +1,5 @@
 
-import { getUnitData as fetchUnitDataFromSupabase, supabase, withTimeout, getGlobalAnnouncements } from './supabase';
+import { getUnitData as fetchUnitDataFromSupabase, supabase, withTimeout, getGlobalAnnouncements, DbResult } from './supabase';
 import { WordCard, UnitDef, Announcement, GrammarTopic, Avatar, FrameDef, BackgroundDef, Badge } from '../types';
 import { UNIT_ASSETS, AVATARS, FRAMES, BACKGROUNDS, BADGES } from '../data/assets';
 import { getGrammarForUnit as getGrammarData } from '../data/grammarContent';
@@ -25,22 +25,25 @@ export const fetchAllWords = async (): Promise<Record<string, WordCard[]>> => {
         // 3. Buluttan çekmeyi dene ama hata olursa önemseme
         // withTimeout artık null dönüyor, hata fırlatmıyor (supabase.ts'deki değişiklikle)
         // Using default timeout from supabase.ts (15000ms)
-        const result = await withTimeout(supabase.from('units').select('id, words'));
-        
+        const query = supabase.from('units').select('id, words');
+        const result = await withTimeout<DbResult<{ id: string, words: any[] }[]>>(query, 60000);
+
         // Hata veya timeout durumunda
-        if (!result || (result as any).error) {
+        if (!result || result.error) {
             console.warn("Cloud fetch failed or timed out, using local fallback");
             if (!allWordsCache) allWordsCache = {};
             return allWordsCache;
         }
-        
-        const data = (result as any).data;
-        
+
+        const data = result.data;
+
         const vocabulary: Record<string, WordCard[]> = {};
         if (data) {
             for (const unit of data) {
                 // Ensure unitId is attached to each word card from the fetched data
-                vocabulary[unit.id] = (unit.words as any[]).map((w: any) => ({ ...w, unitId: unit.id }));
+                if (Array.isArray(unit.words)) {
+                    vocabulary[unit.id] = unit.words.map((w: any) => ({ ...w, unitId: unit.id }));
+                }
             }
         }
         allWordsCache = vocabulary;
@@ -75,17 +78,17 @@ export const getWordsForUnit = async (unitId: string): Promise<WordCard[]> => {
                 .single();
 
             // Using default timeout from supabase.ts (15000ms)
-            const result = await withTimeout(query);
+            const result = await withTimeout<DbResult<{ words: WordCard[] }>>(query, 30000);
 
-            if (result && !(result as any).error && (result as any).data) {
-                const cloudData = (result as any).data.words as WordCard[];
+            if (result && !result.error && result.data) {
+                const cloudData = result.data.words;
                 if (cloudData && cloudData.length > 0) {
                     const taggedWords = cloudData.map(w => ({ ...w, unitId }));
-                    
+
                     // Update cache incrementally
                     if (!allWordsCache) allWordsCache = {};
                     allWordsCache[unitId] = taggedWords;
-                    
+
                     return taggedWords;
                 }
             }
@@ -93,7 +96,7 @@ export const getWordsForUnit = async (unitId: string): Promise<WordCard[]> => {
     } catch (e) {
         console.error(`Error fetching unit data for ${unitId}:`, e);
     }
-    
+
     // Hata durumunda boş dizi dön, uygulama çökmesin
     return [];
 };
@@ -116,15 +119,15 @@ export const getAllWordsForGrade = async (grade: string): Promise<WordCard[]> =>
 // Smart Distractor Logic - Moved here to decouple from data file
 export const getSmartDistractors = (correctWord: WordCard, allWords: WordCard[], count: number = 3): WordCard[] => {
     // 1. Filter words with same context
-    let sameContextWords = allWords.filter(w => 
-        w.english !== correctWord.english && 
+    let sameContextWords = allWords.filter(w =>
+        w.english !== correctWord.english &&
         w.turkish.trim().toLowerCase() !== correctWord.turkish.trim().toLowerCase() &&
         w.context === correctWord.context
     );
 
     // 2. Filter other words (if not enough same context)
-    let otherWords = allWords.filter(w => 
-        w.english !== correctWord.english && 
+    let otherWords = allWords.filter(w =>
+        w.english !== correctWord.english &&
         w.turkish.trim().toLowerCase() !== correctWord.turkish.trim().toLowerCase() &&
         w.context !== correctWord.context
     );
@@ -147,7 +150,7 @@ export const getSmartDistractors = (correctWord: WordCard, allWords: WordCard[],
     };
 
     addFromPool(sameContextWords);
-    
+
     if (selectedDistractors.length < count) {
         addFromPool(otherWords);
     }

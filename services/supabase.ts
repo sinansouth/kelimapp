@@ -12,7 +12,9 @@ import {
     clearLocalUserData,
     getSRSData,
     saveSRSData,
-    overwriteLocalWithCloud
+    overwriteLocalWithCloud,
+    getMemorizedSet,
+    getBookmarksSet
 } from './userService';
 import { UNIT_ASSETS } from '../data/assets';
 
@@ -23,13 +25,18 @@ const SUPABASE_ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIU
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Utility to enforce timeouts on promises
-export const withTimeout = <T>(promise: PromiseLike<T>, ms: number = 15000): Promise<T | null> => {
+type TimeoutResult<T> = T | { data: null; error: { message: string } } | null;
+
+// Helper type for Supabase responses to avoid 'any'
+export type DbResult<T> = { data: T | null; error: any };
+
+export const withTimeout = <T>(promise: PromiseLike<T>, ms: number = 30000): Promise<T | null> => {
     return Promise.race([
         promise,
-        new Promise<null>((resolve) => 
+        new Promise<null>((resolve) =>
             setTimeout(() => {
-                // console.warn(`Operation timed out after ${ms}ms`);
-                resolve(null); // Reject yerine Resolve(null) yapıyoruz
+                console.warn(`Operation timed out after ${ms}ms`);
+                resolve(null);
             }, ms)
         )
     ]) as Promise<T | null>;
@@ -53,11 +60,11 @@ export const updateCumulativeStats = async (action_type: 'quiz_correct' | 'quiz_
     if (!session?.user) return;
 
     try {
-        const { error } = await supabase.rpc('update_cumulative_stats', { 
-            p_action_type: action_type, 
-            p_amount: amount 
+        const { error } = await supabase.rpc('update_cumulative_stats', {
+            p_action_type: action_type,
+            p_amount: amount
         });
-        
+
         if (error) {
             console.error(`Error updating cumulative stat ${action_type}:`, error.message || error);
         }
@@ -72,11 +79,11 @@ export const updateGameScore = async (game_type: 'matching' | 'maze' | 'wordSear
     if (!session?.user) return;
 
     try {
-        const { error } = await supabase.rpc('update_game_score', { 
-            p_game_type: game_type, 
-            p_new_score: new_score 
+        const { error } = await supabase.rpc('update_game_score', {
+            p_game_type: game_type,
+            p_new_score: new_score
         });
-        
+
         if (error) {
             console.error(`Error updating game score for ${game_type}:`, error.message || error);
         }
@@ -108,14 +115,16 @@ export interface LeaderboardEntry {
 
 export const getSystemContent = async (key: string) => {
     try {
-        const result = await withTimeout(supabase
+        const query = supabase
             .from('system_content')
             .select('value')
             .eq('key', key)
-            .single(), 3000);
-        
-        if (!result || (result as any).error) return null;
-        return (result as any).data?.value;
+            .single();
+
+        const result = await withTimeout<DbResult<{ value: any }>>(query, 10000);
+
+        if (!result || result.error) return null;
+        return result.data?.value;
     } catch (e) {
         return null;
     }
@@ -130,12 +139,14 @@ export const upsertSystemContent = async (key: string, value: any) => {
 
 export const getAllGrammar = async () => {
     try {
-        const result = await withTimeout(supabase
+        const query = supabase
             .from('grammar')
-            .select('*')); // Use default timeout
-            
-        if (!result || (result as any).error) return [];
-        return (result as any).data;
+            .select('*');
+
+        const result = await withTimeout<DbResult<any[]>>(query); // Use default timeout
+
+        if (!result || result.error) return [];
+        return result.data || [];
     } catch (e) {
         return [];
     }
@@ -159,14 +170,20 @@ export const getUnitData = async (unitId: string): Promise<WordCard[] | null> =>
                 .eq('id', unitId)
                 .single();
 
-            const result = await withTimeout(query, 15000); // Increased explicit timeout if called from here, though usually via contentService
+            const result = await withTimeout(query, 30000);
 
-            if (!result || (result as any).error) return null;
-            return (result as any).data?.words as WordCard[];
+            if (!result || result.error) return null;
+
+            // Supabase types might need manual assertion if definitions are not generated, 
+            // but we can avoid 'as any' by checking data shape if possible.
+            // keeping simple assertion for now but safer.
+            const data = result.data as { words: WordCard[] } | null;
+            return data?.words || null;
         }
         return null;
     } catch (e) {
         console.error("Error fetching unit data:", e);
+
         return null;
     }
 };
@@ -208,14 +225,16 @@ export const loginUser = async (loginInput: string, pass: string, remember: bool
     let email = loginInput;
 
     if (!loginInput.includes('@')) {
-        const result = await withTimeout(supabase
+        const query = supabase
             .from('profiles')
             .select('email')
             .eq('username', loginInput)
-            .single(), 4000);
-            
-        const data = (result as any)?.data;
-        const error = (result as any)?.error;
+            .single();
+
+        const result = await withTimeout<DbResult<{ email: string }>>(query, 10000);
+
+        const data = result?.data;
+        const error = result?.error;
 
         if (error || !data) {
             throw new Error("Kullanıcı adı bulunamadı.");
@@ -231,14 +250,26 @@ export const loginUser = async (loginInput: string, pass: string, remember: bool
     if (error) throw error;
 };
 
+export const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: window.location.origin
+        }
+    });
+    if (error) throw error;
+};
+
 export const registerUser = async (name: string, email: string, pass: string, grade: string) => {
-    const result = await withTimeout(supabase
+    const query = supabase
         .from('profiles')
         .select('username')
         .eq('username', name)
-        .single(), 4000);
-        
-    const existingUser = (result as any)?.data;
+        .single();
+
+    const result = await withTimeout<DbResult<{ username: string }>>(query, 10000);
+
+    const existingUser = result?.data;
 
     if (existingUser) {
         throw new Error("Bu kullanıcı adı zaten alınmış.");
@@ -335,13 +366,15 @@ export const logoutUser = async () => {
 };
 
 export const checkUsernameExists = async (username: string): Promise<boolean> => {
-    const result = await withTimeout(supabase
+    const query = supabase
         .from('profiles')
         .select('username')
         .eq('username', username)
-        .single(), 4000);
-        
-    return !!(result as any)?.data;
+        .single();
+
+    const result = await withTimeout<DbResult<{ username: string }>>(query, 10000);
+
+    return !!result?.data;
 };
 
 export const updateCloudUsername = async (uid: string, newName: string) => {
@@ -354,6 +387,31 @@ export const updateCloudUsername = async (uid: string, newName: string) => {
 };
 
 export const deleteAccount = async () => {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            // Attempt to delete via RPC (Common for self-deletion)
+            const { error: rpcError } = await supabase.rpc('delete_user');
+
+            if (rpcError) {
+                console.warn("RPC delete_user failed, attempting manual profile delete...", rpcError);
+                // Fallback: Delete from public.profiles if RLS allows
+                const { error: deleteError } = await supabase
+                    .from('profiles')
+                    .delete()
+                    .eq('id', user.id);
+
+                if (deleteError) {
+                    console.error("Profile deletion failed:", deleteError);
+                    throw deleteError;
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Account delete error:", e);
+        // We still proceed to sign out specific to this device
+    }
+
     await supabase.auth.signOut();
     clearLocalUserData();
     window.location.reload();
@@ -365,7 +423,7 @@ export const syncLocalToCloud = async (userId?: string) => {
     try {
         const userResponse = await supabase.auth.getUser();
         const uid = userId || userResponse.data.user?.id;
-        if (!uid) return; 
+        if (!uid) return;
 
         // 1. Yerel verileri al
         const localProfile = getUserProfile();
@@ -375,17 +433,19 @@ export const syncLocalToCloud = async (userId?: string) => {
         if (localProfile.isGuest) return;
 
         // 2. Buluttaki verileri al (Timestamp kontrolü için)
-        
+
         let cloudData: any = null;
         try {
-            const cloudResult = await withTimeout(supabase
+            const cloudQuery = supabase
                 .from('profiles')
                 .select('stats, srs_data, inventory, avatar, grade, username, theme, updated_at')
                 .eq('id', uid)
-                .single(), 4000);
-            
-            if (cloudResult && !(cloudResult as any).error) {
-                cloudData = (cloudResult as any).data;
+                .single();
+
+            const cloudResult = await withTimeout<DbResult<any>>(cloudQuery, 15000);
+
+            if (cloudResult && !cloudResult.error) {
+                cloudData = cloudResult.data;
             }
         } catch (e) {
             console.warn("Could not fetch cloud data for sync comparison, attempting push only.");
@@ -393,12 +453,12 @@ export const syncLocalToCloud = async (userId?: string) => {
 
         // 3. Karşılaştırma ve Karar Verme
         const localTimestamp = Math.max(localProfile.updatedAt || 0, localStats.updatedAt || 0);
-        
+
         let cloudTimestamp = 0;
         if (cloudData) {
-             const statsTs = cloudData.stats?.updatedAt || 0;
-             const profileTs = new Date(cloudData.updated_at || 0).getTime();
-             cloudTimestamp = Math.max(statsTs, profileTs);
+            const statsTs = cloudData.stats?.updatedAt || 0;
+            const profileTs = new Date(cloudData.updated_at || 0).getTime();
+            cloudTimestamp = Math.max(statsTs, profileTs);
         }
 
         // Eğer bulut daha yeniyse -> İndir ve Yereli Güncelle
@@ -438,12 +498,19 @@ export const syncLocalToCloud = async (userId?: string) => {
         };
 
         const updatePayload: any = {
-            stats: localStats,
+            stats: {
+                ...localStats,
+                memorized_words: Array.from(getMemorizedSet()),
+                favorite_words: Array.from(getBookmarksSet()),
+                // Persist username change timestamp in stats to avoid schema issues
+                last_username_change: localProfile.lastUsernameChange
+            },
             inventory: inventoryData,
             srs_data: localSRS,
             avatar: localProfile.avatar,
             grade: localProfile.grade,
             username: localProfile.name,
+            friend_code: localProfile.friendCode, // Ensure friend_code is synced
             theme: getTheme(),
             updated_at: new Date().toISOString()
         };
@@ -455,7 +522,7 @@ export const syncLocalToCloud = async (userId?: string) => {
         await withTimeout(supabase
             .from('profiles')
             .update(updatePayload)
-            .eq('id', uid), 6000);
+            .eq('id', uid), 60000);
 
     } catch (e: any) {
         console.warn("Sync failed:", e);
@@ -464,14 +531,16 @@ export const syncLocalToCloud = async (userId?: string) => {
 
 export const getUserData = async (uid: string) => {
     try {
-        const result = await withTimeout(supabase
+        const query = supabase
             .from('profiles')
             .select('*')
             .eq('id', uid)
-            .single(), 4000);
+            .single();
 
-        if (!result || (result as any).error) return null;
-        return transformProfileToUser((result as any).data);
+        const result = await withTimeout<DbResult<any>>(query, 10000);
+
+        if (!result || result.error) return null;
+        return transformProfileToUser(result.data);
     } catch (e) {
         return null;
     }
@@ -504,7 +573,7 @@ export const getRecentUsers = async () => {
             .select('*')
             .order('created_at', { ascending: false })
             .limit(10);
-            
+
         if (result.error) throw result.error;
         return (result.data || []).map(transformProfileToUser);
     } catch (e) {
@@ -520,25 +589,29 @@ export const updateUserRole = async (uid: string, role: 'admin' | 'user' | 'bann
 
 export const searchUser = async (queryText: string) => {
     try {
-        let result = await withTimeout(supabase
+        let query = supabase
             .from('profiles')
             .select('*')
             .ilike('username', `%${queryText}%`)
-            .limit(1), 4000);
-            
-        let data = (result as any)?.data;
+            .limit(1);
+
+        let result = await withTimeout<DbResult<any[]>>(query, 10000);
+
+        let data = result?.data;
 
         if (data && data.length > 0) return transformProfileToUser(data[0]);
 
-        result = await withTimeout(supabase
+        const singleQuery = supabase
             .from('profiles')
             .select('*')
             .eq('email', queryText)
-            .single(), 4000);
-            
-        data = (result as any)?.data;
+            .single();
 
-        if (data) return transformProfileToUser(data);
+        const singleResult = await withTimeout<DbResult<any>>(singleQuery, 10000);
+
+        const singleData = singleResult?.data;
+
+        if (singleData) return transformProfileToUser(singleData);
     } catch (e) {
         return null;
     }
@@ -646,8 +719,8 @@ export const getGlobalAnnouncements = async (): Promise<Announcement[]> => {
         const result = await withTimeout(supabase
             .from('announcements')
             .select('*')
-            .order('created_at', { ascending: false }), 4000);
-            
+            .order('created_at', { ascending: false }), 10000);
+
         if (!result || (result as any).error) return [];
         return (result as any).data || [];
     } catch (e) {
@@ -659,10 +732,10 @@ export const getGlobalAnnouncements = async (): Promise<Announcement[]> => {
 
 export const getGlobalSettings = async () => {
     try {
-        const result = await withTimeout(supabase.from('system_settings').select('*'), 3000);
-        
+        const result = await withTimeout(supabase.from('system_settings').select('*'), 10000);
+
         if (!result || (result as any).error) return {};
-        
+
         const data = (result as any).data;
         const settings: any = {};
         if (data) {
@@ -690,7 +763,7 @@ export const getChallenge = async (id: string) => {
             .select('*')
             .eq('id', id)
             .single();
-        
+
         if (error) throw error;
         return transformChallengeData(data);
     } catch (e) {
@@ -736,13 +809,13 @@ export const getPastChallenges = async (userId: string) => {
 };
 
 export const createChallenge = async (
-    creatorName: string, 
-    creatorScore: number, 
-    wordIndices: number[], 
-    unitId: string, 
-    difficulty: string, 
-    wordCount: number, 
-    type: string, 
+    creatorName: string,
+    creatorScore: number,
+    wordIndices: number[],
+    unitId: string,
+    difficulty: string,
+    wordCount: number,
+    type: string,
     targetFriendId?: string
 ) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -784,7 +857,7 @@ export const completeChallenge = async (challengeId: string, playerName: string,
         .select('*')
         .eq('id', challengeId)
         .single();
-        
+
     if (fetchError || !challenge) throw new Error("Challenge not found");
     if (challenge.status !== 'waiting') throw new Error("Challenge already completed");
 
@@ -817,7 +890,7 @@ const transformChallengeData = (data: any): Challenge => {
         creatorScore: data.creator_score,
         wordIndices: data.word_indices,
         unitId: data.unit_id,
-        unitName: data.unit_name, 
+        unitName: data.unit_name,
         difficulty: data.difficulty,
         wordCount: data.word_count,
         targetFriendId: data.target_friend_id,
@@ -835,14 +908,14 @@ const transformChallengeData = (data: any): Challenge => {
 export const getLeaderboard = async (grade: string, mode: string): Promise<LeaderboardEntry[]> => {
     try {
         const { data, error } = await supabase.from('profiles').select('id, username, grade, avatar, stats, inventory, theme');
-        
+
         if (error) throw error;
 
         let entries = (data || []).map((user: any) => {
             const stats = user.stats || {};
             const weekly = stats.weekly || {};
             let value = 0;
-            
+
             if (mode === 'xp') value = stats.xp || 0;
             else if (mode === 'quiz') value = weekly.quizCorrect || 0;
             else if (mode === 'flashcard') value = weekly.cardsViewed || 0;
@@ -988,10 +1061,10 @@ export const getPublicUserProfile = async (userId: string) => {
 export const getTournaments = async (): Promise<Tournament[]> => {
     try {
         const result = await withTimeout(supabase.from('tournaments').select('*'), 4000);
-        
+
         if (!result || (result as any).error) return [];
         const data = (result as any).data;
-        
+
         return (data || []).map((t: any) => ({
             ...t,
             rewards: t.rewards || { firstPlace: 1000, secondPlace: 500, thirdPlace: 250, participation: 50 },

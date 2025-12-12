@@ -28,7 +28,8 @@ import WelcomeScreen from './components/WelcomeScreen';
 import CustomAlert, { AlertType } from './components/CustomAlert';
 import MenuModal from './components/MenuModal';
 import { ChevronLeft, Zap, Swords, Trophy, AlertTriangle, RefreshCw, WifiOff, Menu as MenuIcon } from 'lucide-react';
-import { getUserProfile, getTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, createGuestProfile, hasSeenTutorial, markTutorialAsSeen, saveSRSData, saveUserStats, overwriteLocalWithCloud } from './services/userService';
+import SplashScreen from './components/SplashScreen';
+import { getUserProfile, getTheme, getAppSettings, getMemorizedSet, getDueWords, saveLastActivity, getLastReadAnnouncementId, setLastReadAnnouncementId, checkDataVersion, getDueGrades, getUserStats, updateTimeSpent, createGuestProfile, hasSeenTutorial, markTutorialAsSeen, saveSRSData, saveUserStats, overwriteLocalWithCloud, saveUserProfile } from './services/userService';
 import { supabase, syncLocalToCloud, getOpenChallenges, getGlobalSettings, getUserData } from './services/supabase';
 import { getWordsForUnit, fetchAllWords, getVocabulary, fetchDynamicContent, getAnnouncements, getUnitAssets } from './services/contentService';
 import { requestNotificationPermission } from './services/notificationService';
@@ -40,13 +41,27 @@ import MatchingGame from './components/MatchingGame';
 import MazeGame from './components/MazeGame';
 import WordSearchGame from './components/WordSearchGame';
 
+const useDebounce = (effect: () => void, delay: number, deps: any[]) => {
+    const callback = useCallback(effect, deps);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            callback();
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [callback, delay]);
+};
+
 const App: React.FC = () => {
     const [isAppLoading, setIsAppLoading] = useState(true);
     const [loadingError, setLoadingError] = useState(false);
     const [mode, setMode] = useState<AppMode>(AppMode.HOME);
     // History as stack of modes
     const [history, setHistory] = useState<AppMode[]>([]);
-    
+
     const [currentTheme, setCurrentTheme] = useState<ThemeType>('dark');
     const [userStats, setUserStats] = useState<UserStats>(getUserStats());
 
@@ -88,7 +103,7 @@ const App: React.FC = () => {
     } | null>(null);
 
     const lastQuizConfig = useRef<{ count: number, difficulty: QuizDifficulty, originalWords: WordCard[], allDistractors: WordCard[] } | null>(null);
-    
+
     const [isSRSReview, setIsSRSReview] = useState(false);
     const [emptyWarningType, setEmptyWarningType] = useState<'bookmarks' | 'memorized' | null>(null);
     const [celebration, setCelebration] = useState<{ show: boolean; message: string; type: 'unit' | 'quiz' | 'goal' } | null>(null);
@@ -115,7 +130,7 @@ const App: React.FC = () => {
         const units = UNIT_ASSETS[grade] || [];
         const unitIds = units.map(u => u.id);
         const dueWords = await getDueWords(unitIds);
-        
+
         if (dueWords.length > 0) {
             setWords(shuffleArray(dueWords));
             setAllUnitWords([]);
@@ -147,8 +162,8 @@ const App: React.FC = () => {
         }
 
         if (availableGradesForReview.length > 0) {
-             setAvailableGradesForReview([]);
-             await startReviewForGrade(grade);
+            setAvailableGradesForReview([]);
+            await startReviewForGrade(grade);
         }
     };
 
@@ -192,7 +207,7 @@ const App: React.FC = () => {
                     return;
                 }
                 setWords(shuffleArray(allDueWords));
-                setAllUnitWords([]); 
+                setAllUnitWords([]);
                 setTopicTitle('Günlük Tekrar (Kartlar)');
                 setIsSRSReview(true);
                 changeMode(AppMode.FLASHCARDS);
@@ -222,7 +237,7 @@ const App: React.FC = () => {
                     changeMode(AppMode.MATCHING);
                     break;
                 case 'maze':
-                     if (unitWords.length < 4) {
+                    if (unitWords.length < 4) {
                         showAlert("Yetersiz Kelime", "Labirent oyunu için en az 4 kelime gereklidir.", "warning");
                         setMode(AppMode.HOME);
                         return;
@@ -231,7 +246,7 @@ const App: React.FC = () => {
                     changeMode(AppMode.MAZE);
                     break;
                 case 'wordSearch':
-                     if (unitWords.length < 5) {
+                    if (unitWords.length < 5) {
                         showAlert("Yetersiz Kelime", "Kelime bulmaca için en az 5 kelime gereklidir.", "warning");
                         setMode(AppMode.HOME);
                         return;
@@ -249,7 +264,7 @@ const App: React.FC = () => {
                         return;
                     }
                     setPendingQuizConfig({ words: unitWords, allDistractors, title: unit.title, type: 'standard' });
-                    setMode(AppMode.HOME); 
+                    setMode(AppMode.HOME);
                     break;
                 case 'quiz-bookmarks':
                     const bookmarks = JSON.parse(localStorage.getItem('lgs_bookmarks') || '[]');
@@ -285,7 +300,7 @@ const App: React.FC = () => {
             setMode(AppMode.HOME);
         }
     };
-    
+
     const handleCustomPracticeStart = (selectedWords: WordCard[], mode: 'study' | 'quiz') => {
         if (mode === 'study') {
             setWords(selectedWords);
@@ -324,9 +339,9 @@ const App: React.FC = () => {
     useEffect(() => {
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible') {
-                updateTimeSpent(1); 
+                updateTimeSpent(1);
             }
-        }, 60000); 
+        }, 60000);
 
         return () => clearInterval(interval);
     }, []);
@@ -372,7 +387,7 @@ const App: React.FC = () => {
         root.style.setProperty('--color-text-main', currentThemeColors.textMain);
         root.style.setProperty('--color-text-muted', currentThemeColors.textMuted);
         root.style.setProperty('--color-border', currentThemeColors.border);
-        
+
         if (currentThemeColors.fontFamily) {
             root.style.setProperty('--font-theme', currentThemeColors.fontFamily);
             document.body.style.fontFamily = `var(--font-theme), 'Inter', sans-serif`;
@@ -385,7 +400,7 @@ const App: React.FC = () => {
     const initializeApp = async () => {
         setIsAppLoading(true);
         setLoadingError(false);
-        
+
         try {
             await Promise.all([
                 fetchAllWords().catch(e => console.warn("Failed to fetch all words, continuing with local/cache", e)),
@@ -394,7 +409,7 @@ const App: React.FC = () => {
 
             const currentSettings = getAppSettings();
             applyTheme(currentSettings.theme);
-            
+
             const settings = await getGlobalSettings().catch(() => ({}));
             if (settings.maintenance_mode?.isActive) {
                 const profile = getUserProfile();
@@ -402,7 +417,7 @@ const App: React.FC = () => {
                     setMaintenanceMode(false);
                 }
             }
-            
+
             const announcements = await getAnnouncements();
             const lastReadId = getLastReadAnnouncementId();
             if (announcements.length > 0 && announcements[0].id !== lastReadId) {
@@ -420,40 +435,118 @@ const App: React.FC = () => {
     useEffect(() => {
         initializeApp();
 
-        const localProfile = getUserProfile();
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-             const user = session?.user;
-             if (!user) {
-                 if (!localProfile.name) {
-                     setShowWelcomeScreen(true);
-                 }
-             } else {
-                 const userData = await getUserData(user.id);
-                 if (userData && userData.profile.isAdmin) {
-                     setMaintenanceMode(false);
-                 }
-                 
-                 if (userData) {
-                     overwriteLocalWithCloud(userData);
-                 }
+            const user = session?.user;
+            if (!user) {
+                const currentLocal = getUserProfile();
+                if (!currentLocal.name) {
+                    setShowWelcomeScreen(true);
+                }
+            } else {
+                const userData = await getUserData(user.id);
+                // Check if we are currently a guest with progress
+                const localProfile = getUserProfile();
+                const localStats = getUserStats();
+                const isGuestWithData = localProfile.isGuest && (localStats.xp > 0 || localStats.level > 1 || localProfile.grade);
 
-                 checkForDuels();
-                 localStorage.setItem('lgs_last_uid', user.id);
-                 refreshGlobalState();
-                 const updatedSettings = getAppSettings();
-                 applyTheme(updatedSettings.theme);
-             }
+                // MIGRATION STRATEGY:
+                // If guest has data AND (cloud is empty OR we prioritize guest flow), sync UP.
+                // Otherwise, sync DOWN.
+                if (isGuestWithData && (!userData || !userData.profile || !userData.stats || userData.stats.xp === 0)) {
+                    console.log("Migrating guest data to cloud...");
+                    // 1. Assign new ID/Email to local profile
+                    const newProfile = {
+                        ...localProfile,
+                        isGuest: false,
+                        email: user.email,
+                        // Ensure friend code exists
+                        friendCode: localProfile.friendCode || Math.random().toString(36).substring(2, 8).toUpperCase()
+                    };
+                    saveUserProfile(newProfile);
+
+                    // 2. Sync UP
+                    await syncLocalToCloud(user.id);
+                } else if (userData) {
+                    // Normal flow: Overwrite local with cloud
+                    overwriteLocalWithCloud(userData);
+                }
+
+                // ONBOARDING CHECK (Google Login Flow)
+                // Re-read profile after sync/overwrite
+                const currentProfile = getUserProfile();
+
+                // Fix missing Friend Code / Inventory if needed
+                if (!currentProfile.friendCode || !currentProfile.inventory) {
+                    const fixedProfile = { ...currentProfile };
+                    if (!fixedProfile.friendCode) fixedProfile.friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    if (!fixedProfile.inventory) fixedProfile.inventory = { streakFreezes: 0 };
+                    saveUserProfile(fixedProfile);
+                    await syncLocalToCloud(user.id);
+                }
+
+                // Check for missing grade (Google Login) and force prompt
+                const latestProfile = getUserProfile();
+
+                // If user is logged in but has no grade (e.g. fresh Google Login), force selection
+                // We double check if it's not a guest who hasn't selected anything yet (though logic handles both)
+                if (!latestProfile.grade && !latestProfile.isGuest) {
+                    console.log("User has no grade, forcing selection...");
+                    setIsOnboardingGuest(true); // Re-use onboarding flag to force modal behavior if needed
+                    setActiveModal('grade');
+                } else if (!latestProfile.grade && latestProfile.isGuest) {
+                    // Determine if we should prompt guest
+                    // If guest has no data, maybe prompt? Or let them click a grade.
+                    // Current flow: Guest starts on Home with no grade selected?
+                    // Let's force it if it is the very first open
+                    if (!hasSeenTutorial()) {
+                        setActiveModal('grade');
+                    }
+                }
+
+                if (userData && userData.profile.isAdmin) {
+                    setMaintenanceMode(false);
+                }
+
+                checkForDuels();
+                localStorage.setItem('lgs_last_uid', user.id);
+                refreshGlobalState();
+                const updatedSettings = getAppSettings();
+                applyTheme(updatedSettings.theme);
+            }
         });
-        
+
         const handleOnline = () => {
             console.log("App is online, retrying initialization...");
             if (loadingError) initializeApp();
         };
         window.addEventListener('online', handleOnline);
-        
+
         return () => {
             authListener.subscription.unsubscribe();
             window.removeEventListener('online', handleOnline);
+        };
+    }, []);
+
+    // Event-Based Sync Logic
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+
+        const handleDataChange = () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(async () => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user && !getUserProfile().isGuest) {
+                    console.log("Auto-syncing data...");
+                    await syncLocalToCloud(user.id);
+                }
+            }, 5000); // 5 seconds debounce
+        };
+
+        window.addEventListener('local-data-changed', handleDataChange);
+
+        return () => {
+            if (timer) clearTimeout(timer);
+            window.removeEventListener('local-data-changed', handleDataChange);
         };
     }, []);
 
@@ -467,7 +560,7 @@ const App: React.FC = () => {
             const { data: { user } } = await supabase.auth.getUser();
             const localProfile = getUserProfile();
 
-            if (!user && (!localProfile.name || localProfile.isGuest)) {
+            if (!user && !localProfile.name) {
                 setShowWelcomeScreen(true);
             } else if (!hasSeenTutorial()) {
                 changeMode(AppMode.INFO);
@@ -484,7 +577,7 @@ const App: React.FC = () => {
         setHistory(prev => [...prev, mode]);
         setMode(newMode);
     };
-    
+
     const handleModalClose = () => {
         const previousModal = activeModal;
         setActiveModal(null);
@@ -513,7 +606,7 @@ const App: React.FC = () => {
             const previousMode = newHistory.pop();
             setHistory(newHistory);
             setMode(previousMode || AppMode.HOME);
-            
+
             // Clean up state when leaving specific modes
             setIsSRSReview(false);
             setChallengeState(null);
@@ -547,9 +640,9 @@ const App: React.FC = () => {
             });
         }
         return () => {
-             if (Capacitor.isNativePlatform()) {
-                 CapacitorApp.removeAllListeners();
-             }
+            if (Capacitor.isNativePlatform()) {
+                CapacitorApp.removeAllListeners();
+            }
         }
     }, [goBack]);
 
@@ -585,7 +678,7 @@ const App: React.FC = () => {
     const handleGoHome = () => {
         setHistory([]); setMode(AppMode.HOME); setTopicTitle(''); setWords([]); setAllUnitWords([]); setSelectedUnit(null); setSelectedStudyMode(null); setSelectedGrade(null); setSelectedCategory(null); setIsSRSReview(false); setPendingQuizConfig(null); setActiveModal(null); setChallengeState(null); refreshGlobalState();
     };
-    
+
     const handleCreateChallenge = (config: any) => { setActiveModal(null); setMode(AppMode.LOADING); const setupChallengeQuiz = async () => { try { const unitWords = await getWordsForUnit(config.unit.id); if (unitWords.length < 4) { showAlert("Hata", "Yetersiz kelime.", "error"); setMode(AppMode.HOME); return; } const finalCount = Math.min(config.count, unitWords.length); const challengeWords = shuffleArray(unitWords).slice(0, finalCount); setWords(challengeWords); setAllUnitWords(unitWords); setTopicTitle(`Düello: ${config.unit.title}`); setActiveQuizDifficulty(config.difficulty); setChallengeState({ mode: 'create', unitId: config.unit.id, challengeType: config.type, targetFriendId: config.targetFriendId }); changeMode(AppMode.QUIZ); } catch (e) { setMode(AppMode.HOME); showAlert("Hata", "Hata oluştu.", "error"); } }; setupChallengeQuiz(); };
     const handleJoinChallenge = (challengeData: any, challengeWords: WordCard[]) => { setActiveModal(null); setWords(challengeWords); setAllUnitWords(challengeWords); setTopicTitle(challengeData.matchId ? `Turnuva: ${challengeData.tournamentName}` : `Düello: ${challengeData.creatorName}`); setActiveQuizDifficulty(challengeData.difficulty || 'normal'); setChallengeState(challengeData.matchId ? { mode: 'tournament', tournamentMatchId: challengeData.matchId, data: challengeData, tournamentName: challengeData.tournamentName } : { mode: 'join', data: challengeData }); changeMode(AppMode.QUIZ); };
 
@@ -599,16 +692,43 @@ const App: React.FC = () => {
     const shuffleArray = <T,>(array: T[]): T[] => { const newArray = [...array]; for (let i = newArray.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[newArray[i], newArray[j]] = [newArray[j], newArray[i]]; } return newArray; };
     const startQuizWithCount = (count: number, difficulty: QuizDifficulty) => { if (!pendingQuizConfig) return; let quizWords = shuffleArray(pendingQuizConfig.words); if (count !== -1 && quizWords.length > count) { quizWords = quizWords.slice(0, count); } lastQuizConfig.current = { count, difficulty, originalWords: pendingQuizConfig.words, allDistractors: pendingQuizConfig.allDistractors }; setWords(quizWords); setAllUnitWords(pendingQuizConfig.allDistractors); setActiveQuizType(pendingQuizConfig.type); setActiveQuizDifficulty(difficulty); setTopicTitle(pendingQuizConfig.title); changeMode(AppMode.QUIZ); setPendingQuizConfig(null); };
     const handleQuizRestart = () => { if (lastQuizConfig.current) { const { count, difficulty, originalWords, allDistractors } = lastQuizConfig.current; let quizWords = shuffleArray(originalWords); if (count !== -1 && quizWords.length > count) { quizWords = quizWords.slice(0, count); } setWords(quizWords); setAllUnitWords(allDistractors); setActiveQuizDifficulty(difficulty); setMode(AppMode.LOADING); setTimeout(() => { setMode(AppMode.QUIZ); }, 50); } else { handleGoHome(); } };
-    const handleWelcomeLogin = () => { setShowWelcomeScreen(false); setAuthInitialView('login'); setActiveModal('auth'); };
-    const handleWelcomeRegister = () => { setShowWelcomeScreen(false); setAuthInitialView('register'); setActiveModal('auth'); };
-    const handleWelcomeGuest = () => { setShowWelcomeScreen(false); setIsOnboardingGuest(true); setAvailableGradesForReview(['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'A1', 'A2', 'B1', 'B2', 'C1']); setActiveModal('grade'); };
+    const handleWelcomeLogin = () => {
+        setAuthInitialView('login');
+        setActiveModal('auth');
+    };
+
+    const handleWelcomeRegister = () => {
+        setAuthInitialView('register');
+        setActiveModal('auth');
+    };
+
+    // Guest button removed, no guest handler needed.
+    const handleWelcomeGuest = () => {
+        // Deprecated
+    };
+
+    const handleAuthSuccess = () => {
+        setActiveModal(null);
+        setShowWelcomeScreen(false);
+        refreshGlobalState();
+
+        // Check for onboarding needs
+        const userProfile = getUserProfile();
+        if (!userProfile.grade) {
+            setIsOnboardingGuest(true);
+            setActiveModal('grade');
+        }
+
+        // On successful auth, if we were migrating, ensure it's done. 
+        // (Logic is handled in onAuthStateChange)
+    };
     const onSelectCategoryHandler = (cat: CategoryType | null) => { setSelectedCategory(cat); };
     const onSelectGradeHandler = (grade: GradeLevel | null) => { setSelectedGrade(grade); };
     const onSelectUnitHandler = (unit: UnitDef | null) => { setSelectedUnit(unit); };
     const showBackButton = (mode !== AppMode.HOME) || (selectedCategory !== null);
 
     if (loadingError) return <div className="p-8 text-center">Bağlantı Sorunu</div>;
-    if (isAppLoading || maintenanceMode) return <div className="p-8 text-center">{maintenanceMode ? "Bakım Modu" : "Yükleniyor..."}</div>;
+    if (isAppLoading || maintenanceMode) return <SplashScreen />;
 
     let content;
     switch (mode) {
@@ -632,10 +752,10 @@ const App: React.FC = () => {
         <div className="flex flex-col h-[100dvh] font-sans overflow-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-main)' }}>
             {showWelcomeScreen && (<WelcomeScreen onLogin={handleWelcomeLogin} onRegister={handleWelcomeRegister} onGuest={handleWelcomeGuest} />)}
             {newBadge && (<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[110] w-full max-w-sm px-4 pointer-events-none"> <div className="bg-yellow-500 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500 border-2 border-yellow-300"> <div className="text-4xl animate-bounce"> {newBadge.image ? (<img src={newBadge.image} alt={newBadge.name} className="w-10 h-10 rounded-full object-cover" />) : (<span className="flex items-center justify-center w-10 h-10 text-3xl">{newBadge.icon}</span>)} </div> <div> <div className="text-xs font-bold text-yellow-100 uppercase tracking-wide mb-0.5">Yeni Rozet Kazanıldı!</div> <div className="font-black text-lg leading-tight">{newBadge.name}</div> </div> <Trophy className="ml-auto text-yellow-200" size={24} /> </div> </div>)}
-            
+
             {/* Modals */}
-            {activeModal === 'menu' && <MenuModal onClose={() => setActiveModal(null)} onNavigate={(target) => { 
-                setActiveModal(null); 
+            {activeModal === 'menu' && <MenuModal onClose={() => setActiveModal(null)} onNavigate={(target) => {
+                setActiveModal(null);
                 if (target === 'home') handleGoHome();
                 else if (target === 'profile') handleOpenProfile();
                 else if (target === 'settings') handleOpenSettings();
@@ -645,7 +765,7 @@ const App: React.FC = () => {
                 else if (target === 'challenge') handleOpenChallenge();
                 else if (target === 'admin') setActiveModal('admin');
             }} hasUnreadAnnouncements={hasUnreadAnnouncements} />}
-            
+
             {activeModal === 'auth' && <AuthModal onClose={handleModalClose} onSuccess={() => { handleProfileUpdate(); setActiveModal(null); }} initialView={authInitialView} />}
             {activeModal === 'settings' && (<SettingsModal onClose={() => setActiveModal(null)} onOpenFeedback={() => setActiveModal('feedback')} onOpenAdmin={() => setActiveModal('admin')} onRestartTutorial={() => { }} />)}
             {activeModal === 'feedback' && <FeedbackModal onClose={() => setActiveModal(null)} />}
@@ -660,12 +780,12 @@ const App: React.FC = () => {
             {activeModal === 'avatar' && <AvatarModal onClose={() => setActiveModal(null)} userStats={userStats || { flashcardsViewed: 0, quizCorrect: 0, quizWrong: 0, date: '', dailyGoal: 5, xp: 0, level: 1, streak: 0, lastStudyDate: null, badges: [], xpBoostEndTime: 0, lastGoalMetDate: null, viewedWordsToday: [], perfectQuizzes: 0, questsCompleted: 0, totalTimeSpent: 0, duelWins: 0, duelPoints: 0, duelLosses: 0, duelDraws: 0, matchingAllTimeBest: 0, mazeAllTimeBest: 0, wordSearchAllTimeBest: 0, completedUnits: [], completedGrades: [], weekly: { weekId: '', quizCorrect: 0, quizWrong: 0, cardsViewed: 0, matchingBestTime: 0, mazeHighScore: 0, wordSearchHighScore: 0, duelPoints: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 } }} onUpdate={() => { setHeaderProfile(getUserProfile()); if (handleProfileUpdate) handleProfileUpdate(); }} />}
             {viewProfileId && (<UserProfileModal userId={viewProfileId} onClose={() => setViewProfileId(null)} />)}
             <CustomAlert visible={alertState.visible} title={alertState.title} message={alertState.message} type={alertState.type} onClose={() => setAlertState(prev => ({ ...prev, visible: false }))} onConfirm={alertState.onConfirm} />
-            
+
             {/* TOP HEADER */}
-            <header 
+            <header
                 className="fixed top-0 left-0 w-full z-[40] border-b transition-all shadow-sm"
                 style={{
-                    backgroundColor: 'var(--color-bg-card)', 
+                    backgroundColor: 'var(--color-bg-card)',
                     borderColor: 'var(--color-border)'
                 }}
             >
@@ -673,10 +793,10 @@ const App: React.FC = () => {
                 <div className="h-14 px-4 pt-safe flex items-center justify-between max-w-7xl mx-auto box-content">
                     <div className="flex items-center gap-2">
                         {showBackButton ? (
-                            <button 
-                                onClick={handleManualBack} 
+                            <button
+                                onClick={handleManualBack}
                                 className="p-2 -ml-2 rounded-full transition-colors hover:opacity-80"
-                                style={{color: 'var(--color-text-muted)'}}
+                                style={{ color: 'var(--color-text-muted)' }}
                             >
                                 <ChevronLeft size={24} />
                             </button>
@@ -684,18 +804,18 @@ const App: React.FC = () => {
                             <div className="w-8"></div>
                         )}
                     </div>
-                    
-                    <h1 className="text-xl font-black tracking-tight absolute left-1/2 transform -translate-x-1/2 mt-safe" style={{color: 'var(--color-text-main)'}}>
-                        Kelim<span style={{color: 'var(--color-primary)'}}>App</span>
+
+                    <h1 className="text-xl font-black tracking-tight absolute left-1/2 transform -translate-x-1/2 mt-safe" style={{ color: 'var(--color-text-main)' }}>
+                        Kelim<span style={{ color: 'var(--color-primary)' }}>App</span>
                     </h1>
 
                     <div className="flex items-center justify-end w-8">
-                         {isBoostActive && (
-                             <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-yellow-500/20 bg-yellow-500/10 text-yellow-500">
-                                 <Zap size={12} className="fill-current" />
-                                 <span className="text-[10px] font-black">{boostTimeLeft}</span>
-                             </div>
-                         )}
+                        {isBoostActive && (
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-yellow-500/20 bg-yellow-500/10 text-yellow-500">
+                                <Zap size={12} className="fill-current" />
+                                <span className="text-[10px] font-black">{boostTimeLeft}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>
@@ -706,33 +826,33 @@ const App: React.FC = () => {
             </main>
 
             {/* BOTTOM NAVIGATION BAR */}
-            <nav 
+            <nav
                 className="fixed bottom-0 left-0 w-full z-[40] border-t pb-safe transition-all shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
                 style={{
-                    backgroundColor: 'var(--color-bg-card)', 
+                    backgroundColor: 'var(--color-bg-card)',
                     borderColor: 'var(--color-border)'
                 }}
             >
                 <div className="max-w-md mx-auto h-16 flex items-center justify-around px-2">
-                    <button onClick={handleGoHome} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${mode === AppMode.HOME ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`} style={{color: mode === AppMode.HOME ? 'var(--color-primary)' : 'var(--color-text-muted)'}}>
+                    <button onClick={handleGoHome} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${mode === AppMode.HOME ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`} style={{ color: mode === AppMode.HOME ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
                         {UI_ICONS.home}
                     </button>
-                    
-                    <button onClick={handleOpenChallenge} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all relative ${activeModal === 'challenge' ? 'opacity-100 text-orange-500' : 'opacity-50 hover:opacity-80'}`} style={{color: activeModal === 'challenge' ? '#f97316' : 'var(--color-text-muted)'}}>
+
+                    <button onClick={handleOpenChallenge} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all relative ${activeModal === 'challenge' ? 'opacity-100 text-orange-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'challenge' ? '#f97316' : 'var(--color-text-muted)' }}>
                         <Swords size={24} />
                         {hasPendingDuel && <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>}
                     </button>
-                    
-                    <button onClick={handleOpenMenu} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all relative ${activeModal === 'menu' ? 'opacity-100 text-blue-500' : 'opacity-50 hover:opacity-80'}`} style={{color: activeModal === 'menu' ? '#3b82f6' : 'var(--color-text-muted)'}}>
+
+                    <button onClick={handleOpenMenu} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all relative ${activeModal === 'menu' ? 'opacity-100 text-blue-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'menu' ? '#3b82f6' : 'var(--color-text-muted)' }}>
                         <MenuIcon size={24} />
                         {hasUnreadAnnouncements && <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900"></span>}
                     </button>
 
-                    <button onClick={handleOpenProfile} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${mode === AppMode.PROFILE ? 'opacity-100 text-green-500' : 'opacity-50 hover:opacity-80'}`} style={{color: mode === AppMode.PROFILE ? '#22c55e' : 'var(--color-text-muted)'}}>
+                    <button onClick={handleOpenProfile} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${mode === AppMode.PROFILE ? 'opacity-100 text-green-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: mode === AppMode.PROFILE ? '#22c55e' : 'var(--color-text-muted)' }}>
                         {UI_ICONS.profile}
                     </button>
 
-                    <button onClick={handleOpenSettings} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${activeModal === 'settings' ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`} style={{color: activeModal === 'settings' ? 'var(--color-text-main)' : 'var(--color-text-muted)'}}>
+                    <button onClick={handleOpenSettings} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${activeModal === 'settings' ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'settings' ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
                         {UI_ICONS.settings}
                     </button>
                 </div>

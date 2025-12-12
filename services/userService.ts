@@ -1,6 +1,6 @@
 
 import { Quest, Badge, GradeLevel, ThemeType } from '../types';
-import { BADGES, UNIT_ASSETS } from '../data/assets';
+import { BADGES, UNIT_ASSETS, FRAMES, BACKGROUNDS } from '../data/assets';
 import { getVocabulary } from './contentService';
 
 export interface UserProfile {
@@ -38,7 +38,7 @@ export interface UserStats {
     perfectQuizzes: number;
     questsCompleted: number;
     totalTimeSpent: number;
-    
+
     // Lifetime Stats
     duelWins: number;
     duelLosses: number;
@@ -52,7 +52,7 @@ export interface UserStats {
 
     completedUnits: string[];
     completedGrades: string[];
-    
+
     // Weekly Stats
     weekly: {
         weekId: string;
@@ -62,7 +62,7 @@ export interface UserStats {
         matchingBestTime: number; // Actually Score
         mazeHighScore: number;
         wordSearchHighScore: number;
-        
+
         duelPoints: number;
         duelWins: number;
         duelLosses: number;
@@ -84,50 +84,46 @@ export interface SRSData {
 
 // --- XP & Leveling Configuration (OPTIMIZED & BALANCED) ---
 export const XP_GAINS = {
-  flashcard_view: 2,         // Kart inceleme (Düşük tutuldu, spam engellemek için)
-  flashcard_memorize: 15,    // Ezberleme (Öğrenmeyi teşvik için artırıldı)
-  
-  // Quiz difficulties
-  quiz_correct: { 
-      relaxed: 10, 
-      easy: 12, 
-      normal: 15, 
-      hard: 20, 
-      impossible: 30 
-  },
-  
-  perfect_quiz_bonus: 100,   // Hatasız bitirme bonusu
-  
-  // Games
-  matching_pair: 8,          // Eşleşme başına
-  maze_level: 50,            // Bölüm geçme
-  wordsearch_word: { 
-      easy: 10, 
-      medium: 15, 
-      hard: 25 
-  },
-  
-  // Quests
-  daily_quest_easy: 150,
-  daily_quest_medium: 300,
-  daily_quest_hard: 500,
-  daily_quest_completion_bonus: 150, // 3 görevi de bitirme bonusu
-  
-  // Duel (Database triggers these, but keeping here for reference)
-  duel_win: 50,
-  duel_tie: 25,
-  duel_loss: 10
+    flashcard_view: 5,         // Was 2
+    flashcard_memorize: 25,    // Was 15
+
+    // Quiz difficulties
+    quiz_correct: {
+        relaxed: 15,
+        easy: 20,
+        normal: 25,
+        hard: 35,
+        impossible: 50
+    },
+
+    perfect_quiz_bonus: 200,   // Was 100
+
+    // Games
+    matching_pair: 15,          // Was 8
+    maze_level: 100,            // Was 50
+    wordsearch_word: {
+        easy: 15,
+        medium: 25,
+        hard: 40
+    },
+
+    // Quests
+    daily_quest_easy: 250,
+    daily_quest_medium: 500,
+    daily_quest_hard: 750,
+    daily_quest_completion_bonus: 500, // Was 150
+
+    // Duel
+    duel_win: 100,
+    duel_tie: 50,
+    duel_loss: 20
 };
 
-// Level Formula: Quadratic curve. 
-// XP = 100 * (Level^2)
-// Level = Sqrt(XP / 100)
-// Lvl 1 = 100 XP
-// Lvl 10 = 10,000 XP
-// Lvl 50 = 250,000 XP
-export const getXPForLevel = (level: number): number => Math.floor(Math.pow(level, 2) * 100);
+// Level Formula: Adjusted for faster early levels
+// XP = 75 * (Level^2)
+export const getXPForLevel = (level: number): number => Math.floor(Math.pow(level, 2) * 75);
 
-export const getLevelForXP = (xp: number): number => Math.floor(Math.sqrt(Math.max(0, xp) / 100));
+export const getLevelForXP = (xp: number): number => Math.floor(Math.sqrt(Math.max(0, xp) / 75));
 
 
 // --- TIME UTILITIES ---
@@ -248,12 +244,17 @@ const KEYS = {
     SETTINGS: 'lgs_app_settings',
     MEMORIZED: 'lgs_memorized',
     BOOKMARKS: 'lgs_bookmarks',
-    SRS: 'lgs_srs_data', 
-    SRS_LEGACY: 'lgs_srs', 
+    SRS: 'lgs_srs_data',
+    SRS_LEGACY: 'lgs_srs',
     DAILY: 'lgs_daily_state',
     LAST_UPDATE: 'lgs_last_update_ts',
     VERSION: 'lgs_data_version',
     TUTORIAL_SEEN: 'lgs_tutorial_seen'
+};
+
+export const notifyDataChange = () => {
+    const event = new CustomEvent('local-data-changed');
+    window.dispatchEvent(event);
 };
 
 // --- Profile ---
@@ -275,33 +276,28 @@ export const saveUserProfile = (profile: UserProfile, sync: boolean = false) => 
     if (!profile.friendCode) profile.friendCode = generateFriendCode();
     // Otomatik timestamp güncelle
     profile.updatedAt = Date.now();
-    
+
     localStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
     updateLastUpdatedTimestamp();
+    notifyDataChange();
 };
 
-export const createGuestProfile = (grade: string) => {
-    const guestName = `Misafir-${Math.floor(Math.random() * 10000)}`;
-    const profile: UserProfile = {
-        ...DEFAULT_PROFILE,
-        name: guestName,
-        grade: grade,
-        isGuest: true,
-        friendCode: generateFriendCode(),
-        theme: 'dark',
-        updatedAt: Date.now()
-    };
+export const createGuestProfile = (grade?: string) => {
+    // This function creates a fresh profile. 
+    // Even though "Guest" is removed, it's used to initialize new users after grade selection.
+    const profile = { ...DEFAULT_PROFILE, grade: grade || '' }; // No default A1
+    profile.updatedAt = Date.now();
     saveUserProfile(profile);
 
-    const stats = { ...DEFAULT_STATS, date: getTodayDateString(), updatedAt: Date.now() };
+    const stats = { ...DEFAULT_STATS };
+    stats.updatedAt = Date.now();
     saveUserStats(stats);
-    
-    saveSRSData({});
-    localStorage.setItem(KEYS.MEMORIZED, '[]');
-    localStorage.setItem(KEYS.BOOKMARKS, '[]');
-    saveAppSettings({ ...DEFAULT_SETTINGS, theme: 'dark' });
 
-    return profile;
+    // Clear other data
+    localStorage.removeItem(KEYS.SRS);
+    localStorage.removeItem(KEYS.SRS_LEGACY);
+    localStorage.removeItem(KEYS.MEMORIZED);
+    localStorage.removeItem(KEYS.BOOKMARKS);
 };
 
 // --- Stats ---
@@ -340,6 +336,7 @@ export const saveUserStats = (stats: UserStats) => {
     stats.updatedAt = Date.now();
     localStorage.setItem(KEYS.STATS, JSON.stringify(stats));
     updateLastUpdatedTimestamp();
+    notifyDataChange();
 };
 
 // --- Settings ---
@@ -374,11 +371,19 @@ export const getMemorizedSet = (): Set<string> => {
     } catch { return new Set(); }
 };
 
+export const getBookmarksSet = (): Set<string> => {
+    try {
+        const stored = localStorage.getItem(KEYS.BOOKMARKS);
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+};
+
 export const addToMemorized = (id: string) => {
     const set = getMemorizedSet();
     set.add(id);
     localStorage.setItem(KEYS.MEMORIZED, JSON.stringify([...set]));
     updateLastUpdatedTimestamp();
+    notifyDataChange();
 };
 
 export const removeFromMemorized = (id: string) => {
@@ -386,6 +391,7 @@ export const removeFromMemorized = (id: string) => {
     set.delete(id);
     localStorage.setItem(KEYS.MEMORIZED, JSON.stringify([...set]));
     updateLastUpdatedTimestamp();
+    notifyDataChange();
 };
 
 export const addToBookmarks = (id: string) => {
@@ -395,6 +401,7 @@ export const addToBookmarks = (id: string) => {
         set.add(id);
         localStorage.setItem(KEYS.BOOKMARKS, JSON.stringify([...set]));
         updateLastUpdatedTimestamp();
+        notifyDataChange();
     } catch { }
 };
 
@@ -405,6 +412,7 @@ export const removeFromBookmarks = (id: string) => {
         set.delete(id);
         localStorage.setItem(KEYS.BOOKMARKS, JSON.stringify([...set]));
         updateLastUpdatedTimestamp();
+        notifyDataChange();
     } catch { }
 };
 
@@ -413,7 +421,7 @@ export const removeFromBookmarks = (id: string) => {
 export const getSRSData = (): Record<string, SRSData> => {
     try {
         const stored = localStorage.getItem(KEYS.SRS);
-        
+
         if (!stored) {
             const legacy = localStorage.getItem(KEYS.SRS_LEGACY);
             if (legacy) {
@@ -431,6 +439,7 @@ export const getSRSData = (): Record<string, SRSData> => {
 export const saveSRSData = (data: Record<string, SRSData>) => {
     localStorage.setItem(KEYS.SRS, JSON.stringify(data));
     updateLastUpdatedTimestamp();
+    notifyDataChange();
 };
 
 export const registerSRSInteraction = (wordId: string) => {
@@ -614,13 +623,20 @@ export const updateStats = (
         }
         stats.lastStudyDate = todayStr;
     }
-    
-    if(context?.action === 'perfect_quiz') {
+
+    if (context?.action === 'perfect_quiz') {
         stats.perfectQuizzes++;
     }
 
-    const multiplier = (stats.xpBoostEndTime > Date.now()) ? 2 : 1;
-    stats.xp += xpToAdd * multiplier;
+    // Base Multiplier (XP Boost Item)
+    let finalMultiplier = (stats.xpBoostEndTime > Date.now()) ? 2 : 1;
+
+    // Streak Multiplier (Max 2.0x at 10 days)
+    // Formula: 1.0 + (Streak * 0.1) -> Day 1: 1.1x, Day 10: 2.0x
+    const streakMult = 1 + (Math.min(stats.streak, 10) * 0.1);
+    finalMultiplier *= streakMult;
+
+    stats.xp += Math.floor(xpToAdd * finalMultiplier);
 
     const newLevel = getLevelForXP(stats.xp);
     if (newLevel > stats.level) {
@@ -650,7 +666,7 @@ export const updateTimeSpent = (minutes: number): Badge[] => {
     const stats = getUserStats();
     stats.totalTimeSpent += minutes;
     saveUserStats(stats);
-    
+
     // Update Daily Quest
     updateQuestProgress('study_time', minutes);
 
@@ -781,14 +797,47 @@ export const updateQuestProgress = (type: string, amount: number) => {
     }
 };
 
+export const validateEquippedItems = (profile: UserProfile, level: number) => {
+    let changed = false;
+
+    // Validate Frame
+    const frame = FRAMES.find(f => f.id === profile.frame);
+    if (frame && frame.unlockLevel && level < frame.unlockLevel) {
+        profile.frame = 'frame_none';
+        changed = true;
+    }
+
+    // Validate Background
+    const bg = BACKGROUNDS.find(b => b.id === profile.background);
+    if (bg && bg.unlockLevel && level < bg.unlockLevel) {
+        profile.background = 'bg_default';
+        changed = true;
+    }
+
+    return changed;
+};
+
 export const buyTheme = (themeId: ThemeType, cost: number): boolean => {
     const stats = getUserStats();
     if (stats.xp >= cost) {
         stats.xp -= cost;
+
+        // Check for level drop
+        const newLevel = getLevelForXP(stats.xp);
+        if (newLevel < stats.level) {
+            stats.level = newLevel;
+        }
+
         saveUserStats(stats);
 
         const profile = getUserProfile();
         profile.purchasedThemes.push(themeId);
+
+        // Validate items in case level dropped
+        if (validateEquippedItems(profile, stats.level)) {
+            // If items were unequipped, we might want to notify user but UI updates will show it
+        }
+
         saveUserProfile(profile);
         return true;
     }
@@ -799,10 +848,21 @@ export const buyFrame = (frameId: string, cost: number): boolean => {
     const stats = getUserStats();
     if (stats.xp >= cost) {
         stats.xp -= cost;
+
+        // Check for level drop
+        const newLevel = getLevelForXP(stats.xp);
+        if (newLevel < stats.level) {
+            stats.level = newLevel;
+        }
+
         saveUserStats(stats);
 
         const profile = getUserProfile();
         profile.purchasedFrames.push(frameId);
+
+        // Validate items in case level dropped
+        validateEquippedItems(profile, stats.level);
+
         saveUserProfile(profile);
         return true;
     }
@@ -813,11 +873,22 @@ export const buyBackground = (bgId: string, cost: number): boolean => {
     const stats = getUserStats();
     if (stats.xp >= cost) {
         stats.xp -= cost;
+
+        // Check for level drop
+        const newLevel = getLevelForXP(stats.xp);
+        if (newLevel < stats.level) {
+            stats.level = newLevel;
+        }
+
         saveUserStats(stats);
 
         const profile = getUserProfile();
         if (!profile.purchasedBackgrounds) profile.purchasedBackgrounds = ['bg_default'];
         profile.purchasedBackgrounds.push(bgId);
+
+        // Validate items in case level dropped
+        validateEquippedItems(profile, stats.level);
+
         saveUserProfile(profile);
         return true;
     }
@@ -829,17 +900,27 @@ export const buyItem = (itemId: 'streak_freeze' | 'xp_boost', cost: number): boo
     if (stats.xp >= cost) {
         stats.xp -= cost;
 
+        // Check for level drop
+        const newLevel = getLevelForXP(stats.xp);
+        if (newLevel < stats.level) {
+            stats.level = newLevel;
+        }
+
         const profile = getUserProfile();
         if (itemId === 'streak_freeze') {
             if (!profile.inventory) profile.inventory = { streakFreezes: 0 };
             profile.inventory.streakFreezes = (profile.inventory.streakFreezes || 0) + 1;
-            saveUserProfile(profile);
         } else if (itemId === 'xp_boost') {
             // Set for 30 minutes from now (UPDATED)
-            stats.xpBoostEndTime = Date.now() + (30 * 60 * 1000); 
+            stats.xpBoostEndTime = Date.now() + (30 * 60 * 1000);
         }
 
+        // Validate items in case level dropped
+        validateEquippedItems(profile, stats.level);
+
         saveUserStats(stats);
+        // Profile might be modified by validateEquippedItems or inventory update
+        saveUserProfile(profile);
         return true;
     }
     return false;
@@ -888,7 +969,7 @@ export const adminUnlockAllAvatars = () => {
 
 export const getRandomWordForGrade = async (grade: GradeLevel | string | null): Promise<import('../types').WordCard | null> => {
     if (!grade) return null;
-    
+
     const vocabulary = await getVocabulary();
     if (Object.keys(vocabulary).length === 0) return null;
 
@@ -901,7 +982,7 @@ export const getRandomWordForGrade = async (grade: GradeLevel | string | null): 
     const randomUnit = validUnits[Math.floor(Math.random() * validUnits.length)];
     const words = vocabulary[randomUnit.id];
     if (!words || words.length === 0) return null;
-    
+
     return words[Math.floor(Math.random() * words.length)];
 };
 
@@ -951,7 +1032,7 @@ export const clearLocalUserData = () => {
     localStorage.removeItem(KEYS.BOOKMARKS);
     localStorage.removeItem(KEYS.SRS);
     localStorage.removeItem(KEYS.SRS_LEGACY);
-    
+
     const settings = getAppSettings();
     settings.theme = 'dark';
     saveAppSettings(settings);
@@ -965,6 +1046,17 @@ interface CloudData {
 
 export const overwriteLocalWithCloud = (cloudData: CloudData) => {
     if (cloudData.profile) {
+        // Restore lastUsernameChange from stats if present (hack for schema limitation)
+        if (cloudData.stats && (cloudData.stats as any).last_username_change) {
+            cloudData.profile.lastUsernameChange = (cloudData.stats as any).last_username_change;
+        }
+
+        // Fix missing inventory defaults if cloud data is incomplete
+        if (!cloudData.profile.purchasedThemes) cloudData.profile.purchasedThemes = DEFAULT_PROFILE.purchasedThemes;
+        if (!cloudData.profile.purchasedFrames) cloudData.profile.purchasedFrames = DEFAULT_PROFILE.purchasedFrames;
+        if (!cloudData.profile.purchasedBackgrounds) cloudData.profile.purchasedBackgrounds = DEFAULT_PROFILE.purchasedBackgrounds;
+        if (!cloudData.profile.inventory) cloudData.profile.inventory = DEFAULT_PROFILE.inventory;
+
         saveUserProfile(cloudData.profile);
         if (cloudData.profile.theme) {
             const settings = getAppSettings();
@@ -972,11 +1064,21 @@ export const overwriteLocalWithCloud = (cloudData: CloudData) => {
             saveAppSettings(settings);
         }
     }
-    if (cloudData.stats) saveUserStats(cloudData.stats);
-    
+    if (cloudData.stats) {
+        saveUserStats(cloudData.stats);
+
+        // Restore extended data if present
+        if ((cloudData.stats as any).memorized_words) {
+            localStorage.setItem(KEYS.MEMORIZED, JSON.stringify((cloudData.stats as any).memorized_words));
+        }
+        if ((cloudData.stats as any).favorite_words) {
+            localStorage.setItem(KEYS.BOOKMARKS, JSON.stringify((cloudData.stats as any).favorite_words));
+        }
+    }
+
     if (cloudData.srs_data && Object.keys(cloudData.srs_data).length > 0) {
         saveSRSData(cloudData.srs_data);
     }
-    
+
     updateLastUpdatedTimestamp();
 };

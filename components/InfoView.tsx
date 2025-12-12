@@ -103,13 +103,13 @@ const InfoView: React.FC<InfoViewProps> = ({ onBack }) => {
                                         <Sparkles size={18} /> Gün Serisi (Streak)
                                     </h3>
                                     <p className="text-xs opacity-90 leading-relaxed">
-                                        Her gün uygulamaya girerek "Gün Seri"ni koru. Seri arttıkça XP çarpanın büyür ve daha hızlı seviye atlarsın! Eğer bir gün giremezsen, marketten alabileceğin "Seri Dondurucu" ile serini koruyabilirsin.
+                                        Her gün uygulamaya girerek "Gün Seri"ni koru. Seri arttıkça XP çarpanın büyür (Maksimum 2x!) ve çok daha hızlı seviye atlarsın.
                                     </p>
                                 </div>
                                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
                             </div>
 
-                             <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
                                 <h3 className="text-base font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2">
                                     <Users size={18} className="text-blue-500" /> Arkadaş Sistemi
                                 </h3>
@@ -204,7 +204,7 @@ const InfoView: React.FC<InfoViewProps> = ({ onBack }) => {
                     {/* SYSTEM TAB */}
                     {activeTab === 'system' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                             <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl p-4 text-white shadow-lg">
+                            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl p-4 text-white shadow-lg">
                                 <h4 className="flex items-center gap-2 font-bold text-sm mb-2">
                                     <Zap size={16} /> XP Boost (2x)
                                 </h4>
@@ -236,7 +236,7 @@ const InfoView: React.FC<InfoViewProps> = ({ onBack }) => {
                                     <ShoppingBag size={16} className="text-pink-500" /> XP Market
                                 </h4>
                                 <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">
-                                    Kazandığın XP'leri harcayarak yeni temalar, çerçeveler ve avatarlar satın al. Profilini özelleştir! Seviye atladıkça yeni ürünlerin kilidi açılır.
+                                    Yenilenmiş Ekonomi! Artık aktivitelerden daha fazla XP kazanabilirsin. Biriken XP'lerini burada harcayarak profilini özelleştir. Seviye atladıkça yeni ürünlerin kilidi açılır.
                                 </p>
                             </div>
 

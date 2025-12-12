@@ -1,14 +1,14 @@
 
 
 import { Avatar, Badge, FrameDef, UnitDef, GradeDef, BackgroundDef, ThemeType } from '../types';
-import { 
-  BookOpen, GraduationCap, Target, Library, Star, 
-  School, Globe, Tv, Sun, Briefcase, Music, Heart, 
-  MapPin, Film, Calendar, Zap, Smile, User, Utensils, Shirt, Home, Tent, 
+import {
+  BookOpen, GraduationCap, Target, Library, Star,
+  School, Globe, Tv, Sun, Briefcase, Music, Heart,
+  MapPin, Film, Calendar, Zap, Smile, User, Utensils, Shirt, Home, Tent,
   Play, BookType, CheckCircle, Layers, Flame, Award, PenTool,
   ListChecks, Clock as ClockIcon, Brain as BrainIcon,
   PartyPopper, Lightbulb, MessageCircle, Sparkles,
-  History, Palette, Microscope, Stethoscope, 
+  History, Palette, Microscope, Stethoscope,
   Laptop, Gavel, Leaf, Plane, ShoppingBag as ShoppingBagIcon, Cpu, Crown,
   Bell, Settings, CircleHelp, Home as HomeIcon, UserCircle, Signal,
   Gamepad2, Search, Grid3X3, WholeWord, Moon, Droplets, Sunset, TreePine, Candy, Image, Coffee, Rocket, CloudSnow
@@ -17,142 +17,142 @@ import React from 'react';
 
 // EXPORT ALL ICONS MAP
 export const ICON_MAP: Record<string, React.ReactElement> = {
-    'BookOpen': React.createElement(BookOpen),
-    'GraduationCap': React.createElement(GraduationCap),
-    'Target': React.createElement(Target),
-    'Library': React.createElement(Library),
-    'Star': React.createElement(Star),
-    'School': React.createElement(School),
-    'Globe': React.createElement(Globe),
-    'Tv': React.createElement(Tv),
-    'Sun': React.createElement(Sun),
-    'Briefcase': React.createElement(Briefcase),
-    'Music': React.createElement(Music),
-    'Heart': React.createElement(Heart),
-    'MapPin': React.createElement(MapPin),
-    'Film': React.createElement(Film),
-    'Calendar': React.createElement(Calendar),
-    'Zap': React.createElement(Zap),
-    'Smile': React.createElement(Smile),
-    'User': React.createElement(User),
-    'Utensils': React.createElement(Utensils),
-    'Shirt': React.createElement(Shirt),
-    'Home': React.createElement(Home),
-    'Tent': React.createElement(Tent),
-    'Play': React.createElement(Play),
-    'BookType': React.createElement(BookType),
-    'CheckCircle': React.createElement(CheckCircle),
-    'Layers': React.createElement(Layers),
-    'Flame': React.createElement(Flame),
-    'Award': React.createElement(Award),
-    'PenTool': React.createElement(PenTool),
-    'ListChecks': React.createElement(ListChecks),
-    'Clock': React.createElement(ClockIcon),
-    'Brain': React.createElement(BrainIcon),
-    'PartyPopper': React.createElement(PartyPopper),
-    'Lightbulb': React.createElement(Lightbulb),
-    'MessageCircle': React.createElement(MessageCircle),
-    'Sparkles': React.createElement(Sparkles),
-    'History': React.createElement(History),
-    'Palette': React.createElement(Palette),
-    'Microscope': React.createElement(Microscope),
-    'Stethoscope': React.createElement(Stethoscope),
-    'Laptop': React.createElement(Laptop),
-    'Gavel': React.createElement(Gavel),
-    'Leaf': React.createElement(Leaf),
-    'Plane': React.createElement(Plane),
-    'ShoppingBag': React.createElement(ShoppingBagIcon),
-    'Cpu': React.createElement(Cpu),
-    'Crown': React.createElement(Crown),
-    'Bell': React.createElement(Bell),
-    'Settings': React.createElement(Settings),
-    'CircleHelp': React.createElement(CircleHelp),
-    'HomeIcon': React.createElement(HomeIcon),
-    'UserCircle': React.createElement(UserCircle),
-    'Signal': React.createElement(Signal),
-    'Gamepad2': React.createElement(Gamepad2),
-    'Search': React.createElement(Search),
-    'Grid3X3': React.createElement(Grid3X3),
-    'WholeWord': React.createElement(WholeWord),
-    'Moon': React.createElement(Moon),
-    'Droplets': React.createElement(Droplets),
-    'Sunset': React.createElement(Sunset),
-    'TreePine': React.createElement(TreePine),
-    'Candy': React.createElement(Candy),
-    'Image': React.createElement(Image),
-    'Coffee': React.createElement(Coffee),
-    'Rocket': React.createElement(Rocket),
-    'CloudSnow': React.createElement(CloudSnow)
+  'BookOpen': React.createElement(BookOpen),
+  'GraduationCap': React.createElement(GraduationCap),
+  'Target': React.createElement(Target),
+  'Library': React.createElement(Library),
+  'Star': React.createElement(Star),
+  'School': React.createElement(School),
+  'Globe': React.createElement(Globe),
+  'Tv': React.createElement(Tv),
+  'Sun': React.createElement(Sun),
+  'Briefcase': React.createElement(Briefcase),
+  'Music': React.createElement(Music),
+  'Heart': React.createElement(Heart),
+  'MapPin': React.createElement(MapPin),
+  'Film': React.createElement(Film),
+  'Calendar': React.createElement(Calendar),
+  'Zap': React.createElement(Zap),
+  'Smile': React.createElement(Smile),
+  'User': React.createElement(User),
+  'Utensils': React.createElement(Utensils),
+  'Shirt': React.createElement(Shirt),
+  'Home': React.createElement(Home),
+  'Tent': React.createElement(Tent),
+  'Play': React.createElement(Play),
+  'BookType': React.createElement(BookType),
+  'CheckCircle': React.createElement(CheckCircle),
+  'Layers': React.createElement(Layers),
+  'Flame': React.createElement(Flame),
+  'Award': React.createElement(Award),
+  'PenTool': React.createElement(PenTool),
+  'ListChecks': React.createElement(ListChecks),
+  'Clock': React.createElement(ClockIcon),
+  'Brain': React.createElement(BrainIcon),
+  'PartyPopper': React.createElement(PartyPopper),
+  'Lightbulb': React.createElement(Lightbulb),
+  'MessageCircle': React.createElement(MessageCircle),
+  'Sparkles': React.createElement(Sparkles),
+  'History': React.createElement(History),
+  'Palette': React.createElement(Palette),
+  'Microscope': React.createElement(Microscope),
+  'Stethoscope': React.createElement(Stethoscope),
+  'Laptop': React.createElement(Laptop),
+  'Gavel': React.createElement(Gavel),
+  'Leaf': React.createElement(Leaf),
+  'Plane': React.createElement(Plane),
+  'ShoppingBag': React.createElement(ShoppingBagIcon),
+  'Cpu': React.createElement(Cpu),
+  'Crown': React.createElement(Crown),
+  'Bell': React.createElement(Bell),
+  'Settings': React.createElement(Settings),
+  'CircleHelp': React.createElement(CircleHelp),
+  'HomeIcon': React.createElement(HomeIcon),
+  'UserCircle': React.createElement(UserCircle),
+  'Signal': React.createElement(Signal),
+  'Gamepad2': React.createElement(Gamepad2),
+  'Search': React.createElement(Search),
+  'Grid3X3': React.createElement(Grid3X3),
+  'WholeWord': React.createElement(WholeWord),
+  'Moon': React.createElement(Moon),
+  'Droplets': React.createElement(Droplets),
+  'Sunset': React.createElement(Sunset),
+  'TreePine': React.createElement(TreePine),
+  'Candy': React.createElement(Candy),
+  'Image': React.createElement(Image),
+  'Coffee': React.createElement(Coffee),
+  'Rocket': React.createElement(Rocket),
+  'CloudSnow': React.createElement(CloudSnow)
 };
 
 // THEME CONFIGURATION
 export const THEME_COLORS: Record<ThemeType, { primary: string, bgMain: string, bgCard: string, textMain: string, textMuted: string, border: string, fontFamily: string }> = {
-    // Basic Themes
-    'light': { primary: '#4f46e5', bgMain: '#f8fafc', bgCard: '#ffffff', textMain: '#0f172a', textMuted: '#64748b', border: '#e2e8f0', fontFamily: "'Inter', sans-serif" },
-    'dark': { primary: '#818cf8', bgMain: '#0f172a', bgCard: '#1e293b', textMain: '#f8fafc', textMuted: '#94a3b8', border: '#334155', fontFamily: "'Inter', sans-serif" },
-    
-    // Nature & Calm
-    'ocean': { primary: '#0ea5e9', bgMain: '#0c4a6e', bgCard: '#075985', textMain: '#e0f2fe', textMuted: '#7dd3fc', border: '#0369a1', fontFamily: "'Inter', sans-serif" },
-    'forest': { primary: '#22c55e', bgMain: '#052e16', bgCard: '#14532d', textMain: '#dcfce7', textMuted: '#86efac', border: '#15803d', fontFamily: "'Merriweather', serif" },
-    'nature_soft': { primary: '#65a30d', bgMain: '#f7fee7', bgCard: '#ffffff', textMain: '#1a2e05', textMuted: '#4d7c0f', border: '#bef264', fontFamily: "'Merriweather', serif" },
-    'lavender': { primary: '#c084fc', bgMain: '#2e1065', bgCard: '#4c1d95', textMain: '#ede9fe', textMuted: '#a78bfa', border: '#6d28d9', fontFamily: "'Fredoka', sans-serif" },
-    
-    // Vibrant & Fun
-    'sunset': { primary: '#f97316', bgMain: '#431407', bgCard: '#7c2d12', textMain: '#ffedd5', textMuted: '#fdba74', border: '#9a3412', fontFamily: "'Fredoka', sans-serif" },
-    'candy': { primary: '#ec4899', bgMain: '#831843', bgCard: '#9d174d', textMain: '#fce7f3', textMuted: '#fbcfe8', border: '#be185d', fontFamily: "'Fredoka', sans-serif" },
-    'comic': { primary: '#000000', bgMain: '#ffffff', bgCard: '#fef3c7', textMain: '#000000', textMuted: '#4b5563', border: '#000000', fontFamily: "'Patrick Hand', cursive" },
-    
-    // Tech & Sci-Fi
-    'neon': { primary: '#39ff14', bgMain: '#000000', bgCard: '#1a1a1a', textMain: '#39ff14', textMuted: '#228b22', border: '#33ff00', fontFamily: "'Orbitron', sans-serif" },
-    'cyberpunk': { primary: '#facc15', bgMain: '#09090b', bgCard: '#27272a', textMain: '#facc15', textMuted: '#a1a1aa', border: '#eab308', fontFamily: "'Orbitron', sans-serif" },
-    'matrix': { primary: '#00ff41', bgMain: '#0d0d0d', bgCard: '#001a00', textMain: '#00ff41', textMuted: '#008F11', border: '#003b00', fontFamily: "'Orbitron', sans-serif" },
-    'gamer': { primary: '#ef4444', bgMain: '#111111', bgCard: '#000000', textMain: '#ffffff', textMuted: '#9ca3af', border: '#ef4444', fontFamily: "'Russo One', sans-serif" },
-    'galaxy': { primary: '#d8b4fe', bgMain: '#0f172a', bgCard: '#2e1065', textMain: '#e9d5ff', textMuted: '#a855f7', border: '#6b21a8', fontFamily: "'Orbitron', sans-serif" },
-    
-    // Elegant & Retro
-    'royal': { primary: '#fbbf24', bgMain: '#312e81', bgCard: '#4338ca', textMain: '#fef3c7', textMuted: '#ddd6fe', border: '#fbbf24', fontFamily: "'Playfair Display', serif" },
-    'luxury': { primary: '#d4af37', bgMain: '#1c1917', bgCard: '#292524', textMain: '#fcfcd4', textMuted: '#a8a29e', border: '#d4af37', fontFamily: "'Playfair Display', serif" },
-    'coffee': { primary: '#d7ccc8', bgMain: '#3e2723', bgCard: '#4e342e', textMain: '#d7ccc8', textMuted: '#a1887f', border: '#6d4c41', fontFamily: "'Courier Prime', monospace" },
-    'retro': { primary: '#b58900', bgMain: '#fdf6e3', bgCard: '#eee8d5', textMain: '#657b83', textMuted: '#93a1a1', border: '#b58900', fontFamily: "'Courier Prime', monospace" },
-    
-    // Elemental
-    'midnight': { primary: '#60a5fa', bgMain: '#172554', bgCard: '#1e3a8a', textMain: '#dbeafe', textMuted: '#93c5fd', border: '#2563eb', fontFamily: "'Inter', sans-serif" },
-    'volcano': { primary: '#f87171', bgMain: '#450a0a', bgCard: '#7f1d1d', textMain: '#fee2e2', textMuted: '#fca5a5', border: '#991b1b', fontFamily: "'Russo One', sans-serif" },
-    'ice': { primary: '#22d3ee', bgMain: '#083344', bgCard: '#164e63', textMain: '#cffafe', textMuted: '#67e8f9', border: '#155e75', fontFamily: "'Inter', sans-serif" },
+  // Basic Themes
+  'light': { primary: '#4f46e5', bgMain: '#f8fafc', bgCard: '#ffffff', textMain: '#0f172a', textMuted: '#64748b', border: '#e2e8f0', fontFamily: "'Inter', sans-serif" },
+  'dark': { primary: '#818cf8', bgMain: '#0f172a', bgCard: '#1e293b', textMain: '#f8fafc', textMuted: '#94a3b8', border: '#334155', fontFamily: "'Inter', sans-serif" },
+
+  // Nature & Calm
+  'ocean': { primary: '#0ea5e9', bgMain: '#0c4a6e', bgCard: '#075985', textMain: '#e0f2fe', textMuted: '#7dd3fc', border: '#0369a1', fontFamily: "'Inter', sans-serif" },
+  'forest': { primary: '#22c55e', bgMain: '#052e16', bgCard: '#14532d', textMain: '#dcfce7', textMuted: '#86efac', border: '#15803d', fontFamily: "'Merriweather', serif" },
+  'nature_soft': { primary: '#65a30d', bgMain: '#f7fee7', bgCard: '#ffffff', textMain: '#1a2e05', textMuted: '#4d7c0f', border: '#bef264', fontFamily: "'Merriweather', serif" },
+  'lavender': { primary: '#c084fc', bgMain: '#2e1065', bgCard: '#4c1d95', textMain: '#ede9fe', textMuted: '#a78bfa', border: '#6d28d9', fontFamily: "'Fredoka', sans-serif" },
+
+  // Vibrant & Fun
+  'sunset': { primary: '#f97316', bgMain: '#431407', bgCard: '#7c2d12', textMain: '#ffedd5', textMuted: '#fdba74', border: '#9a3412', fontFamily: "'Fredoka', sans-serif" },
+  'candy': { primary: '#ec4899', bgMain: '#831843', bgCard: '#9d174d', textMain: '#fce7f3', textMuted: '#fbcfe8', border: '#be185d', fontFamily: "'Fredoka', sans-serif" },
+  'comic': { primary: '#000000', bgMain: '#ffffff', bgCard: '#fef3c7', textMain: '#000000', textMuted: '#4b5563', border: '#000000', fontFamily: "'Patrick Hand', cursive" },
+
+  // Tech & Sci-Fi
+  'neon': { primary: '#39ff14', bgMain: '#000000', bgCard: '#1a1a1a', textMain: '#39ff14', textMuted: '#228b22', border: '#33ff00', fontFamily: "'Orbitron', sans-serif" },
+  'cyberpunk': { primary: '#facc15', bgMain: '#09090b', bgCard: '#27272a', textMain: '#facc15', textMuted: '#a1a1aa', border: '#eab308', fontFamily: "'Orbitron', sans-serif" },
+  'matrix': { primary: '#00ff41', bgMain: '#0d0d0d', bgCard: '#001a00', textMain: '#00ff41', textMuted: '#008F11', border: '#003b00', fontFamily: "'Orbitron', sans-serif" },
+  'gamer': { primary: '#ef4444', bgMain: '#111111', bgCard: '#000000', textMain: '#ffffff', textMuted: '#9ca3af', border: '#ef4444', fontFamily: "'Russo One', sans-serif" },
+  'galaxy': { primary: '#d8b4fe', bgMain: '#0f172a', bgCard: '#2e1065', textMain: '#e9d5ff', textMuted: '#a855f7', border: '#6b21a8', fontFamily: "'Orbitron', sans-serif" },
+
+  // Elegant & Retro
+  'royal': { primary: '#fbbf24', bgMain: '#312e81', bgCard: '#4338ca', textMain: '#fef3c7', textMuted: '#ddd6fe', border: '#fbbf24', fontFamily: "'Playfair Display', serif" },
+  'luxury': { primary: '#d4af37', bgMain: '#1c1917', bgCard: '#292524', textMain: '#fcfcd4', textMuted: '#a8a29e', border: '#d4af37', fontFamily: "'Playfair Display', serif" },
+  'coffee': { primary: '#d7ccc8', bgMain: '#3e2723', bgCard: '#4e342e', textMain: '#d7ccc8', textMuted: '#a1887f', border: '#6d4c41', fontFamily: "'Courier Prime', monospace" },
+  'retro': { primary: '#b58900', bgMain: '#fdf6e3', bgCard: '#eee8d5', textMain: '#657b83', textMuted: '#93a1a1', border: '#b58900', fontFamily: "'Courier Prime', monospace" },
+
+  // Elemental
+  'midnight': { primary: '#60a5fa', bgMain: '#172554', bgCard: '#1e3a8a', textMain: '#dbeafe', textMuted: '#93c5fd', border: '#2563eb', fontFamily: "'Inter', sans-serif" },
+  'volcano': { primary: '#f87171', bgMain: '#450a0a', bgCard: '#7f1d1d', textMain: '#fee2e2', textMuted: '#fca5a5', border: '#991b1b', fontFamily: "'Russo One', sans-serif" },
+  'ice': { primary: '#22d3ee', bgMain: '#083344', bgCard: '#164e63', textMain: '#cffafe', textMuted: '#67e8f9', border: '#155e75', fontFamily: "'Inter', sans-serif" },
 };
 
 // ... UI ICONS, GRADE_DATA, UNIT_ASSETS preserved ...
 // UI ICONS
 export const UI_ICONS = {
-    home: React.createElement(HomeIcon, { size: 24 }),
-    profile: React.createElement(UserCircle, { size: 24 }),
-    settings: React.createElement(Settings, { size: 24 }),
-    info: React.createElement(CircleHelp, { size: 24 }),
-    notifications: React.createElement(Bell, { size: 24 }),
+  home: React.createElement(HomeIcon, { size: 24 }),
+  profile: React.createElement(UserCircle, { size: 24 }),
+  settings: React.createElement(Settings, { size: 24 }),
+  info: React.createElement(CircleHelp, { size: 24 }),
+  notifications: React.createElement(Bell, { size: 24 }),
 };
 
 // GRADES
 export const GRADE_DATA: Record<string, GradeDef> = {
-    'PRIMARY_SCHOOL': { id: 'PRIMARY_SCHOOL', label: 'İlkokul', subLabel: '2-4. Sınıflar', icon: React.createElement(Star, { size: 28 }) },
-    'MIDDLE_SCHOOL': { id: 'MIDDLE_SCHOOL', label: 'Ortaokul', subLabel: '5-8. Sınıflar', icon: React.createElement(School, { size: 28 }) },
-    'HIGH_SCHOOL': { id: 'HIGH_SCHOOL', label: 'Lise', subLabel: '9-12. Sınıflar', icon: React.createElement(GraduationCap, { size: 28 }) },
-    'GENERAL_ENGLISH': { id: 'GENERAL_ENGLISH', label: 'Genel İngilizce', subLabel: 'A1 - C1 Seviyeleri', icon: React.createElement(Globe, { size: 28 }) },
-    '2': { id: '2', label: '2. Sınıf', icon: React.createElement(Star, { size: 24 }) },
-    '3': { id: '3', label: '3. Sınıf', icon: React.createElement(Star, { size: 24 }) },
-    '4': { id: '4', label: '4. Sınıf', icon: React.createElement(Star, { size: 24 }) },
-    '5': { id: '5', label: '5. Sınıf', icon: React.createElement(School, { size: 24 }) },
-    '6': { id: '6', label: '6. Sınıf', icon: React.createElement(School, { size: 24 }) },
-    '7': { id: '7', label: '7. Sınıf', icon: React.createElement(School, { size: 24 }) },
-    '8': { id: '8', label: '8. Sınıf', icon: React.createElement(School, { size: 24 }) },
-    '9': { id: '9', label: '9. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
-    '10': { id: '10', label: '10. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
-    '11': { id: '11', label: '11. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
-    '12': { id: '12', label: '12. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
-    'A1': { id: 'A1', label: 'A1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-green-500" }) },
-    'A2': { id: 'A2', label: 'A2 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-blue-500" }) },
-    'B1': { id: 'B1', label: 'B1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-yellow-500" }) },
-    'B2': { id: 'B2', label: 'B2 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-orange-500" }) },
-    'C1': { id: 'C1', label: 'C1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-red-500" }) },
+  'PRIMARY_SCHOOL': { id: 'PRIMARY_SCHOOL', label: 'İlkokul', subLabel: '2-4. Sınıflar', icon: React.createElement(Star, { size: 28 }) },
+  'MIDDLE_SCHOOL': { id: 'MIDDLE_SCHOOL', label: 'Ortaokul', subLabel: '5-8. Sınıflar', icon: React.createElement(School, { size: 28 }) },
+  'HIGH_SCHOOL': { id: 'HIGH_SCHOOL', label: 'Lise', subLabel: '9-12. Sınıflar', icon: React.createElement(GraduationCap, { size: 28 }) },
+  'GENERAL_ENGLISH': { id: 'GENERAL_ENGLISH', label: 'Genel İngilizce', subLabel: 'A1 - C1 Seviyeleri', icon: React.createElement(Globe, { size: 28 }) },
+  '2': { id: '2', label: '2. Sınıf', icon: React.createElement(Star, { size: 24 }) },
+  '3': { id: '3', label: '3. Sınıf', icon: React.createElement(Star, { size: 24 }) },
+  '4': { id: '4', label: '4. Sınıf', icon: React.createElement(Star, { size: 24 }) },
+  '5': { id: '5', label: '5. Sınıf', icon: React.createElement(School, { size: 24 }) },
+  '6': { id: '6', label: '6. Sınıf', icon: React.createElement(School, { size: 24 }) },
+  '7': { id: '7', label: '7. Sınıf', icon: React.createElement(School, { size: 24 }) },
+  '8': { id: '8', label: '8. Sınıf', icon: React.createElement(School, { size: 24 }) },
+  '9': { id: '9', label: '9. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+  '10': { id: '10', label: '10. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+  '11': { id: '11', label: '11. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+  '12': { id: '12', label: '12. Sınıf', icon: React.createElement(GraduationCap, { size: 24 }) },
+  'A1': { id: 'A1', label: 'A1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-green-500" }) },
+  'A2': { id: 'A2', label: 'A2 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-blue-500" }) },
+  'B1': { id: 'B1', label: 'B1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-yellow-500" }) },
+  'B2': { id: 'B2', label: 'B2 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-orange-500" }) },
+  'C1': { id: 'C1', label: 'C1 Seviye', icon: React.createElement(Signal, { size: 24, className: "text-red-500" }) },
 };
 
 // UNITS (Keep existing data)
@@ -177,11 +177,11 @@ export const UNIT_ASSETS: Record<string, UnitDef[]> = {
     { id: 'g12u2', unitNo: '2. ÜNİTE', title: 'FRIENDSHIP', icon: React.createElement(User) },
     { id: 'g12u3', unitNo: '3. ÜNİTE', title: 'HUMAN RIGHTS', icon: React.createElement(Globe) },
     { id: 'g12u4', unitNo: '4. ÜNİTE', title: 'CYBER & NATURE', icon: React.createElement(Laptop) },
-    { id: 'g12u5', unitNo: '5. ÜNİTE', title: 'PSYCHOLOGY', icon: React.createElement(BrainIcon) }, 
+    { id: 'g12u5', unitNo: '5. ÜNİTE', title: 'PSYCHOLOGY', icon: React.createElement(BrainIcon) },
     { id: 'g12u6', unitNo: '6. ÜNİTE', title: 'FAVORS', icon: React.createElement(Heart) },
     { id: 'g12u7', unitNo: '7. ÜNİTE', title: 'NEWS STORIES', icon: React.createElement(Tv) },
     { id: 'g12u8', unitNo: '8. ÜNİTE', title: 'ALTERNATIVE ENERGY', icon: React.createElement(Zap) },
-    { id: 'g12u9', unitNo: '9. ÜNİTE', title: 'TECHNOLOGY', icon: React.createElement(Cpu) }, 
+    { id: 'g12u9', unitNo: '9. ÜNİTE', title: 'TECHNOLOGY', icon: React.createElement(Cpu) },
     { id: 'g12u10', unitNo: '10. ÜNİTE', title: 'MANNERS', icon: React.createElement(Smile) },
     { id: 'g12all', unitNo: 'TAMAMI', title: 'ALL IN ONE', icon: React.createElement(Layers) },
   ],
@@ -201,7 +201,7 @@ export const UNIT_ASSETS: Record<string, UnitDef[]> = {
   '10': [
     { id: 'g10u1', unitNo: '1. ÜNİTE', title: 'SCHOOL LIFE', icon: React.createElement(School) },
     { id: 'g10u2', unitNo: '2. ÜNİTE', title: 'PLANS', icon: React.createElement(Calendar) },
-    { id: 'g10u3', unitNo: '3. ÜNİTE', title: 'LEGENDARY FIGURES', icon: React.createElement(Crown) }, 
+    { id: 'g10u3', unitNo: '3. ÜNİTE', title: 'LEGENDARY FIGURES', icon: React.createElement(Crown) },
     { id: 'g10u4', unitNo: '4. ÜNİTE', title: 'TRADITIONS', icon: React.createElement(Globe) },
     { id: 'g10u5', unitNo: '5. ÜNİTE', title: 'TRAVEL', icon: React.createElement(Plane) },
     { id: 'g10u6', unitNo: '6. ÜNİTE', title: 'HELPFUL TIPS', icon: React.createElement(Lightbulb) },
@@ -328,7 +328,7 @@ export const AVATARS: Avatar[] = [
   { id: 'tiger', icon: '🐯', image: 'https://8upload.com/image/b1d8404e5ab1066f/tiger.png', name: 'Kaplan', unlockLevel: 9, bgGradient: 'from-orange-400 to-red-500', border: 'border-orange-300' },
   { id: 'wolf', icon: '🐺', image: 'https://8upload.com/image/0a00af0ffc3b2d90/wolf.png', name: 'Kurt', unlockLevel: 10, bgGradient: 'from-slate-400 to-slate-600', border: 'border-slate-400' },
   // ... (All other avatars preserved) ...
-   { id: 'bear', icon: '🐻', image: 'https://8upload.com/image/e18a3a2df098e3a1/bear.png', name: 'Ayı', unlockLevel: 11, bgGradient: 'from-amber-700 to-amber-900', border: 'border-amber-600' },
+  { id: 'bear', icon: '🐻', image: 'https://8upload.com/image/e18a3a2df098e3a1/bear.png', name: 'Ayı', unlockLevel: 11, bgGradient: 'from-amber-700 to-amber-900', border: 'border-amber-600' },
   { id: 'detective', icon: '🕵️', image: 'https://8upload.com/image/75da781a118c9f12/detective.png', name: 'Dedektif', unlockLevel: 12, bgGradient: 'from-neutral-600 to-neutral-800', border: 'border-neutral-400' },
   { id: 'chicken', icon: '🐔', image: 'https://8upload.com/image/5a28e29d0ba881cf/chicken.png', name: 'Tavuk', unlockLevel: 13, bgGradient: 'from-red-100 to-red-300', border: 'border-red-200' },
   { id: 'frog', icon: '🐸', image: 'https://8upload.com/image/09a004e9aba108e7/frog.png', name: 'Kurbağa', unlockLevel: 14, bgGradient: 'from-green-500 to-green-700', border: 'border-green-400' },
@@ -387,150 +387,240 @@ export const AVATARS: Avatar[] = [
 export const FRAMES: FrameDef[] = [
   { id: 'frame_none', name: 'Yok', description: 'Çerçevesiz', cost: 0, style: '' },
 
-  { id: 'frame_wood', name: 'Ahşap', description: 'Doğal ahşap', cost: 2500,
-    style: 'border-8 border-amber-800 ring-2 ring-amber-600 shadow-[inset_0_0_10px_rgba(0,0,0,0.4)]', unlockLevel: 5 },
+  {
+    id: 'frame_wood', name: 'Ahşap', description: 'Doğal ahşap', cost: 4000,
+    style: 'border-8 border-amber-800 ring-2 ring-amber-600 shadow-[inset_0_0_10px_rgba(0,0,0,0.4)]', unlockLevel: 5
+  },
 
-  { id: 'frame_star', name: 'Yıldız', description: 'Yıldızlı', cost: 3500,
-    style: 'border-4 border-yellow-300 border-dotted ring-4 ring-yellow-100 shadow-[0_0_10px_#fde047]', unlockLevel: 10 },
+  {
+    id: 'frame_star', name: 'Yıldız', description: 'Yıldızlı', cost: 5500,
+    style: 'border-4 border-yellow-300 border-dotted ring-4 ring-yellow-100 shadow-[0_0_10px_#fde047]', unlockLevel: 10
+  },
 
-  { id: 'frame_gold', name: 'Altın', description: 'Parlak altın', cost: 5000,
-    style: 'border-4 border-yellow-400 ring-4 ring-yellow-200 shadow-[0_0_20px_#facc15]', unlockLevel: 15 },
+  {
+    id: 'frame_gold', name: 'Altın', description: 'Parlak altın', cost: 8000,
+    style: 'border-4 border-yellow-400 ring-4 ring-yellow-200 shadow-[0_0_20px_#facc15]', unlockLevel: 15
+  },
 
-  { id: 'frame_nature', name: 'Doğa', description: 'Yeşil yaprak', cost: 6500,
-    style: 'border-8 border-emerald-600 ring-2 ring-emerald-300 border-double shadow-[0_0_10px_#059669]', unlockLevel: 20 },
+  {
+    id: 'frame_nature', name: 'Doğa', description: 'Yeşil yaprak', cost: 9500,
+    style: 'border-8 border-emerald-600 ring-2 ring-emerald-300 border-double shadow-[0_0_10px_#059669]', unlockLevel: 20
+  },
 
-  { id: 'frame_metal', name: 'Metal', description: 'Gümüş metal', cost: 7500,
-    style: 'border-4 border-slate-400 ring-2 ring-slate-200 shadow-inner shadow-slate-500/40', unlockLevel: 25 },
+  {
+    id: 'frame_metal', name: 'Metal', description: 'Gümüş metal', cost: 12000,
+    style: 'border-4 border-slate-400 ring-2 ring-slate-200 shadow-inner shadow-slate-500/40', unlockLevel: 25
+  },
 
-  { id: 'frame_neon', name: 'Neon', description: 'Parlayan yeşil', cost: 8500,
-    style: 'frame-neon', unlockLevel: 30 },
+  {
+    id: 'frame_neon', name: 'Neon', description: 'Parlayan yeşil', cost: 15000,
+    style: 'frame-neon', unlockLevel: 30
+  },
 
-  { id: 'frame_love', name: 'Aşk', description: 'Pembe kalp', cost: 9000,
-    style: 'border-4 border-pink-500 ring-4 ring-rose-300 shadow-[0_0_20px_#f43f5e]', unlockLevel: 35 },
+  {
+    id: 'frame_love', name: 'Aşk', description: 'Pembe kalp', cost: 16000,
+    style: 'border-4 border-pink-500 ring-4 ring-rose-300 shadow-[0_0_20px_#f43f5e]', unlockLevel: 35
+  },
 
-  { id: 'frame_fire', name: 'Ateş', description: 'Alevli kırmızı', cost: 10000,
-    style: 'frame-fire', unlockLevel: 40 },
+  {
+    id: 'frame_fire', name: 'Ateş', description: 'Alevli kırmızı', cost: 18000,
+    style: 'frame-fire', unlockLevel: 40
+  },
 
-  { id: 'frame_pixel', name: 'Piksel', description: 'Retro oyun', cost: 10000,
-    style: 'border-4 border-green-500 outline outline-4 outline-black outline-dashed', unlockLevel: 45 },
+  {
+    id: 'frame_pixel', name: 'Piksel', description: 'Retro oyun', cost: 18000,
+    style: 'border-4 border-green-500 outline outline-4 outline-black outline-dashed', unlockLevel: 45
+  },
 
-  { id: 'frame_ice', name: 'Buz', description: 'Soğuk mavi', cost: 11000,
-    style: 'border-4 border-slate-200 ring-4 ring-sky-200 shadow-[0_0_15px_#bae6fd]', unlockLevel: 50 },
+  {
+    id: 'frame_ice', name: 'Buz', description: 'Soğuk mavi', cost: 20000,
+    style: 'border-4 border-slate-200 ring-4 ring-sky-200 shadow-[0_0_15px_#bae6fd]', unlockLevel: 50
+  },
 
-  { id: 'frame_royal', name: 'Asil', description: 'Mor ve altın', cost: 12500,
-    style: 'border-4 border-purple-600 ring-2 ring-yellow-400 shadow-[0_0_20px_#9333ea]', unlockLevel: 60 },
+  {
+    id: 'frame_royal', name: 'Asil', description: 'Mor ve altın', cost: 25000,
+    style: 'border-4 border-purple-600 ring-2 ring-yellow-400 shadow-[0_0_20px_#9333ea]', unlockLevel: 60
+  },
 
-  { id: 'frame_dark', name: 'Karanlık', description: 'Gece siyahı', cost: 12500,
-    style: 'border-4 border-gray-900 ring-1 ring-gray-600 shadow-[0_0_15px_#0f0f0f]', unlockLevel: 70 },
+  {
+    id: 'frame_dark', name: 'Karanlık', description: 'Gece siyahı', cost: 25000,
+    style: 'border-4 border-gray-900 ring-1 ring-gray-600 shadow-[0_0_15px_#0f0f0f]', unlockLevel: 70
+  },
 
-  { id: 'frame_ghost', name: 'Hayalet', description: 'Yarı saydam', cost: 13500,
-    style: 'frame-ghost', unlockLevel: 80 },
+  {
+    id: 'frame_ghost', name: 'Hayalet', description: 'Yarı saydam', cost: 28000,
+    style: 'frame-ghost', unlockLevel: 80
+  },
 
-  { id: 'frame_cyber', name: 'Siber', description: 'Fütüristik', cost: 15000,
-    style: 'border-2 border-yellow-400 ring-2 ring-cyan-400 shadow-[0_0_15px_#22d3ee] border-dashed', unlockLevel: 90 },
+  {
+    id: 'frame_cyber', name: 'Siber', description: 'Fütüristik', cost: 30000,
+    style: 'border-2 border-yellow-400 ring-2 ring-cyan-400 shadow-[0_0_15px_#22d3ee] border-dashed', unlockLevel: 90
+  },
 
-  { id: 'frame_glitch', name: 'Glitch', description: 'Bozuk efekt', cost: 17500,
-    style: 'frame-glitch', unlockLevel: 100 },
+  {
+    id: 'frame_glitch', name: 'Glitch', description: 'Bozuk efekt', cost: 35000,
+    style: 'frame-glitch', unlockLevel: 100
+  },
 
-  { id: 'frame_diamond', name: 'Elmas', description: 'Buz mavisi', cost: 20000,
-    style: 'border-4 border-cyan-300 ring-2 ring-blue-100 shadow-[0_0_25px_#67e8f9]', unlockLevel: 120 },
+  {
+    id: 'frame_diamond', name: 'Elmas', description: 'Buz mavisi', cost: 40000,
+    style: 'border-4 border-cyan-300 ring-2 ring-blue-100 shadow-[0_0_25px_#67e8f9]', unlockLevel: 120
+  },
 
-  { id: 'frame_lightning', name: 'Yıldırım', description: 'Elektrikli', cost: 22500,
-    style: 'frame-lightning', unlockLevel: 150 },
+  {
+    id: 'frame_lightning', name: 'Yıldırım', description: 'Elektrikli', cost: 45000,
+    style: 'frame-lightning', unlockLevel: 150
+  },
 
-  { id: 'frame_rainbow', name: 'Gökkuşağı', description: 'Renkli', cost: 25000,
-    style: 'frame-rainbow', unlockLevel: 200 },
+  {
+    id: 'frame_rainbow', name: 'Gökkuşağı', description: 'Renkli', cost: 50000,
+    style: 'frame-rainbow', unlockLevel: 200
+  },
 
-  { id: 'frame_rgb', name: 'RGB Gamer', description: 'Renk değiştiren', cost: 30000,
-    style: 'frame-rgb', unlockLevel: 250 },
+  {
+    id: 'frame_rgb', name: 'RGB Gamer', description: 'Renk değiştiren', cost: 60000,
+    style: 'frame-rgb', unlockLevel: 250
+  },
 
-  { id: 'frame_magma', name: 'Magma', description: 'Hareketli lav', cost: 35000,
-    style: 'border-4 border-orange-600 ring-2 ring-red-500 shadow-[0_0_20px_#f97316] animate-pulse', unlockLevel: 300 },
+  {
+    id: 'frame_magma', name: 'Magma', description: 'Hareketli lav', cost: 75000,
+    style: 'border-4 border-orange-600 ring-2 ring-red-500 shadow-[0_0_20px_#f97316] animate-pulse', unlockLevel: 300
+  },
 
-  { id: 'frame_leaf', name: 'Yaprak', description: 'Doğa dostu', cost: 8500,
-    style: 'border-8 border-green-600 border-dashed ring-2 ring-green-300 shadow-[0_0_10px_#16a34a]', unlockLevel: 45 },
+  {
+    id: 'frame_leaf', name: 'Yaprak', description: 'Doğa dostu', cost: 15000,
+    style: 'border-8 border-green-600 border-dashed ring-2 ring-green-300 shadow-[0_0_10px_#16a34a]', unlockLevel: 45
+  },
 
-  { id: 'frame_tech', name: 'Tekno', description: 'Devre kartı', cost: 18000,
-    style: 'border-4 border-blue-800 ring-2 ring-cyan-500 border-double shadow-[0_0_15px_#0ea5e9]', unlockLevel: 110 },
+  {
+    id: 'frame_tech', name: 'Tekno', description: 'Devre kartı', cost: 32000,
+    style: 'border-4 border-blue-800 ring-2 ring-cyan-500 border-double shadow-[0_0_15px_#0ea5e9]', unlockLevel: 110
+  },
 
-  { id: 'frame_shadow', name: 'Gölge', description: 'Derin karanlık efekt', cost: 22000, style: 'border-4 border-black shadow-[0_0_40px_#000] animate-pulse', unlockLevel: 140 },
+  { id: 'frame_shadow', name: 'Gölge', description: 'Derin karanlık efekt', cost: 40000, style: 'border-4 border-black shadow-[0_0_40px_#000] animate-pulse', unlockLevel: 140 },
 
-  { id: 'frame_plasma', name: 'Plazma', description: 'Akışkan neon', cost: 28000, style: 'border-4 border-purple-400 shadow-[0_0_35px_#a855f7] animate-pulse', unlockLevel: 180 },
+  { id: 'frame_plasma', name: 'Plazma', description: 'Akışkan neon', cost: 50000, style: 'border-4 border-purple-400 shadow-[0_0_35px_#a855f7] animate-pulse', unlockLevel: 180 },
 
   { id: 'frame_crystal', name: 'Kristal', description: 'Kırılmış cam efekti', cost: 32000, style: 'border-4 border-blue-200 shadow-[0_0_30px_#bfdbfe] animate-pulse', unlockLevel: 220 },
 ];
 
 // BACKGROUNDS (UPDATED ECONOMY)
 export const BACKGROUNDS: BackgroundDef[] = [
-  { id: 'bg_default', name: 'Varsayılan', description: 'Sade geçiş', cost: 0,
-    style: 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800' },
+  {
+    id: 'bg_default', name: 'Varsayılan', description: 'Sade geçiş', cost: 0,
+    style: 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800'
+  },
 
-  { id: 'bg_blue', name: 'Gökyüzü', description: 'Mavi tonları', cost: 1500,
-    style: 'bg-gradient-to-br from-blue-400 to-indigo-500', unlockLevel: 5 },
+  {
+    id: 'bg_blue', name: 'Gökyüzü', description: 'Mavi tonları', cost: 2500,
+    style: 'bg-gradient-to-br from-blue-400 to-indigo-500', unlockLevel: 5
+  },
 
-  { id: 'bg_sunset', name: 'Gün Batımı', description: 'Turuncu ve mor', cost: 2500,
-    style: 'bg-gradient-to-br from-orange-400 to-purple-600', unlockLevel: 10 },
+  {
+    id: 'bg_sunset', name: 'Gün Batımı', description: 'Turuncu ve mor', cost: 4000,
+    style: 'bg-gradient-to-br from-orange-400 to-purple-600', unlockLevel: 10
+  },
 
-  { id: 'bg_nature', name: 'Doğa', description: 'Yeşil ve ferah', cost: 3500,
-    style: 'bg-gradient-to-br from-green-400 to-emerald-600', unlockLevel: 15 },
+  {
+    id: 'bg_nature', name: 'Doğa', description: 'Yeşil ve ferah', cost: 5500,
+    style: 'bg-gradient-to-br from-green-400 to-emerald-600', unlockLevel: 15
+  },
 
-  { id: 'bg_lavender', name: 'Lavanta', description: 'Yumuşak mor', cost: 3500,
-    style: 'bg-gradient-to-br from-purple-300 to-indigo-400', unlockLevel: 15 },
+  {
+    id: 'bg_lavender', name: 'Lavanta', description: 'Yumuşak mor', cost: 5500,
+    style: 'bg-gradient-to-br from-purple-300 to-indigo-400', unlockLevel: 15
+  },
 
-  { id: 'bg_fire', name: 'Alev', description: 'Kırmızı ve sarı', cost: 5000,
-    style: 'bg-gradient-to-br from-red-500 to-yellow-500', unlockLevel: 20 },
+  {
+    id: 'bg_fire', name: 'Alev', description: 'Kırmızı ve sarı', cost: 8000,
+    style: 'bg-gradient-to-br from-red-500 to-yellow-500', unlockLevel: 20
+  },
 
-  { id: 'bg_ocean', name: 'Okyanus', description: 'Derin mavi', cost: 5000,
-    style: 'bg-gradient-to-br from-cyan-500 to-blue-800', unlockLevel: 20 },
+  {
+    id: 'bg_ocean', name: 'Okyanus', description: 'Derin mavi', cost: 8000,
+    style: 'bg-gradient-to-br from-cyan-500 to-blue-800', unlockLevel: 20
+  },
 
-  { id: 'bg_forest', name: 'Orman', description: 'Koyu yeşil', cost: 5000,
-    style: 'bg-gradient-to-br from-emerald-700 to-green-900', unlockLevel: 20 },
+  {
+    id: 'bg_forest', name: 'Orman', description: 'Koyu yeşil', cost: 8000,
+    style: 'bg-gradient-to-br from-emerald-700 to-green-900', unlockLevel: 20
+  },
 
-  { id: 'bg_love', name: 'Aşk', description: 'Pembe rüya', cost: 6000,
-    style: 'bg-gradient-to-br from-pink-300 to-rose-500', unlockLevel: 25 },
+  {
+    id: 'bg_love', name: 'Aşk', description: 'Pembe rüya', cost: 9500,
+    style: 'bg-gradient-to-br from-pink-300 to-rose-500', unlockLevel: 25
+  },
 
-  { id: 'bg_galaxy', name: 'Galaksi', description: 'Uzay renkleri', cost: 7500,
-    style: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800', unlockLevel: 30 },
+  {
+    id: 'bg_galaxy', name: 'Galaksi', description: 'Uzay renkleri', cost: 12000,
+    style: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800', unlockLevel: 30
+  },
 
-  { id: 'bg_midnight', name: 'Gece Yarısı', description: 'Koyu lacivert', cost: 8500,
-    style: 'bg-gradient-to-br from-slate-900 to-blue-900', unlockLevel: 35 },
+  {
+    id: 'bg_midnight', name: 'Gece Yarısı', description: 'Koyu lacivert', cost: 13500,
+    style: 'bg-gradient-to-br from-slate-900 to-blue-900', unlockLevel: 35
+  },
 
-  { id: 'bg_ice', name: 'Buzul', description: 'Buz mavisi', cost: 10000,
-    style: 'bg-gradient-to-br from-white via-blue-100 to-cyan-200', unlockLevel: 40 },
+  {
+    id: 'bg_ice', name: 'Buzul', description: 'Buz mavisi', cost: 15000,
+    style: 'bg-gradient-to-br from-white via-blue-100 to-cyan-200', unlockLevel: 40
+  },
 
-  { id: 'bg_neon', name: 'Neon', description: 'Parlak siyah', cost: 10000,
-    style: 'bg-gradient-to-br from-gray-900 to-black border-2 border-green-400 shadow-[inset_0_0_40px_#00ff00]', unlockLevel: 40 },
+  {
+    id: 'bg_neon', name: 'Neon', description: 'Parlak siyah', cost: 15000,
+    style: 'bg-gradient-to-br from-gray-900 to-black border-2 border-green-400 shadow-[inset_0_0_40px_#00ff00]', unlockLevel: 40
+  },
 
-  { id: 'bg_candy', name: 'Şekerleme', description: 'Tatlı renkler', cost: 11000,
-    style: 'bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-400', unlockLevel: 45 },
+  {
+    id: 'bg_candy', name: 'Şekerleme', description: 'Tatlı renkler', cost: 16500,
+    style: 'bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-400', unlockLevel: 45
+  },
 
-  { id: 'bg_gold', name: 'Altın', description: 'Lüks görünüm', cost: 12500,
-    style: 'bg-gradient-to-br from-yellow-200 via-yellow-400 to-yellow-600 shadow-[inset_0_0_20px_#facc15]', unlockLevel: 50 },
+  {
+    id: 'bg_gold', name: 'Altın', description: 'Lüks görünüm', cost: 20000,
+    style: 'bg-gradient-to-br from-yellow-200 via-yellow-400 to-yellow-600 shadow-[inset_0_0_20px_#facc15]', unlockLevel: 50
+  },
 
-  { id: 'bg_deep_sea', name: 'Derin Deniz', description: 'Okyanus dibi', cost: 12500,
-    style: 'bg-gradient-to-b from-blue-600 via-blue-900 to-black', unlockLevel: 50 },
+  {
+    id: 'bg_deep_sea', name: 'Derin Deniz', description: 'Okyanus dibi', cost: 12500,
+    style: 'bg-gradient-to-b from-blue-600 via-blue-900 to-black', unlockLevel: 50
+  },
 
-  { id: 'bg_volcano', name: 'Volkan', description: 'Kızgın lav', cost: 13500,
-    style: 'bg-gradient-to-t from-red-900 via-red-600 to-orange-500 shadow-[inset_0_20px_40px_rgba(0,0,0,0.4)]', unlockLevel: 55 },
+  {
+    id: 'bg_volcano', name: 'Volkan', description: 'Kızgın lav', cost: 13500,
+    style: 'bg-gradient-to-t from-red-900 via-red-600 to-orange-500 shadow-[inset_0_20px_40px_rgba(0,0,0,0.4)]', unlockLevel: 55
+  },
 
-  { id: 'bg_aurora', name: 'Aurora', description: 'Kuzey ışıkları', cost: 15000,
-    style: 'bg-gradient-to-tr from-green-400 via-blue-500 to-purple-600 animate-[pulse_10s_infinite]', unlockLevel: 60 },
+  {
+    id: 'bg_aurora', name: 'Aurora', description: 'Kuzey ışıkları', cost: 15000,
+    style: 'bg-gradient-to-tr from-green-400 via-blue-500 to-purple-600 animate-[pulse_10s_infinite]', unlockLevel: 60
+  },
 
-  { id: 'bg_matrix', name: 'Matrix', description: 'Dijital kod', cost: 17500,
-    style: 'bg-black border-2 border-green-500 shadow-[inset_0_0_20px_#00ff00] shadow-[inset_0_40px_40px_rgba(0,255,0,0.15)]', unlockLevel: 70 },
+  {
+    id: 'bg_matrix', name: 'Matrix', description: 'Dijital kod', cost: 17500,
+    style: 'bg-black border-2 border-green-500 shadow-[inset_0_0_20px_#00ff00] shadow-[inset_0_40px_40px_rgba(0,255,0,0.15)]', unlockLevel: 70
+  },
 
-  { id: 'bg_royal', name: 'Kraliyet', description: 'Asil mor', cost: 20000,
-    style: 'bg-gradient-to-br from-indigo-900 via-purple-800 to-fuchsia-900 border-2 border-yellow-500 shadow-[0_0_30px_#9333ea]', unlockLevel: 80 },
+  {
+    id: 'bg_royal', name: 'Kraliyet', description: 'Asil mor', cost: 20000,
+    style: 'bg-gradient-to-br from-indigo-900 via-purple-800 to-fuchsia-900 border-2 border-yellow-500 shadow-[0_0_30px_#9333ea]', unlockLevel: 80
+  },
 
-  { id: 'bg_library', name: 'Kütüphane', description: 'Sakin ortam', cost: 6000,
-    style: 'bg-[#f5f5dc] dark:bg-[#2b1a0e] shadow-inner', unlockLevel: 25 },
+  {
+    id: 'bg_library', name: 'Kütüphane', description: 'Sakin ortam', cost: 6000,
+    style: 'bg-[#f5f5dc] dark:bg-[#2b1a0e] shadow-inner', unlockLevel: 25
+  },
 
-  { id: 'bg_space_dark', name: 'Derin Uzay', description: 'Sonsuz karanlık', cost: 16000,
-    style: 'bg-black border border-white/10 shadow-[inset_0_0_40px_#111]', unlockLevel: 65 },
+  {
+    id: 'bg_space_dark', name: 'Derin Uzay', description: 'Sonsuz karanlık', cost: 16000,
+    style: 'bg-black border border-white/10 shadow-[inset_0_0_40px_#111]', unlockLevel: 65
+  },
 
-  { id: 'bg_geometry', name: 'Geometri', description: 'Modern desenler', cost: 10000,
-    style: 'bg-gradient-to-tr from-gray-200 to-gray-400 dark:from-gray-800 dark:to-gray-900', unlockLevel: 40 },
-  
+  {
+    id: 'bg_geometry', name: 'Geometri', description: 'Modern desenler', cost: 10000,
+    style: 'bg-gradient-to-tr from-gray-200 to-gray-400 dark:from-gray-800 dark:to-gray-900', unlockLevel: 40
+  },
+
   { id: 'bg_holo', name: 'Hologram', description: '3D parlama', cost: 22000, style: 'bg-gradient-to-br from-cyan-300 via-purple-300 to-blue-300 animate-pulse', unlockLevel: 90 },
 
   { id: 'bg_digital', name: 'Dijital Akış', description: 'Akışkan neon çizgiler', cost: 30000, style: 'bg-gradient-to-br from-black via-blue-900 to-black animate-pulse', unlockLevel: 120 },
@@ -539,7 +629,7 @@ export const BACKGROUNDS: BackgroundDef[] = [
 ];
 
 export const BADGES: Badge[] = [
-    // ... BADGES are PRESERVED ...
+  // ... BADGES are PRESERVED ...
   { id: 'first_step', name: 'İlk Adım', description: 'İlk kelime kartını inceledin.', icon: '🌱', condition: (s: any) => s.flashcardsViewed >= 1, unlocked: false },
   { id: 'streak_3', name: 'Isınma Turu', description: '3 gün üst üste çalıştın.', icon: '🔥', condition: (s: any) => s.streak >= 3, unlocked: false },
   { id: 'streak_7', name: 'Haftalık Seri', description: '7 gün üst üste çalıştın!', icon: '📅', condition: (s: any) => s.streak >= 7, unlocked: false },
@@ -562,7 +652,7 @@ export const BADGES: Badge[] = [
   { id: 'quiz_100', name: 'Bilgi Küpü', description: '100 doğru cevap verdin.', icon: '💡', condition: (s: any) => s.quizCorrect >= 100, unlocked: false },
   { id: 'quiz_500', name: 'Test Ustası', description: '500 doğru cevap verdin.', icon: '🎓', condition: (s: any) => s.quizCorrect >= 500, unlocked: false },
   { id: 'quiz_1000', name: 'Soru Profesörü', description: '1000 doğru cevap verdin.', icon: '🔬', condition: (s: any) => s.quizCorrect >= 1000, unlocked: false },
-  
+
   { id: 'badge_10', name: 'Rozet Avcısı', description: '10 rozet kazandın.', icon: '🎖️', condition: (s: any) => s.badges.length >= 10, unlocked: false },
   { id: 'badge_20', name: 'Rozet Koleksiyoncusu', description: '20 rozet kazandın.', icon: '🎗️', condition: (s: any) => s.badges.length >= 20, unlocked: false },
   { id: 'badge_30', name: 'Madalyalı', description: '30 rozet kazandın.', icon: '🏅', condition: (s: any) => s.badges.length >= 30, unlocked: false },
@@ -614,33 +704,39 @@ export const BADGES: Badge[] = [
   { id: 'matching_pro', name: 'Hafıza Ustası', description: 'Eşleştirme oyununda 200+ puan al.', icon: '🧠', condition: (s: any) => s.weekly.matchingBestTime >= 200, unlocked: false },
   { id: 'matching_eagle', name: 'Keskin Göz', description: 'Eşleştirme oyununda 500+ puan al.', icon: '🦅', condition: (s: any) => s.weekly.matchingBestTime >= 500, unlocked: false },
 
-  { id: 'shopper_bronze', name: 'Müşteri', description: 'Marketten 1 eşya satın al.', icon: '🛍️', condition: (s: any) => {
+  {
+    id: 'shopper_bronze', name: 'Müşteri', description: 'Marketten 1 eşya satın al.', icon: '🛍️', condition: (s: any) => {
       const stored = localStorage.getItem('lgs_user_profile');
       if (stored) {
-          const p = JSON.parse(stored);
-          const purchasedCount = (p.purchasedFrames?.length || 1) + (p.purchasedThemes?.length || 2) + (p.purchasedBackgrounds?.length || 1);
-          return purchasedCount >= 5; 
+        const p = JSON.parse(stored);
+        const purchasedCount = (p.purchasedFrames?.length || 1) + (p.purchasedThemes?.length || 2) + (p.purchasedBackgrounds?.length || 1);
+        return purchasedCount >= 5;
       }
       return false;
-  }, unlocked: false },
-  { id: 'shopper_silver', name: 'Koleksiyoner', description: 'Marketten 5 eşya satın al.', icon: '🎩', condition: (s: any) => {
-       const stored = localStorage.getItem('lgs_user_profile');
-       if (stored) {
-           const p = JSON.parse(stored);
-           const purchasedCount = (p.purchasedFrames?.length || 1) + (p.purchasedThemes?.length || 2) + (p.purchasedBackgrounds?.length || 1);
-           return purchasedCount >= 9;
-       }
-       return false;
-  }, unlocked: false },
-   { id: 'shopper_gold', name: 'Market Kralı', description: 'Marketten 10 eşya satın al.', icon: '💎', condition: (s: any) => {
-       const stored = localStorage.getItem('lgs_user_profile');
-       if (stored) {
-           const p = JSON.parse(stored);
-           const purchasedCount = (p.purchasedFrames?.length || 1) + (p.purchasedThemes?.length || 2) + (p.purchasedBackgrounds?.length || 1);
-           return purchasedCount >= 14; 
-       }
-       return false;
-  }, unlocked: false },
+    }, unlocked: false
+  },
+  {
+    id: 'shopper_silver', name: 'Koleksiyoner', description: 'Marketten 5 eşya satın al.', icon: '🎩', condition: (s: any) => {
+      const stored = localStorage.getItem('lgs_user_profile');
+      if (stored) {
+        const p = JSON.parse(stored);
+        const purchasedCount = (p.purchasedFrames?.length || 1) + (p.purchasedThemes?.length || 2) + (p.purchasedBackgrounds?.length || 1);
+        return purchasedCount >= 9;
+      }
+      return false;
+    }, unlocked: false
+  },
+  {
+    id: 'shopper_gold', name: 'Market Kralı', description: 'Marketten 10 eşya satın al.', icon: '💎', condition: (s: any) => {
+      const stored = localStorage.getItem('lgs_user_profile');
+      if (stored) {
+        const p = JSON.parse(stored);
+        const purchasedCount = (p.purchasedFrames?.length || 1) + (p.purchasedThemes?.length || 2) + (p.purchasedBackgrounds?.length || 1);
+        return purchasedCount >= 14;
+      }
+      return false;
+    }, unlocked: false
+  },
 
   { id: 'vocab_treasure', name: 'Kelime Hazinesi', description: 'Toplam 1000 kelime kartı görüntüle.', icon: '📚', condition: (s: any) => s.flashcardsViewed >= 1000, unlocked: false },
   { id: 'wealthy', name: 'Servet', description: 'Hesabında 20.000 XP biriktir.', icon: '💰', condition: (s: any) => s.xp >= 20000, unlocked: false },
