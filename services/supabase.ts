@@ -14,9 +14,11 @@ import {
     saveSRSData,
     overwriteLocalWithCloud,
     getMemorizedSet,
-    getBookmarksSet
+    getBookmarksSet,
+    notifyDataChange
 } from './userService';
 import { UNIT_ASSETS } from '../data/assets';
+import { handleError } from './errorHandler';
 
 // SUPABASE CONFIG
 const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL || "https://idjeqbmjfcoszbulnmzn.supabase.co";
@@ -49,8 +51,19 @@ export const getAuthInstance = () => {
 };
 
 export const getCurrentUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    return data.user;
+    try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+            console.error("Error getting current user:", error);
+            handleError(error, "Failed to get current user");
+            return null;
+        }
+        return data.user;
+    } catch (e) {
+        console.error("Exception getting current user:", e);
+        handleError(e, "Exception getting current user");
+        return null;
+    }
 };
 
 
@@ -146,7 +159,7 @@ export const getUnitData = async (unitId: string): Promise<WordCard[] | null> =>
         return null;
     } catch (e) {
         console.error("Error fetching unit data:", e);
-
+        handleError(e, "Unit data fetch failed", { unitId });
         return null;
     }
 };
@@ -174,6 +187,7 @@ export const saveUnitData = async (unitId: string, words: WordCard[]) => {
         console.log(`Unit ${unitId} saved successfully.`);
     } catch (e) {
         console.error(`Error saving unit ${unitId}:`, e);
+        handleError(e, "Unit save failed", { unitId });
         throw e;
     }
 };
@@ -185,32 +199,42 @@ export const updateUnitWords = async (unitId: string, newWordList: WordCard[]) =
 // --- AUTHENTICATION ---
 
 export const loginUser = async (loginInput: string, pass: string, remember: boolean) => {
-    let email = loginInput;
+  // Güçlü doğrulama: Kullanıcı adı ve şifre boş olamaz
+  if (!loginInput || !pass) {
+    throw new Error("Kullanıcı adı ve şifre boş olamaz.");
+  }
 
-    if (!loginInput.includes('@')) {
-        const query = supabase
-            .from('profiles')
-            .select('email')
-            .eq('username', loginInput)
-            .single();
+  // Güçlü doğrulama: Şifre minimum 8 karakter olmalı
+  if (pass.length < 8) {
+    throw new Error("Şifre en az 8 karakter olmalıdır.");
+  }
 
-        const result = await withTimeout<DbResult<{ email: string }>>(query, 10000);
+  let email = loginInput;
 
-        const data = result?.data;
-        const error = result?.error;
+  if (!loginInput.includes('@')) {
+    const query = supabase
+      .from('profiles')
+      .select('email')
+      .eq('username', loginInput)
+      .single();
 
-        if (error || !data) {
-            throw new Error("Kullanıcı adı bulunamadı.");
-        }
-        email = data.email;
+    const result = await withTimeout<DbResult<{ email: string }>>(query, 10000);
+
+    const data = result?.data;
+    const error = result?.error;
+
+    if (error || !data) {
+      throw new Error("Kullanıcı adı bulunamadı.");
     }
+    email = data.email;
+  }
 
-    const { error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: pass,
-    });
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: pass,
+  });
 
-    if (error) throw error;
+  if (error) throw error;
 };
 
 export const signInWithGoogle = async () => {
@@ -224,90 +248,111 @@ export const signInWithGoogle = async () => {
 };
 
 export const registerUser = async (name: string, email: string, pass: string, grade: string) => {
-    const query = supabase
-        .from('profiles')
-        .select('username')
-        .eq('username', name)
-        .single();
+  // Güçlü doğrulama: Kullanıcı adı, email ve şifre boş olamaz
+  if (!name || !email || !pass) {
+    throw new Error("Kullanıcı adı, email ve şifre boş olamaz.");
+  }
 
-    const result = await withTimeout<DbResult<{ username: string }>>(query, 10000);
+  // Güçlü doğrulama: Kullanıcı adı minimum 3 karakter olmalı
+  if (name.length < 3) {
+    throw new Error("Kullanıcı adı en az 3 karakter olmalıdır.");
+  }
 
-    const existingUser = result?.data;
+  // Güçlü doğrulama: Şifre minimum 8 karakter olmalı
+  if (pass.length < 8) {
+    throw new Error("Şifre en az 8 karakter olmalıdır.");
+  }
 
-    if (existingUser) {
-        throw new Error("Bu kullanıcı adı zaten alınmış.");
+  // Güçlü doğrulama: Email formatı doğru olmalı
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new Error("Geçersiz email formatı.");
+  }
+
+  const query = supabase
+    .from('profiles')
+    .select('username')
+    .eq('username', name)
+    .single();
+
+  const result = await withTimeout<DbResult<{ username: string }>>(query, 10000);
+
+  const existingUser = result?.data;
+
+  if (existingUser) {
+    throw new Error("Bu kullanıcı adı zaten alınmış.");
+  }
+
+  const localProfile = getUserProfile();
+  const localStats = getUserStats();
+
+  let friendCode = localProfile.friendCode;
+  if (!friendCode) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    friendCode = '';
+    for (let i = 0; i < 6; i++) friendCode += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  const metadata = {
+    name: name,
+    grade: grade,
+    friend_code: friendCode
+  };
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: pass,
+    options: {
+      data: metadata
     }
+  });
 
-    const localProfile = getUserProfile();
-    const localStats = getUserStats();
+  if (error) throw error;
 
-    let friendCode = localProfile.friendCode;
-    if (!friendCode) {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        friendCode = '';
-        for (let i = 0; i < 6; i++) friendCode += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+  if (data.user) {
+    const srsData = getSRSData();
 
-    const metadata = {
-        name: name,
-        grade: grade,
-        friend_code: friendCode
+    const inventoryData = {
+      streakFreezes: localProfile.inventory.streakFreezes,
+      themes: localProfile.purchasedThemes,
+      frames: localProfile.purchasedFrames,
+      backgrounds: localProfile.purchasedBackgrounds,
+      equipped_frame: localProfile.frame,
+      equipped_background: localProfile.background
     };
 
-    const { data, error } = await supabase.auth.signUp({
-        email,
-        password: pass,
-        options: {
-            data: metadata
-        }
-    });
+    const statsData = {
+      ...localStats,
+      lastUsernameChange: Date.now()
+    };
 
-    if (error) throw error;
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        username: name,
+        grade: grade,
+        friend_code: friendCode,
+        avatar: localProfile.avatar,
+        stats: statsData,
+        srs_data: srsData,
+        inventory: inventoryData,
+        role: 'user',
+        theme: getTheme(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', data.user.id);
 
-    if (data.user) {
-        const srsData = getSRSData();
+    if (updateError) console.error("Migration error:", updateError);
 
-        const inventoryData = {
-            streakFreezes: localProfile.inventory.streakFreezes,
-            themes: localProfile.purchasedThemes,
-            frames: localProfile.purchasedFrames,
-            backgrounds: localProfile.purchasedBackgrounds,
-            equipped_frame: localProfile.frame,
-            equipped_background: localProfile.background
-        };
-
-        const statsData = {
-            ...localStats,
-            lastUsernameChange: Date.now()
-        };
-
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-                username: name,
-                grade: grade,
-                friend_code: friendCode,
-                avatar: localProfile.avatar,
-                stats: statsData,
-                srs_data: srsData,
-                inventory: inventoryData,
-                role: 'user',
-                theme: getTheme(),
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', data.user.id);
-
-        if (updateError) console.error("Migration error:", updateError);
-
-        const newLocalProfile = {
-            ...localProfile,
-            name: name,
-            grade: grade,
-            isGuest: false,
-            friendCode: friendCode
-        };
-        saveUserProfile(newLocalProfile);
-    }
+    const newLocalProfile = {
+      ...localProfile,
+      name: name,
+      grade: grade,
+      isGuest: false,
+      friendCode: friendCode
+    };
+    saveUserProfile(newLocalProfile);
+  }
 };
 
 export const resetUserPassword = async (email: string) => {
@@ -332,6 +377,7 @@ export const logoutUser = async () => {
         if (error) console.warn("Sign out warning:", error);
     } catch (e) {
         console.warn("Sign out failed:", e);
+        handleError(e, "Logout failed");
     } finally {
         // Find and remove Supabase tokens specifically
         Object.keys(localStorage).forEach(key => {
@@ -389,6 +435,7 @@ export const deleteAccount = async () => {
         }
     } catch (e) {
         console.error("Account delete error:", e);
+        handleError(e, "Account deletion failed");
         // We still proceed to sign out specific to this device
     }
 
@@ -400,113 +447,211 @@ export const deleteAccount = async () => {
 // --- SMART DATA SYNC ---
 
 export const syncLocalToCloud = async (userId?: string) => {
+  try {
+    const userResponse = await supabase.auth.getUser();
+    const uid = userId || userResponse.data.user?.id;
+    if (!uid) return;
+
+    // 1. Yerel verileri al
+    const localProfile = getUserProfile();
+    const localStats = getUserStats();
+    const localSRS = getSRSData();
+
+    if (localProfile.isGuest) return;
+
+    // 2. Buluttaki verileri al (Timestamp kontrolü için)
+    let cloudData: any = null;
     try {
-        const userResponse = await supabase.auth.getUser();
-        const uid = userId || userResponse.data.user?.id;
-        if (!uid) return;
+      const cloudQuery = supabase
+        .from('profiles')
+        .select('stats, srs_data, inventory, avatar, grade, username, theme, updated_at')
+        .eq('id', uid)
+        .single();
 
-        // 1. Yerel verileri al
-        const localProfile = getUserProfile();
-        const localStats = getUserStats();
-        const localSRS = getSRSData();
+      const cloudResult = await withTimeout<DbResult<any>>(cloudQuery, 15000);
 
-        if (localProfile.isGuest) return;
+      if (cloudResult && !cloudResult.error) {
+        cloudData = cloudResult.data;
+      }
+    } catch (e) {
+      console.warn("Could not fetch cloud data for sync comparison, attempting push only.");
+    }
 
-        // 2. Buluttaki verileri al (Timestamp kontrolü için)
+    // 3. Karşılaştırma ve Karar Verme - Geliştirilmiş timestamp mantığı
+    const localTimestamp = Math.max(
+      localProfile.updatedAt || 0,
+      localStats.updatedAt || 0,
+      Object.values(localSRS).reduce((max, entry) => Math.max(max, entry.nextReview || 0), 0)
+    );
 
-        let cloudData: any = null;
-        try {
-            const cloudQuery = supabase
-                .from('profiles')
-                .select('stats, srs_data, inventory, avatar, grade, username, theme, updated_at')
-                .eq('id', uid)
-                .single();
+    let cloudTimestamp = 0;
+    if (cloudData) {
+      const statsTs = cloudData.stats?.updatedAt || 0;
+      const profileTs = cloudData.updated_at ? new Date(cloudData.updated_at).getTime() : 0;
+      
+      // Cloud SRS data timestamp
+      let cloudSRSTimestamp = 0;
+      if (cloudData.srs_data) {
+        const srsEntries = cloudData.srs_data as Record<string, { nextReview?: number }>;
+        cloudSRSTimestamp = Object.values(srsEntries).reduce((max: number, entry: any) =>
+          Math.max(max, entry.nextReview || 0), 0
+        );
+      }
+      
+      cloudTimestamp = Math.max(statsTs, profileTs, cloudSRSTimestamp);
+    }
 
-            const cloudResult = await withTimeout<DbResult<any>>(cloudQuery, 15000);
+    // Eğer bulut daha yeniyse -> İndir ve Yereli Güncelle
+    if (cloudTimestamp > localTimestamp) {
+      console.log("Cloud is newer. Pulling data...", {
+        cloudTimestamp,
+        localTimestamp,
+        difference: cloudTimestamp - localTimestamp
+      });
+      
+      // Veri bütünlüğü kontrolü
+      if (cloudData && cloudData.stats && cloudData.srs_data) {
+        overwriteLocalWithCloud({
+          profile: {
+            ...localProfile,
+            name: cloudData.username,
+            grade: cloudData.grade,
+            avatar: cloudData.avatar,
+            frame: cloudData.inventory?.equipped_frame,
+            background: cloudData.inventory?.equipped_background,
+            purchasedThemes: cloudData.inventory?.themes,
+            purchasedFrames: cloudData.inventory?.frames,
+            purchasedBackgrounds: cloudData.inventory?.backgrounds,
+            inventory: { streakFreezes: cloudData.inventory?.streakFreezes || 0 },
+            theme: cloudData.theme,
+            updatedAt: cloudTimestamp
+          },
+          stats: cloudData.stats,
+          srs_data: cloudData.srs_data
+        });
+        
+        // Senkronizasyon başarılı oldugunda event gönder
+        notifyDataChange();
+        return; // Çık, çünkü veri indirdik.
+      } else {
+        console.warn("Cloud data incomplete, falling back to push strategy");
+      }
+    }
 
-            if (cloudResult && !cloudResult.error) {
-                cloudData = cloudResult.data;
-            }
-        } catch (e) {
-            console.warn("Could not fetch cloud data for sync comparison, attempting push only.");
+    // Eğer yerel daha yeniyse veya eşitse -> Buluta Yükle
+    console.log("Local is newer or equal. Pushing data...", {
+      localTimestamp,
+      cloudTimestamp,
+      difference: localTimestamp - cloudTimestamp
+    });
+
+    // Veri bütünlüğü kontrolü
+    if (!localProfile.name || !localProfile.grade) {
+      console.error("Local profile incomplete, cannot sync to cloud");
+      return;
+    }
+
+    // Optimize: Sadece değişen verileri gönder
+    const inventoryData = {
+      streakFreezes: localProfile.inventory.streakFreezes,
+      themes: localProfile.purchasedThemes,
+      frames: localProfile.purchasedFrames,
+      backgrounds: localProfile.purchasedBackgrounds,
+      equipped_frame: localProfile.frame,
+      equipped_background: localProfile.background
+    };
+
+    const updatePayload: any = {
+      stats: {
+        ...localStats,
+        memorized_words: Array.from(getMemorizedSet()),
+        favorite_words: Array.from(getBookmarksSet()),
+        last_username_change: localProfile.lastUsernameChange
+      },
+      inventory: inventoryData,
+      srs_data: localSRS,
+      avatar: localProfile.avatar,
+      grade: localProfile.grade,
+      username: localProfile.name,
+      friend_code: localProfile.friendCode,
+      theme: getTheme(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (localProfile.isAdmin) {
+      updatePayload.role = 'admin';
+    }
+
+    // Optimize: Sadece gerekli alanları güncelle
+    try {
+      const { data: currentData } = await supabase
+        .from('profiles')
+        .select('stats, srs_data, inventory, avatar, grade, username, friend_code, theme')
+        .eq('id', uid)
+        .single();
+
+      if (currentData) {
+        const needsUpdate = (
+          JSON.stringify(currentData.stats) !== JSON.stringify(updatePayload.stats) ||
+          JSON.stringify(currentData.srs_data) !== JSON.stringify(updatePayload.srs_data) ||
+          JSON.stringify(currentData.inventory) !== JSON.stringify(updatePayload.inventory) ||
+          currentData.avatar !== updatePayload.avatar ||
+          currentData.grade !== updatePayload.grade ||
+          currentData.username !== updatePayload.username ||
+          currentData.friend_code !== updatePayload.friend_code ||
+          currentData.theme !== updatePayload.theme
+        );
+
+        if (needsUpdate) {
+          console.log("Changes detected, updating cloud...");
+          const { error } = await withTimeout(
+            supabase
+              .from('profiles')
+              .update(updatePayload)
+              .eq('id', uid),
+            60000
+          );
+          
+          if (error) {
+            console.error("Sync update failed:", error);
+            throw error;
+          }
+        } else {
+          console.log("No changes detected, skipping update.");
         }
-
-        // 3. Karşılaştırma ve Karar Verme
-        const localTimestamp = Math.max(localProfile.updatedAt || 0, localStats.updatedAt || 0);
-
-        let cloudTimestamp = 0;
-        if (cloudData) {
-            const statsTs = cloudData.stats?.updatedAt || 0;
-            const profileTs = new Date(cloudData.updated_at || 0).getTime();
-            cloudTimestamp = Math.max(statsTs, profileTs);
-        }
-
-        // Eğer bulut daha yeniyse -> İndir ve Yereli Güncelle
-        if (cloudTimestamp > localTimestamp) {
-            console.log("Cloud is newer. Pulling data...", cloudTimestamp, ">", localTimestamp);
-            overwriteLocalWithCloud({
-                profile: {
-                    ...localProfile,
-                    name: cloudData.username,
-                    grade: cloudData.grade,
-                    avatar: cloudData.avatar,
-                    frame: cloudData.inventory?.equipped_frame,
-                    background: cloudData.inventory?.equipped_background,
-                    purchasedThemes: cloudData.inventory?.themes,
-                    purchasedFrames: cloudData.inventory?.frames,
-                    purchasedBackgrounds: cloudData.inventory?.backgrounds,
-                    inventory: { streakFreezes: cloudData.inventory?.streakFreezes || 0 },
-                    theme: cloudData.theme,
-                    updatedAt: cloudTimestamp
-                },
-                stats: cloudData.stats,
-                srs_data: cloudData.srs_data
-            });
-            return; // Çık, çünkü veri indirdik.
-        }
-
-        // Eğer yerel daha yeniyse veya eşitse -> Buluta Yükle
-        console.log("Local is newer or equal. Pushing data...", localTimestamp, ">=", cloudTimestamp);
-
-        const inventoryData = {
-            streakFreezes: localProfile.inventory.streakFreezes,
-            themes: localProfile.purchasedThemes,
-            frames: localProfile.purchasedFrames,
-            backgrounds: localProfile.purchasedBackgrounds,
-            equipped_frame: localProfile.frame,
-            equipped_background: localProfile.background
-        };
-
-        const updatePayload: any = {
-            stats: {
-                ...localStats,
-                memorized_words: Array.from(getMemorizedSet()),
-                favorite_words: Array.from(getBookmarksSet()),
-                // Persist username change timestamp in stats to avoid schema issues
-                last_username_change: localProfile.lastUsernameChange
-            },
-            inventory: inventoryData,
-            srs_data: localSRS,
-            avatar: localProfile.avatar,
-            grade: localProfile.grade,
-            username: localProfile.name,
-            friend_code: localProfile.friendCode, // Ensure friend_code is synced
-            theme: getTheme(),
-            updated_at: new Date().toISOString()
-        };
-
-        if (localProfile.isAdmin) {
-            updatePayload.role = 'admin';
-        }
-
-        await withTimeout(supabase
+      } else {
+        // Cloud'da profil yok, yeni oluştur
+        console.log("No existing cloud profile, creating new one...");
+        const { error } = await withTimeout(
+          supabase
             .from('profiles')
             .update(updatePayload)
-            .eq('id', uid), 60000);
-
-    } catch (e: any) {
-        console.warn("Sync failed:", e);
+            .eq('id', uid),
+          60000
+        );
+        
+        if (error) {
+          console.error("Sync create failed:", error);
+          throw error;
+        }
+      }
+      
+      // Başarılı senkronizasyon sonrası yerel timestamp'i güncelle
+      localProfile.updatedAt = Date.now();
+      localStats.updatedAt = Date.now();
+      saveUserProfile(localProfile);
+      saveUserStats(localStats);
+      
+    } catch (syncError) {
+      console.error("Detailed sync error:", syncError);
+      throw syncError;
     }
+
+  } catch (e: any) {
+    console.warn("Sync failed:", e);
+    // Hata yönetim servisine gönder
+    handleError(e, "Senkronizasyon başarısız oldu", { operation: "syncLocalToCloud", userId });
+  }
 };
 
 export const getUserData = async (uid: string) => {
@@ -799,8 +944,13 @@ export const createChallenge = async (
     targetFriendId?: string,
     grade?: string // Added grade
 ) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+const { data: { user }, error: authError } = await supabase.auth.getUser();
+if (authError) {
+    console.error("Authentication error in createChallenge:", authError);
+    handleError(authError, "Authentication failed in challenge creation");
+    throw new Error("Authentication failed");
+}
+if (!user) throw new Error("Not authenticated");
 
     const payload: any = {
         creator_id: user.id,

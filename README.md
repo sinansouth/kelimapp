@@ -18,3 +18,10 @@ View your app in AI Studio: https://ai.studio/apps/drive/166ZpXr9x8DJELCWw9Apnnw
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Mobile testing & PWA
+
+- Build for production: `npm run build`
+- Preview the production build locally: `npm run preview`
+- To test PWA/install behavior, open the preview URL on a mobile device or in Chrome's device emulator and check install prompt / service worker caching.
+- For best mobile experience, check that the viewport meta tag and safe-area paddings are respected and that touch targets are comfortably sized.

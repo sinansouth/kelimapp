@@ -101,6 +101,12 @@ export const XP_GAINS = {
     // Games
     matching_pair: 15,          // Was 8
     maze_level: 100,            // Was 50
+    // Wordsearch (Bulmaca) XP by difficulty
+    wordsearch_word: {
+        easy: 8,
+        medium: 12,
+        hard: 18
+    },
 
 
     // Quests
@@ -135,7 +141,7 @@ export const getTurkeyTime = (): Date => {
 
 // Returns YYYY-MM-DD based on local device time (For Streak)
 export const getTodayDateString = (): string => {
-    const d = new Date();
+    const d = getTurkeyTime();
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -259,12 +265,17 @@ export const getUserProfile = (): UserProfile => {
     try {
         const stored = localStorage.getItem(KEYS.PROFILE);
         if (!stored) return DEFAULT_PROFILE;
-        const parsed = JSON.parse(stored);
-        if (!parsed.friendCode) {
-            parsed.friendCode = generateFriendCode();
-            localStorage.setItem(KEYS.PROFILE, JSON.stringify(parsed));
+        try {
+            const parsed = JSON.parse(stored);
+            if (!parsed.friendCode) {
+                parsed.friendCode = generateFriendCode();
+                localStorage.setItem(KEYS.PROFILE, JSON.stringify(parsed));
+            }
+            return { ...DEFAULT_PROFILE, ...parsed };
+        } catch (e) {
+            console.error("Failed to parse user profile:", e);
+            return DEFAULT_PROFILE;
         }
-        return { ...DEFAULT_PROFILE, ...parsed };
     } catch { return DEFAULT_PROFILE; }
 };
 
@@ -302,28 +313,33 @@ export const getUserStats = (): UserStats => {
     try {
         const stored = localStorage.getItem(KEYS.STATS);
         if (!stored) return DEFAULT_STATS;
-        const stats = JSON.parse(stored);
-
-        const today = getTodayDateString();
-        if (stats.date !== today) {
-            stats.date = today;
-            stats.viewedWordsToday = [];
+        try {
+            const stats = JSON.parse(stored);
+    
+            const today = getTodayDateString();
+            if (stats.date !== today) {
+                stats.date = today;
+                stats.viewedWordsToday = [];
+            }
+    
+            // Weekly Reset Logic based on Turkey Time
+            const currentWeek = getWeekId();
+            if (stats.weekly?.weekId !== currentWeek) {
+                // New week, reset weekly stats
+                stats.weekly = {
+                    ...DEFAULT_WEEKLY_STATS,
+                    weekId: currentWeek
+                };
+            } else {
+                // Ensure any missing fields are present in existing week
+                stats.weekly = { ...DEFAULT_WEEKLY_STATS, ...stats.weekly };
+            }
+    
+            return { ...DEFAULT_STATS, ...stats };
+        } catch (e) {
+            console.error("Failed to parse user stats:", e);
+            return DEFAULT_STATS;
         }
-
-        // Weekly Reset Logic based on Turkey Time
-        const currentWeek = getWeekId();
-        if (stats.weekly?.weekId !== currentWeek) {
-            // New week, reset weekly stats
-            stats.weekly = {
-                ...DEFAULT_WEEKLY_STATS,
-                weekId: currentWeek
-            };
-        } else {
-            // Ensure any missing fields are present in existing week
-            stats.weekly = { ...DEFAULT_WEEKLY_STATS, ...stats.weekly };
-        }
-
-        return { ...DEFAULT_STATS, ...stats };
     } catch { return DEFAULT_STATS; }
 };
 
@@ -421,14 +437,24 @@ export const getSRSData = (): Record<string, SRSData> => {
         if (!stored) {
             const legacy = localStorage.getItem(KEYS.SRS_LEGACY);
             if (legacy) {
-                const legacyData = JSON.parse(legacy);
-                localStorage.setItem(KEYS.SRS, legacy);
-                return legacyData;
+                try {
+                    const legacyData = JSON.parse(legacy);
+                    localStorage.setItem(KEYS.SRS, legacy);
+                    return legacyData;
+                } catch (e) {
+                    console.error("Failed to parse legacy SRS data:", e);
+                    return {};
+                }
             }
             return {};
         }
-
-        return JSON.parse(stored);
+    
+        try {
+            return JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed to parse SRS data:", e);
+            return {};
+        }
     } catch { return {}; }
 };
 
@@ -593,6 +619,93 @@ export const updateQuizStats = (correct: number, wrong: number) => {
     stats.weekly.quizWrong += wrong;
 
     saveUserStats(stats);
+};
+
+export const updateDuelStats = (result: 'win' | 'loss' | 'tie', points: number) => {
+    const stats = getUserStats();
+    
+    console.log(`[DEBUG] Updating duel stats - result: ${result}, points: ${points}`);
+    
+    // Update lifetime stats
+    if (result === 'win') {
+        stats.duelWins += 1;
+        stats.weekly.duelWins += 1;
+    } else if (result === 'loss') {
+        stats.duelLosses += 1;
+        stats.weekly.duelLosses += 1;
+    } else if (result === 'tie') {
+        stats.duelDraws += 1;
+        stats.weekly.duelDraws += 1;
+    }
+    
+    // Update duel points (both lifetime and weekly)
+    stats.duelPoints += points;
+    stats.weekly.duelPoints += points;
+
+    saveUserStats(stats);
+    console.log(`[DEBUG] Duel stats updated - wins: ${stats.duelWins}, losses: ${stats.duelLosses}, draws: ${stats.duelDraws}, points: ${stats.duelPoints}`);
+};
+
+const _handleStreakUpdate = (stats: UserStats, todayStr: string) => {
+    const currentLastStudyDate = stats.lastStudyDate;
+
+    if (currentLastStudyDate !== todayStr) {
+        if (currentLastStudyDate) {
+            const last = new Date(currentLastStudyDate);
+            const now = new Date(todayStr);
+            last.setHours(0, 0, 0, 0);
+            now.setHours(0, 0, 0, 0);
+            const diffTime = now.getTime() - last.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) {
+                stats.streak++;
+            } else if (diffDays > 1) {
+                const prof = getUserProfile();
+                if (prof.inventory && prof.inventory.streakFreezes > 0) {
+                    prof.inventory.streakFreezes--;
+                    saveUserProfile(prof);
+                } else {
+                    stats.streak = 1;
+                }
+            }
+        } else {
+            stats.streak = 1;
+        }
+        stats.lastStudyDate = todayStr;
+    }
+};
+
+const _calculateFinalXP = (stats: UserStats, xpToAdd: number) => {
+    if (xpToAdd === 0) return;
+
+    // Base Multiplier (XP Boost Item)
+    let finalMultiplier = (stats.xpBoostEndTime > Date.now()) ? 2 : 1;
+
+    // Streak Multiplier (Max 2.0x at 10 days)
+    // Formula: 1.0 + (Streak * 0.1) -> Day 1: 1.1x, Day 10: 2.0x
+    const streakMult = 1 + (Math.min(stats.streak, 10) * 0.1);
+    finalMultiplier *= streakMult;
+
+    stats.xp += Math.floor(xpToAdd * finalMultiplier);
+
+    const newLevel = getLevelForXP(stats.xp);
+    if (newLevel > stats.level) {
+        stats.level = newLevel;
+    }
+};
+
+const _checkForBadges = (stats: UserStats, context: any): Badge[] => {
+    const unlockedBadges: Badge[] = [];
+    BADGES.forEach(badge => {
+        if (!stats.badges.includes(badge.id)) {
+            if (badge.condition(stats, context)) {
+                stats.badges.push(badge.id);
+                unlockedBadges.push(badge);
+            }
+        }
+    });
+    return unlockedBadges;
 };
 
 export const updateStats = (

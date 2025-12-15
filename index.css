@@ -1,0 +1,44 @@
+/* Minimal base stylesheet for the app (kept small for faster first paint)
+   Includes small mobile/touch accessibility helpers and CSS variable fallbacks.
+*/
+:root {
+  --color-bg-card: #0f172a;
+  --color-text-main: #e6eef8;
+  --color-primary: #6366f1;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  background: var(--color-bg-card);
+}
+
+/* Make small interactive areas more forgiving on touch devices */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Improve focus outline for keyboard accessibility */
+*:focus {
+  outline: 3px solid rgba(99,102,241,0.18);
+  outline-offset: 2px;
+}
+
+/* Simple scrollbar styling for webkit */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.4); border-radius: 6px; }
+
+/* Ensure modals use safe-area-inset paddings when available */
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }

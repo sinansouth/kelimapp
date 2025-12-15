@@ -172,8 +172,35 @@ export const fetchDynamicContent = async () => {
     return Promise.resolve();
 };
 
-export const getGrammarForUnit = (unitId: string): GrammarTopic[] => {
-    return getGrammarData(unitId);
+export const getGrammarForUnit = async (unitId: string): Promise<GrammarTopic[]> => {
+    try {
+        // If unitId follows grade pattern like 'g9u1' (g<grade>...), try to load only that grade file
+        const gradeMatch = unitId.match(/^g(\d{1,2})/i);
+        if (gradeMatch) {
+            const grade = gradeMatch[1];
+            try {
+                const mod = await import(`../data/grammar_g${grade}.tsx`);
+                const key = `GRAMMAR_G${grade}`;
+                const content = (mod as any)[key];
+                if (content && content[unitId]) return content[unitId];
+            } catch (e) {
+                // fallthrough to generic loader
+            }
+        }
+
+        // General content (A1..C1) or fallback to generic grammar
+        if (unitId.toLowerCase().startsWith('gen')) {
+            const mod = await import('../data/grammar_gen');
+            return (mod as any).GRAMMAR_GEN[unitId] || [];
+        }
+
+        // As a last resort, import the combined grammar content (smaller chance but safe)
+        const all = await import('../data/grammarContent');
+        return all.getGrammarForUnit(unitId);
+    } catch (e) {
+        console.warn('Failed to load grammar content dynamically', e);
+        return [];
+    }
 };
 
 export const getAvatars = (): Avatar[] => AVATARS;

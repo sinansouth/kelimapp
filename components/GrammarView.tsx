@@ -17,10 +17,20 @@ const GrammarView: React.FC<GrammarViewProps> = ({ unit, onBack }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Data is pre-cached by App.tsx, so this should be fast.
-    const grammarData = getGrammarForUnit(unit.id);
-    setTopics(grammarData);
-    setLoading(false);
+    let mounted = true;
+    setLoading(true);
+    (async () => {
+      try {
+        const grammarData = await getGrammarForUnit(unit.id);
+        if (mounted) setTopics(grammarData || []);
+      } catch (e) {
+        console.warn('Error loading grammar for unit', e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => { mounted = false; };
   }, [unit.id]);
 
   return (

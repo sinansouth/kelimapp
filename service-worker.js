@@ -8,6 +8,7 @@ const PRECACHE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './index.css',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Merriweather:wght@400;700&family=Courier+Prime:wght@400;700&family=Fredoka:wght@400;600&family=Orbitron:wght@400;700&family=Bangers&family=Playfair+Display:wght@400;700&family=Patrick+Hand&family=Creepster&family=Russo+One&display=swap',
 

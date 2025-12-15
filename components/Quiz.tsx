@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { WordCard, Badge, GradeLevel, QuizDifficulty, Challenge } from '../types';
 import { CheckCircle, XCircle, Bookmark, Info, Clock, Swords, Copy, Trophy, HelpCircle, Zap, Divide, RotateCcw, Home } from 'lucide-react';
-import { updateStats, handleQuizResult, handleReviewResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress, getUserProfile, saveUserStats, updateQuizStats, XP_GAINS } from '../services/userService';
+import { updateStats, handleQuizResult, handleReviewResult, addToMemorized, getMemorizedSet, removeFromMemorized, updateQuestProgress, getUserProfile, saveUserStats, updateQuizStats, updateDuelStats, XP_GAINS } from '../services/userService';
 import { playSound } from '../services/soundService';
 import { createChallenge, completeChallenge, syncLocalToCloud, submitTournamentScore, forfeitTournamentMatch } from '../services/supabase';
 import { getSmartDistractors } from '../services/contentService';
@@ -247,6 +247,8 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                 updateQuizStats(0, 1);
                 updateStats(1, { grade, unitId: wordId });
             }
+        } else {
+            console.log(`[DEBUG] Challenge mode active - skipping regular stats update for word: ${wordId}`);
         }
 
         if (isCorrect) {
@@ -261,6 +263,7 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                 updateStats(XP_GAINS.flashcard_memorize, { grade, unitId: wordId });
             }
 
+            // Handle memorized words for both regular and challenge modes
             const memorizedSet = getMemorizedSet();
             if (!memorizedSet.has(wordId)) {
                 try {
@@ -276,6 +279,9 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
 
                 addToMemorized(wordId);
                 setAddedToMemorized(true);
+                console.log(`[DEBUG] Added word to memorized: ${wordId}`);
+            } else {
+                console.log(`[DEBUG] Word already in memorized set: ${wordId}`);
             }
 
         } else {
@@ -357,7 +363,17 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                         setChallengeResult('tie');
                     }
 
+                    console.log(`[DEBUG] Completing challenge - result: ${challengeResult}, percentage: ${percentage}`);
                     await completeChallenge(challengeData.id, getUserProfile().name, percentage);
+
+                    // Update duel stats based on result
+                    const duelPoints = Math.round(percentage); // Use percentage as points
+                    updateDuelStats(challengeResult, duelPoints);
+
+                    // Update quest progress for duel wins
+                    if (challengeResult === 'win') {
+                        updateQuestProgress('win_duel', 1);
+                    }
 
                     if (challengeMode === 'tournament' && tournamentMatchId) {
                         submitTournamentScore(challengeData.tournamentId || challengeData.id, tournamentMatchId, percentage, totalSeconds);

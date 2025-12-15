@@ -1,12 +1,13 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { WordCard, AppMode, Badge, ThemeType, UnitDef, GradeLevel, StudyMode, CategoryType, QuizDifficulty, Challenge, UserStats } from './types';
+import { getTodayDateString, getWeekId } from './services/userService';
 import TopicSelector from './components/TopicSelector';
 import { THEME_COLORS, UI_ICONS, UNIT_ASSETS } from './data/assets';
-import FlashcardDeck from './components/FlashcardDeck';
-import Quiz from './components/Quiz';
-import Profile from './components/Profile';
-import GrammarView from './components/GrammarView';
+const FlashcardDeck = React.lazy(() => import('./components/FlashcardDeck'));
+const Quiz = React.lazy(() => import('./components/Quiz'));
+const Profile = React.lazy(() => import('./components/Profile'));
+const GrammarView = React.lazy(() => import('./components/GrammarView'));
 import WordSelector from './components/WordSelector';
 import InfoView from './components/InfoView';
 import AnnouncementsView from './components/AnnouncementsView';
@@ -37,8 +38,66 @@ import { playSound } from './services/soundService';
 import { APP_CONFIG } from './config/appConfig';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import MatchingGame from './components/MatchingGame';
-import MazeGame from './components/MazeGame';
+import { handleError } from './services/errorHandler';
+const MatchingGame = React.lazy(() => import('./components/MatchingGame'));
+const MazeGame = React.lazy(() => import('./components/MazeGame'));
+
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  onError?: (error: Error) => void;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    
+    // Call parent error handler if provided
+    if (this.props.onError) {
+      this.props.onError(error);
+    }
+    
+    // Log to error handling service
+    handleError(error, "Uygulama bileşeninde hata oluştu", {
+      componentStack: errorInfo.componentStack
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+          <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mb-4">
+            <AlertTriangle className="text-red-600" size={48} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Bir Hata Oluştu</h2>
+          <p className="text-slate-500 dark:text-slate-400 mb-4">
+            {this.state.error?.message || 'Bileşen yüklenirken bir hata oluştu'}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-all"
+          >
+            Sayfayı Yenile
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 const useDebounce = (effect: () => void, delay: number, deps: any[]) => {
     const callback = useCallback(effect, deps);
 
@@ -61,7 +120,52 @@ const App: React.FC = () => {
     const [history, setHistory] = useState<AppMode[]>([]);
 
     const [currentTheme, setCurrentTheme] = useState<ThemeType>('dark');
-    const [userStats, setUserStats] = useState<UserStats>(getUserStats());
+    const [userStats, setUserStats] = useState<UserStats>(() => {
+        try {
+            return getUserStats();
+        } catch (e) {
+            console.error("Failed to initialize user stats:", e);
+            return {
+                xp: 0,
+                level: 1,
+                streak: 0,
+                lastStudyDate: null,
+                badges: [],
+                flashcardsViewed: 0,
+                quizCorrect: 0,
+                quizWrong: 0,
+                dailyGoal: 20,
+                date: getTodayDateString(),
+                xpBoostEndTime: 0,
+                lastGoalMetDate: null,
+                viewedWordsToday: [],
+                perfectQuizzes: 0,
+                questsCompleted: 0,
+                totalTimeSpent: 0,
+                duelWins: 0,
+                duelLosses: 0,
+                duelDraws: 0,
+                duelPoints: 0,
+                matchingAllTimeBest: 0,
+                mazeAllTimeBest: 0,
+                completedUnits: [],
+                completedGrades: [],
+                weekly: {
+                    weekId: getWeekId(),
+                    quizCorrect: 0,
+                    quizWrong: 0,
+                    cardsViewed: 0,
+                    matchingBestTime: 0,
+                    mazeHighScore: 0,
+                    duelPoints: 0,
+                    duelWins: 0,
+                    duelLosses: 0,
+                    duelDraws: 0
+                },
+                updatedAt: 0
+            };
+        }
+    });
 
     const [activeModal, setActiveModal] = useState<'settings' | 'srs' | 'market' | 'auth' | 'grade' | 'feedback' | 'admin' | 'avatar' | 'challenge' | 'menu' | null>(null);
     const [authInitialView, setAuthInitialView] = useState<'login' | 'register'>('login');
@@ -732,16 +836,47 @@ const App: React.FC = () => {
     switch (mode) {
         case AppMode.HOME: content = (<TopicSelector selectedCategory={selectedCategory} selectedGrade={selectedGrade} selectedMode={selectedStudyMode} selectedUnit={selectedUnit} onSelectCategory={onSelectCategoryHandler} onSelectGrade={onSelectGradeHandler} onSelectMode={(mode) => setSelectedStudyMode(mode)} onSelectUnit={onSelectUnitHandler} onStartModule={handleStartModule} onGoHome={handleGoHome} onOpenMarket={handleOpenMarket} />); break;
         case AppMode.LOADING: content = (<div className="flex flex-col items-center justify-center h-full animate-pulse"> <div className="text-center font-bold" style={{ color: 'var(--color-text-muted)' }}>Yükleniyor...</div> </div>); break;
-        case AppMode.FLASHCARDS: content = (<FlashcardDeck words={words} onFinish={handleManualBack} onBack={handleManualBack} onHome={handleGoHome} isReviewMode={isSRSReview} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} />); break;
-        case AppMode.QUIZ: content = (<Quiz words={words} allWords={allUnitWords} onRestart={handleQuizRestart} onBack={handleManualBack} onHome={handleGoHome} isBookmarkQuiz={activeQuizType === 'bookmarks'} isReviewMode={isSRSReview} difficulty={activeQuizDifficulty} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} challengeMode={challengeState?.mode} challengeData={challengeState?.data} unitIdForChallenge={challengeState?.unitId} challengeType={challengeState?.challengeType} targetFriendId={challengeState?.targetFriendId} tournamentMatchId={challengeState?.tournamentMatchId} tournamentName={challengeState?.tournamentName} />); break;
+        case AppMode.FLASHCARDS:
+            content = (
+                <Suspense fallback={<div className="flex items-center justify-center h-full">Yükleniyor...</div>}>
+                    <FlashcardDeck words={words} onFinish={handleManualBack} onBack={handleManualBack} onHome={handleGoHome} isReviewMode={isSRSReview} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} />
+                </Suspense>
+            ); break;
+        case AppMode.QUIZ:
+            content = (
+                <Suspense fallback={<div className="flex items-center justify-center h-full">Yükleniyor...</div>}>
+                    <Quiz words={words} allWords={allUnitWords} onRestart={handleQuizRestart} onBack={handleManualBack} onHome={handleGoHome} isBookmarkQuiz={activeQuizType === 'bookmarks'} isReviewMode={isSRSReview} difficulty={activeQuizDifficulty} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} challengeMode={challengeState?.mode} challengeData={challengeState?.data} unitIdForChallenge={challengeState?.unitId} challengeType={challengeState?.challengeType} targetFriendId={challengeState?.targetFriendId} tournamentMatchId={challengeState?.tournamentMatchId} tournamentName={challengeState?.tournamentName} />
+                </Suspense>
+            ); break;
         case AppMode.CUSTOM_PRACTICE: content = (<WordSelector words={allUnitWords} unitTitle={topicTitle.replace(' (Özel Çalışma)', '')} onStart={handleCustomPracticeStart} onBack={handleManualBack} />); break;
-        case AppMode.GRAMMAR: if (selectedUnit) { content = <GrammarView unit={selectedUnit} onBack={handleManualBack} onHome={handleGoHome} />; } break;
+        case AppMode.GRAMMAR: if (selectedUnit) {
+            content = (
+                <Suspense fallback={<div className="flex items-center justify-center h-full">Yükleniyor...</div>}>
+                    <GrammarView unit={selectedUnit} onBack={handleManualBack} onHome={handleGoHome} />
+                </Suspense>
+            );
+        } break;
         case AppMode.EMPTY_WARNING: content = <EmptyStateWarning type={emptyWarningType || 'bookmarks'} onStudy={() => { selectedUnit && handleStartModule('study', selectedUnit); }} onHome={handleGoHome} />; break;
-        case AppMode.PROFILE: content = (<Profile onBack={handleManualBack} onProfileUpdate={handleProfileUpdate} onOpenMarket={handleOpenMarket} onLoginRequest={(initialView) => { setAuthInitialView(initialView || 'login'); setActiveModal('auth'); }} externalStats={userStats} showAlert={showAlert} onViewProfile={(id) => setViewProfileId(id)} />); break;
+        case AppMode.PROFILE:
+            content = (
+                <Suspense fallback={<div className="flex items-center justify-center h-full">Yükleniyor...</div>}>
+                    <Profile onBack={handleManualBack} onProfileUpdate={handleProfileUpdate} onOpenMarket={handleOpenMarket} onLoginRequest={(initialView) => { setAuthInitialView(initialView || 'login'); setActiveModal('auth'); }} externalStats={userStats} showAlert={showAlert} onViewProfile={(id) => setViewProfileId(id)} />
+                </Suspense>
+            ); break;
         case AppMode.INFO: content = <InfoView onBack={handleManualBack} />; break;
         case AppMode.ANNOUNCEMENTS: content = <AnnouncementsView onBack={handleManualBack} />; break;
-        case AppMode.MATCHING: content = (<MatchingGame words={words} onFinish={handleManualBack} onBack={handleManualBack} onHome={handleGoHome} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} />); break;
-        case AppMode.MAZE: content = (<MazeGame words={words} onFinish={handleManualBack} onBack={handleManualBack} onHome={handleGoHome} onCelebrate={handleTriggerCelebration} grade={selectedGrade} />); break;
+        case AppMode.MATCHING:
+            content = (
+                <Suspense fallback={<div className="flex items-center justify-center h-full">Yükleniyor...</div>}>
+                    <MatchingGame words={words} onFinish={handleManualBack} onBack={handleManualBack} onHome={handleGoHome} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} />
+                </Suspense>
+            ); break;
+        case AppMode.MAZE:
+            content = (
+                <Suspense fallback={<div className="flex items-center justify-center h-full">Yükleniyor...</div>}>
+                    <MazeGame words={words} onFinish={handleManualBack} onBack={handleManualBack} onHome={handleGoHome} onCelebrate={handleTriggerCelebration} grade={selectedGrade} />
+                </Suspense>
+            ); break;
         case AppMode.ERROR: content = <div className="text-center p-10 text-red-500">Bir hata oluştu.</div>; break;
     }
 
@@ -792,7 +927,8 @@ const App: React.FC = () => {
                         {showBackButton ? (
                             <button
                                 onClick={handleManualBack}
-                                className="p-2 -ml-2 rounded-full transition-colors hover:opacity-80"
+                                aria-label="Geri"
+                                className="p-2 -ml-2 rounded-full transition-colors hover:opacity-80 touch-target"
                                 style={{ color: 'var(--color-text-muted)' }}
                             >
                                 <ChevronLeft size={24} />
@@ -831,25 +967,25 @@ const App: React.FC = () => {
                 }}
             >
                 <div className="max-w-md mx-auto h-16 flex items-center justify-around px-2">
-                    <button onClick={handleGoHome} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${mode === AppMode.HOME ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`} style={{ color: mode === AppMode.HOME ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                    <button aria-label="Ana Sayfa" onClick={handleGoHome} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all touch-target ${mode === AppMode.HOME ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`} style={{ color: mode === AppMode.HOME ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
                         {UI_ICONS.home}
                     </button>
 
-                    <button onClick={handleOpenChallenge} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all relative ${activeModal === 'challenge' ? 'opacity-100 text-orange-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'challenge' ? '#f97316' : 'var(--color-text-muted)' }}>
+                    <button aria-label="Düello" onClick={handleOpenChallenge} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all relative touch-target ${activeModal === 'challenge' ? 'opacity-100 text-orange-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'challenge' ? '#f97316' : 'var(--color-text-muted)' }}>
                         <Swords size={24} />
                         {hasPendingDuel && <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>}
                     </button>
 
-                    <button onClick={handleOpenMenu} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all relative ${activeModal === 'menu' ? 'opacity-100 text-blue-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'menu' ? '#3b82f6' : 'var(--color-text-muted)' }}>
+                    <button aria-label="Menü" onClick={handleOpenMenu} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all relative touch-target ${activeModal === 'menu' ? 'opacity-100 text-blue-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'menu' ? '#3b82f6' : 'var(--color-text-muted)' }}>
                         <MenuIcon size={24} />
                         {hasUnreadAnnouncements && <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900"></span>}
                     </button>
 
-                    <button onClick={handleOpenProfile} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${mode === AppMode.PROFILE ? 'opacity-100 text-green-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: mode === AppMode.PROFILE ? '#22c55e' : 'var(--color-text-muted)' }}>
+                    <button aria-label="Profil" onClick={handleOpenProfile} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all touch-target ${mode === AppMode.PROFILE ? 'opacity-100 text-green-500' : 'opacity-50 hover:opacity-80'}`} style={{ color: mode === AppMode.PROFILE ? '#22c55e' : 'var(--color-text-muted)' }}>
                         {UI_ICONS.profile}
                     </button>
 
-                    <button onClick={handleOpenSettings} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all ${activeModal === 'settings' ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'settings' ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
+                    <button aria-label="Ayarlar" onClick={handleOpenSettings} className={`flex flex-col items-center justify-center w-14 h-full gap-1 transition-all touch-target ${activeModal === 'settings' ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`} style={{ color: activeModal === 'settings' ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}>
                         {UI_ICONS.settings}
                     </button>
                 </div>
