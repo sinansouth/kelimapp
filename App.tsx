@@ -201,7 +201,8 @@ const App: React.FC = () => {
         challengeType?: 'public' | 'private' | 'friend',
         targetFriendId?: string,
         tournamentMatchId?: string,
-        tournamentName?: string
+        tournamentName?: string,
+        grade?: string
     } | null>(null);
 
     const lastQuizConfig = useRef<{ count: number, difficulty: QuizDifficulty, originalWords: WordCard[], allDistractors: WordCard[] } | null>(null);
@@ -781,7 +782,7 @@ const App: React.FC = () => {
         setHistory([]); setMode(AppMode.HOME); setTopicTitle(''); setWords([]); setAllUnitWords([]); setSelectedUnit(null); setSelectedStudyMode(null); setSelectedGrade(null); setSelectedCategory(null); setIsSRSReview(false); setPendingQuizConfig(null); setActiveModal(null); setChallengeState(null); refreshGlobalState();
     };
 
-    const handleCreateChallenge = (config: any) => { setActiveModal(null); setMode(AppMode.LOADING); const setupChallengeQuiz = async () => { try { const unitWords = await getWordsForUnit(config.unit.id); if (unitWords.length < 4) { showAlert("Hata", "Yetersiz kelime.", "error"); setMode(AppMode.HOME); return; } const finalCount = Math.min(config.count, unitWords.length); const challengeWords = shuffleArray(unitWords).slice(0, finalCount); setWords(challengeWords); setAllUnitWords(unitWords); setTopicTitle(`Düello: ${config.unit.title}`); setActiveQuizDifficulty(config.difficulty); setChallengeState({ mode: 'create', unitId: config.unit.id, challengeType: config.type, targetFriendId: config.targetFriendId }); changeMode(AppMode.QUIZ); } catch (e) { setMode(AppMode.HOME); showAlert("Hata", "Hata oluştu.", "error"); } }; setupChallengeQuiz(); };
+    const handleCreateChallenge = (config: any) => { setActiveModal(null); setMode(AppMode.LOADING); const setupChallengeQuiz = async () => { try { const unitWords = await getWordsForUnit(config.unit.id); if (unitWords.length < 4) { showAlert("Hata", "Yetersiz kelime.", "error"); setMode(AppMode.HOME); return; } const finalCount = Math.min(config.count, unitWords.length); const challengeWords = shuffleArray(unitWords).slice(0, finalCount); setWords(challengeWords); setAllUnitWords(unitWords); setTopicTitle(`Düello: ${config.unit.title}`); setActiveQuizDifficulty(config.difficulty); setChallengeState({ mode: 'create', unitId: config.unit.id, challengeType: config.type, targetFriendId: config.targetFriendId, grade: config.grade }); changeMode(AppMode.QUIZ); } catch (e) { setMode(AppMode.HOME); showAlert("Hata", "Hata oluştu.", "error"); } }; setupChallengeQuiz(); };
     const handleJoinChallenge = (challengeData: any, challengeWords: WordCard[]) => { setActiveModal(null); setWords(challengeWords); setAllUnitWords(challengeWords); setTopicTitle(challengeData.matchId ? `Turnuva: ${challengeData.tournamentName}` : `Düello: ${challengeData.creatorName}`); setActiveQuizDifficulty(challengeData.difficulty || 'normal'); setChallengeState(challengeData.matchId ? { mode: 'tournament', tournamentMatchId: challengeData.matchId, data: challengeData, tournamentName: challengeData.tournamentName } : { mode: 'join', data: challengeData }); changeMode(AppMode.QUIZ); };
 
     const handleOpenProfile = () => { changeMode(AppMode.PROFILE); setTopicTitle('Profilim'); refreshGlobalState(); };
@@ -845,7 +846,7 @@ const App: React.FC = () => {
         case AppMode.QUIZ:
             content = (
                 <Suspense fallback={<div className="flex items-center justify-center h-full">Yükleniyor...</div>}>
-                    <Quiz words={words} allWords={allUnitWords} onRestart={handleQuizRestart} onBack={handleManualBack} onHome={handleGoHome} isBookmarkQuiz={activeQuizType === 'bookmarks'} isReviewMode={isSRSReview} difficulty={activeQuizDifficulty} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} challengeMode={challengeState?.mode} challengeData={challengeState?.data} unitIdForChallenge={challengeState?.unitId} challengeType={challengeState?.challengeType} targetFriendId={challengeState?.targetFriendId} tournamentMatchId={challengeState?.tournamentMatchId} tournamentName={challengeState?.tournamentName} />
+                    <Quiz words={words} allWords={allUnitWords} onRestart={handleQuizRestart} onBack={handleManualBack} onHome={handleGoHome} isBookmarkQuiz={activeQuizType === 'bookmarks'} isReviewMode={isSRSReview} difficulty={activeQuizDifficulty} onCelebrate={handleTriggerCelebration} onBadgeUnlock={handleBadgeUnlock} grade={selectedGrade} challengeMode={challengeState?.mode} challengeData={challengeState?.data} unitIdForChallenge={challengeState?.unitId} challengeType={challengeState?.challengeType} targetFriendId={challengeState?.targetFriendId} tournamentMatchId={challengeState?.tournamentMatchId} tournamentName={challengeState?.tournamentName} challengeGrade={challengeState?.grade} />
                 </Suspense>
             ); break;
         case AppMode.CUSTOM_PRACTICE: content = (<WordSelector words={allUnitWords} unitTitle={topicTitle.replace(' (Özel Çalışma)', '')} onStart={handleCustomPracticeStart} onBack={handleManualBack} />); break;

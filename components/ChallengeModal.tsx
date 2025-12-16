@@ -318,7 +318,7 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
                                                 <span className="text-xs font-black text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-0.5 rounded">{c.creatorScore}%</span>
                                             </div>
                                             <div className="text-[10px] text-slate-400 mb-1 truncate">
-                                                {c.grade === 'GENERAL' ? 'Genel' : `${c.grade}. Sınıf`} • {c.unitName}
+                                                {c.grade ? (c.grade === 'GENERAL' ? 'Genel' : `${c.grade}. Sınıf`) : 'undefined. Sınıf'} • {c.unitName}
                                             </div>
                                             <div className="flex justify-between text-[10px] text-slate-500">
                                                 <span className="flex items-center gap-1">
@@ -378,7 +378,7 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
                                                     <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-1">
-                                                        {t.grade === 'GENERAL' ? 'Genel' : `${t.grade}. Sınıf`} • {t.unitName}
+                                                        {t.grade ? (t.grade === 'GENERAL' ? 'Genel' : `${t.grade}. Sınıf`) : 'undefined. Sınıf'} • {t.unitName}
                                                     </div>
                                                     <h3 className="font-bold text-lg text-slate-800 dark:text-white">{t.title}</h3>
                                                 </div>
@@ -471,7 +471,7 @@ const ChallengeModal: React.FC<ChallengeModalProps> = ({ onClose, onCreateChalle
                                             <div key={c.id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex justify-between items-center">
                                                 <div>
                                                     <div className="text-[10px] text-slate-400 mb-1">
-                                                        {new Date(c.createdAt).toLocaleDateString()} • {c.grade === 'GENERAL' ? 'Genel' : `${c.grade}. Sınıf`}
+                                                        {new Date(c.createdAt).toLocaleDateString()} • {c.grade ? (c.grade === 'GENERAL' ? 'Genel' : `${c.grade}. Sınıf`) : 'undefined. Sınıf'}
                                                     </div>
                                                     <div className="font-bold text-sm text-slate-800 dark:text-white">vs {opponentName}</div>
                                                 </div>

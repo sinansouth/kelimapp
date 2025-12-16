@@ -31,6 +31,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({ onClose, currentGrade: i
       setSrsStats(getSRSStatus());
   }, []);
 
+
   // Content Stats Calculation - Simplified to avoid lag
   useEffect(() => {
     const rawMemorizedSet = getMemorizedSet();

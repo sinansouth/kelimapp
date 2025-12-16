@@ -1022,6 +1022,7 @@ const transformChallengeData = (data: any): Challenge => {
         wordIndices: data.word_indices,
         unitId: data.unit_id,
         unitName: data.unit_name,
+        grade: data.grade, // Add grade to challenge data
         difficulty: data.difficulty || 'normal', // Default since not in DB
         wordCount: data.word_count,
         targetFriendId: data.target_friend_id,
@@ -1055,6 +1056,8 @@ export const getLeaderboard = async (grade: string, mode: string): Promise<Leade
             else if (mode === 'wordSearch') value = weekly.wordSearchHighScore || 0;
             else if (mode === 'duel') value = weekly.duelPoints || 0;
 
+            // For duel mode, show weekly stats. For other modes, show appropriate stats.
+            // But always show lifetime duel stats for the user profile
             return {
                 uid: user.id,
                 name: user.username,
@@ -1067,10 +1070,10 @@ export const getLeaderboard = async (grade: string, mode: string): Promise<Leade
                 background: user.inventory?.equipped_background || 'bg_default',
                 theme: user.theme || 'dark',
                 value: value,
-                duelWins: weekly.duelWins || 0,
-                duelLosses: weekly.duelLosses || 0,
-                duelDraws: weekly.duelDraws || 0,
-                duelPoints: weekly.duelPoints || 0
+                duelWins: mode === 'duel' ? (weekly.duelWins || 0) : (stats.duelWins || 0),
+                duelLosses: mode === 'duel' ? (weekly.duelLosses || 0) : (stats.duelLosses || 0),
+                duelDraws: mode === 'duel' ? (weekly.duelDraws || 0) : (stats.duelDraws || 0),
+                duelPoints: mode === 'duel' ? (weekly.duelPoints || 0) : (stats.duelPoints || 0)
             } as LeaderboardEntry;
         });
 
@@ -1183,10 +1186,11 @@ export const getPublicUserProfile = async (userId: string) => {
             background: inventory.equipped_background || 'bg_default',
             theme: data.theme || 'dark',
             badges: stats.badges || [],
-            duelWins: weekly.duelWins || stats.duelWins || 0,
-            duelLosses: weekly.duelLosses || stats.duelLosses || 0,
-            duelDraws: weekly.duelDraws || stats.duelDraws || 0,
-            duelPoints: weekly.duelPoints || stats.duelPoints || 0,
+            // FIX: Always use lifetime stats for public profile display, not weekly stats
+            duelWins: stats.duelWins || 0,
+            duelLosses: stats.duelLosses || 0,
+            duelDraws: stats.duelDraws || 0,
+            duelPoints: stats.duelPoints || 0,
             quizCorrect: stats.quizCorrect || 0,
             quizWrong: stats.quizWrong || 0,
             matchingBestTime: weekly.matchingBestTime || stats.matchingAllTimeBest || 0,

@@ -666,7 +666,7 @@ export const updateQuizStats = (correct: number, wrong: number) => {
 export const updateDuelStats = (result: 'win' | 'loss' | 'tie', points: number) => {
     const stats = getUserStats();
     
-    console.log(`[DEBUG] Updating duel stats - result: ${result}, points: ${points}`);
+    console.log(`Updating duel stats - result: ${result}, points: ${points}`);
     
     // Update lifetime stats
     if (result === 'win') {
@@ -693,7 +693,6 @@ export const updateDuelStats = (result: 'win' | 'loss' | 'tie', points: number) 
     }
 
     saveUserStats(stats);
-    console.log(`[DEBUG] Duel stats updated - wins: ${stats.duelWins}, losses: ${stats.duelLosses}, draws: ${stats.duelDraws}, points: ${stats.duelPoints}`);
 };
 
 const _handleStreakUpdate = (stats: UserStats, todayStr: string) => {

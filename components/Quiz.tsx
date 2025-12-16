@@ -29,9 +29,10 @@ interface QuizProps {
     targetFriendId?: string;
     tournamentMatchId?: string;
     tournamentName?: string;
+    challengeGrade?: string;
 }
 
-const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome, isBookmarkQuiz, isReviewMode, onCelebrate, onBadgeUnlock, grade, difficulty = 'normal', challengeMode, challengeData, unitIdForChallenge, challengeType, targetFriendId, tournamentMatchId, tournamentName }) => {
+const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome, isBookmarkQuiz, isReviewMode, onCelebrate, onBadgeUnlock, grade, difficulty = 'normal', challengeMode, challengeData, unitIdForChallenge, challengeType, targetFriendId, tournamentMatchId, tournamentName, challengeGrade }) => {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [score, setScore] = useState(0);
     const [wrongCount, setWrongCount] = useState(0);
@@ -247,8 +248,6 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                 updateQuizStats(0, 1);
                 updateStats(1, { grade, unitId: wordId });
             }
-        } else {
-            console.log(`[DEBUG] Challenge mode active - skipping regular stats update for word: ${wordId}`);
         }
 
         if (isCorrect) {
@@ -279,9 +278,6 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
 
                 addToMemorized(wordId);
                 setAddedToMemorized(true);
-                console.log(`[DEBUG] Added word to memorized: ${wordId}`);
-            } else {
-                console.log(`[DEBUG] Word already in memorized set: ${wordId}`);
             }
 
         } else {
@@ -346,7 +342,7 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                 if (allWords && unitIdForChallenge) {
                     const wordIndices = words.map(w => allWords!.findIndex(aw => aw.english === w.english && aw.unitId === w.unitId));
                     const profile = getUserProfile();
-                    createChallenge(profile.name, percentage, wordIndices, unitIdForChallenge, difficulty as QuizDifficulty, words.length, challengeType, targetFriendId, grade || 'General')
+                    createChallenge(profile.name, percentage, wordIndices, unitIdForChallenge, difficulty as QuizDifficulty, words.length, challengeType, targetFriendId, challengeGrade || grade || 'General')
                         .then((id) => setCreatedChallengeId(id))
                         .catch(err => {
                             console.error("Challenge Creation Failed:", err);
@@ -363,7 +359,6 @@ const Quiz: React.FC<QuizProps> = ({ words, allWords, onRestart, onBack, onHome,
                         setChallengeResult('tie');
                     }
 
-                    console.log(`[DEBUG] Completing challenge - result: ${challengeResult}, percentage: ${percentage}`);
                     await completeChallenge(challengeData.id, getUserProfile().name, percentage);
 
                     // Update duel stats based on result
